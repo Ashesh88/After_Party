@@ -129,13 +129,13 @@ export default function WatchPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#07070f] text-slate-100 overflow-hidden flex flex-col pb-28">
+    <div className="relative min-h-screen bg-[#07070f] text-slate-100 flex flex-col overflow-y-auto pb-44 sm:pb-36">
       {/* Ambient Romantic Orbs */}
       <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple -bottom-28 -right-20 pointer-events-none" />
 
       {/* Floating Reaction Overlay */}
-      <div className="absolute inset-0 pointer-events-none z-50">
+      <div className="fixed inset-0 pointer-events-none z-50">
         <AnimatePresence>
           {reactions.map(r => (
             <motion.div
@@ -153,45 +153,55 @@ export default function WatchPage() {
       </div>
 
       {/* Top Navbar Header */}
-      <header className="relative z-30 p-4 sm:p-5 max-w-5xl mx-auto w-full">
-        <div className="p-3 sm:p-4 rounded-3xl glass-panel flex flex-col sm:flex-row items-center gap-3 shadow-2xl">
-          <div className="flex items-center gap-2.5 px-2">
-            <div className="w-9 h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
-              <Film size={18} />
+      <header className="relative z-20 px-3 pt-3 pb-2 sm:p-5 max-w-5xl mx-auto w-full shrink-0">
+        <div className="p-3 sm:p-4 rounded-3xl glass-panel flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 shadow-2xl">
+          <div className="flex items-center justify-between w-full sm:w-auto px-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 shrink-0">
+                <Film size={18} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-black text-white leading-tight">Theater Lounge</h2>
+                <span className="text-[9px] sm:text-[10px] text-pink-400 font-semibold uppercase tracking-wider">Synced & Private</span>
+              </div>
             </div>
-            <div>
-              <h2 className="text-sm font-black text-white leading-tight">Theater Lounge</h2>
-              <span className="text-[10px] text-pink-400 font-semibold uppercase tracking-wider">Synced & Private</span>
-            </div>
+
+            <button
+              onClick={() => setShowQuickPicks(!showQuickPicks)}
+              className="sm:hidden px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-[11px] font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5 active:scale-95"
+            >
+              <Popcorn size={13} className="text-amber-400" />
+              <span>Picks</span>
+            </button>
           </div>
 
-          <div className="flex-1 flex w-full gap-2 items-center">
-            <div className="relative flex-1">
+          <div className="flex w-full gap-2 items-center">
+            <div className="relative flex-1 min-w-0">
               <input
                 type="text"
-                placeholder="Paste YouTube Link or pick below..."
+                placeholder="Paste YouTube Link or tap below..."
                 value={url}
                 onChange={e => setUrl(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-2xl glass-input text-xs text-white placeholder:text-slate-500 outline-none font-medium"
+                className="w-full pl-8 sm:pl-9 pr-3 py-2 sm:py-2.5 rounded-2xl glass-input text-xs text-white placeholder:text-slate-500 outline-none font-medium truncate"
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+              <span className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
                 <LinkIcon size={14} />
               </span>
             </div>
             
             <button
               onClick={() => handleLoadUrl()}
-              className="px-5 py-2.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg cursor-pointer"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg cursor-pointer shrink-0 active:scale-95"
             >
               Play
             </button>
 
             <button
               onClick={() => setShowQuickPicks(!showQuickPicks)}
-              className="px-3.5 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5"
+              className="hidden sm:flex px-3.5 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-slate-300 cursor-pointer items-center gap-1.5 shrink-0"
             >
               <Popcorn size={14} className="text-amber-400" />
-              <span className="hidden sm:inline">Picks</span>
+              <span>Picks</span>
             </button>
           </div>
         </div>
@@ -203,7 +213,7 @@ export default function WatchPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-2 p-3 rounded-2xl glass-panel grid grid-cols-2 sm:grid-cols-4 gap-2 z-40 border border-pink-500/20"
+              className="mt-2 p-3 rounded-2xl glass-panel grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 z-40 border border-pink-500/20"
             >
               {CURATED_MOVIES.map(item => (
                 <button
@@ -212,10 +222,10 @@ export default function WatchPage() {
                     handleLoadUrl(item.id, item.title);
                     setShowQuickPicks(false);
                   }}
-                  className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-pink-500/15 border border-white/5 hover:border-pink-500/30 text-left transition-all group cursor-pointer"
+                  className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-pink-500/15 border border-white/5 hover:border-pink-500/30 text-left transition-all group cursor-pointer active:scale-95"
                 >
-                  <p className="text-xs font-bold text-white group-hover:text-pink-300 truncate">{item.title}</p>
-                  <span className="text-[10px] text-slate-400 font-medium">{item.category}</span>
+                  <p className="text-[11px] sm:text-xs font-bold text-white group-hover:text-pink-300 truncate">{item.title}</p>
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium">{item.category}</span>
                 </button>
               ))}
             </motion.div>
@@ -224,27 +234,27 @@ export default function WatchPage() {
       </header>
 
       {/* Main Video Stage */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 flex flex-col items-center justify-center relative z-10">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-4 py-2 sm:py-6 flex flex-col items-center justify-center relative z-10">
         {videoId ? (
           <div className="w-full flex flex-col items-center gap-3">
-            <div className="w-full aspect-video rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative">
+            <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative">
               <iframe
                 src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
                 title="Couple Theater"
-                className="w-full h-full border-0 rounded-[32px]"
+                className="w-full h-full border-0 rounded-2xl sm:rounded-[32px]"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
             </div>
 
             {/* Quick Switch / Close Bar */}
-            <div className="flex items-center gap-3 py-1">
+            <div className="flex items-center gap-2 sm:gap-3 py-1 flex-wrap justify-center">
               <button
                 onClick={() => {
                   setVideoId(null);
                   setUrl('');
                 }}
-                className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-xs font-semibold text-slate-300 hover:text-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
+                className="px-3.5 sm:px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-xs font-semibold text-slate-300 hover:text-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
               >
                 <X size={14} />
                 <span>Switch / Close Video</span>
@@ -252,7 +262,7 @@ export default function WatchPage() {
 
               <button
                 onClick={() => setShowQuickPicks(true)}
-                className="px-4 py-1.5 rounded-full bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs font-semibold text-pink-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
+                className="px-3.5 sm:px-4 py-1.5 rounded-full bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs font-semibold text-pink-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
               >
                 <Popcorn size={14} className="text-amber-400" />
                 <span>Pick Another Video</span>
@@ -260,23 +270,23 @@ export default function WatchPage() {
             </div>
           </div>
         ) : (
-          <div className="w-full aspect-video max-w-3xl rounded-[32px] glass-panel border border-white/[0.08] flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/5 via-transparent to-purple-500/5" />
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-pink-500/20 to-purple-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-4 shadow-[0_0_30px_rgba(244,63,142,0.3)] animate-float">
-              <Film size={36} strokeWidth={1.8} />
+          <div className="w-full max-w-2xl rounded-3xl sm:rounded-[32px] glass-panel border border-white/[0.08] flex flex-col items-center justify-center p-5 sm:p-8 text-center shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/5 via-transparent to-purple-500/5 pointer-events-none" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-pink-500/20 to-purple-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3 sm:mb-4 shadow-[0_0_30px_rgba(244,63,142,0.3)] animate-float shrink-0">
+              <Film size={32} strokeWidth={1.8} />
             </div>
-            <h3 className="text-xl font-extrabold text-white mb-2">Private Couple Cinema</h3>
-            <p className="text-xs text-slate-400 max-w-md mb-6 font-medium">
-              Paste any YouTube video link, movie trailer, or music playlist to stream and sync perfectly together in real-time.
+            <h3 className="text-lg sm:text-xl font-extrabold text-white mb-1.5 sm:mb-2">Private Couple Cinema</h3>
+            <p className="text-xs text-slate-400 max-w-md mb-4 sm:mb-6 font-medium leading-relaxed px-2">
+              Paste any YouTube video link above, or tap a romantic pick below to stream and sync together in real-time.
             </p>
-            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+            <div className="flex flex-wrap gap-2 sm:gap-2.5 justify-center max-w-lg relative z-20">
               {CURATED_MOVIES.map(m => (
                 <button
                   key={m.id}
                   onClick={() => handleLoadUrl(m.id, m.title)}
-                  className="px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/40 text-[11px] font-semibold text-slate-300 transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                  className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-white/[0.06] hover:bg-pink-500/25 active:bg-pink-500/35 border border-white/10 hover:border-pink-500/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 relative z-20 shadow-md active:scale-95 touch-manipulation"
                 >
-                  <Sparkles size={12} className="text-pink-400" />
+                  <Sparkles size={13} className="text-pink-400 shrink-0" />
                   <span>{m.title}</span>
                 </button>
               ))}
@@ -286,9 +296,9 @@ export default function WatchPage() {
       </main>
 
       {/* Floating Video Call & Cute Avatar Tiles */}
-      <div className="fixed right-4 bottom-28 flex flex-col gap-2.5 z-30">
+      <div className="fixed right-3 sm:right-4 bottom-28 sm:bottom-32 flex flex-col gap-2.5 z-30 pointer-events-none">
         {/* Partner Tile */}
-        <div className="relative w-24 h-32 rounded-2xl overflow-hidden glass-panel border border-purple-500/30 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group">
+        <div className={`pointer-events-auto relative ${inCall ? 'w-24 h-32 sm:w-28 sm:h-36 flex' : 'hidden md:flex w-24 h-32'} rounded-2xl overflow-hidden glass-panel border border-purple-500/30 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group`}>
           <video ref={remoteVideoRef} autoPlay playsInline className={`w-full h-full object-cover ${inCall ? 'block' : 'hidden'}`} />
           {!inCall && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-[#0d0d18]/95 backdrop-blur-md">
@@ -308,7 +318,7 @@ export default function WatchPage() {
         </div>
 
         {/* You Tile */}
-        <div className="relative w-24 h-32 rounded-2xl overflow-hidden glass-panel border border-pink-500/40 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group">
+        <div className={`pointer-events-auto relative ${inCall ? 'w-24 h-32 sm:w-28 sm:h-36 flex' : 'hidden md:flex w-24 h-32'} rounded-2xl overflow-hidden glass-panel border border-pink-500/40 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group`}>
           <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${inCall ? 'block' : 'hidden'}`} />
           {!inCall && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-[#0d0d18]/95 backdrop-blur-md">
@@ -329,10 +339,10 @@ export default function WatchPage() {
       </div>
 
       {/* Floating Bottom Reaction & Call Controller Bar */}
-      <div className="fixed bottom-20 left-4 right-4 max-w-xl mx-auto z-30 pointer-events-none">
-        <div className="pointer-events-auto p-2.5 rounded-full bg-[#0d0d1c]/85 backdrop-blur-2xl border border-white/[0.1] shadow-[0_15px_35px_rgba(0,0,0,0.7)] flex justify-between items-center gap-2">
+      <div className="fixed bottom-[74px] sm:bottom-20 left-3 right-3 sm:left-4 sm:right-4 max-w-xl mx-auto z-30 pointer-events-none">
+        <div className="pointer-events-auto p-2 sm:p-2.5 rounded-full bg-[#0d0d1c]/90 backdrop-blur-2xl border border-white/[0.1] shadow-[0_15px_35px_rgba(0,0,0,0.7)] flex justify-between items-center gap-2">
           {/* Reaction Bursts */}
-          <div className="flex gap-1.5 pl-1">
+          <div className="flex gap-1 sm:gap-1.5 pl-1">
             {[
               { id: 'heart', icon: Heart, color: 'text-pink-400 hover:text-pink-300' },
               { id: 'fire', icon: Flame, color: 'text-amber-400 hover:text-amber-300' },
