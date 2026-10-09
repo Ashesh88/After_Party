@@ -16,6 +16,7 @@ const messageRoutes = require('./routes/messages');
 const goalRoutes = require('./routes/goals');
 const reminderRoutes = require('./routes/reminders');
 const pushRoutes = require('./routes/push');
+const watchRoutes = require('./routes/watch');
 
 // Connect to MongoDB
 connectDB();
@@ -48,6 +49,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/watch', watchRoutes);
 
 // Error Handler
 app.use(errorHandler);

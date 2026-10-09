@@ -7,6 +7,7 @@ import { Message } from '../../../lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useCallStore } from '../../../lib/store/callStore';
+import { soundService } from '../../../lib/soundService';
 import { 
   Send, CheckCheck, MessageCircleHeart, 
   Flame, Lock, Phone, Video 
@@ -59,6 +60,7 @@ export default function ChatPage() {
       const sender = typeof msg.senderId === 'object' ? (msg.senderId as any)._id : msg.senderId;
       if (sender !== user?._id) {
         socket.emit('chat:seen', { messageId: msg._id });
+        soundService.playMessageTone();
       }
     });
 

@@ -8,8 +8,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
   Heart, Sparkles, MessageSquareHeart, Phone, PhoneOff, MonitorUp, 
-  Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon 
+  Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon, Search, Loader2, Play 
 } from 'lucide-react';
+import { soundService } from '../../../lib/soundService';
+import api from '../../../lib/api';
 
 const CURATED_MOVIES = [
   { title: 'La La Land (Trailer)', id: '0pdqf4P9MB8', category: 'Romantic Musical', duration: 'Trailer' },
@@ -28,6 +30,9 @@ export default function WatchPage() {
   const [chatMessages, setChatMessages] = useState<{ senderName: string; text: string; isMe: boolean }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showQuickPicks, setShowQuickPicks] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +63,8 @@ export default function WatchPage() {
     return match ? match[1] : null;
   };
 
+  const isDirectLink = Boolean(extractVideoId(url));
+
   const handleLoadUrl = (customId?: string, customTitle?: string) => {
     const id = customId || extractVideoId(url);
     if (id) {
@@ -74,6 +81,34 @@ export default function WatchPage() {
     }
   };
 
+  const handleSearchOrPlay = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!url.trim()) return;
+
+    const directId = extractVideoId(url);
+    if (directId) {
+      handleLoadUrl(directId);
+      setShowSearchResults(false);
+      return;
+    }
+
+    // Keyword Search
+    setIsSearching(true);
+    setShowSearchResults(true);
+    try {
+      const res = await api.get('/watch/search?q=' + encodeURIComponent(url.trim()));
+      const videos = res.data.videos || [];
+      setSearchResults(videos);
+      if (videos.length === 0) {
+        toast('No videos found for this search');
+      }
+    } catch {
+      toast.error('Search failed. Please try a different query or paste link');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   useEffect(() => {
     if (!socket) return;
 
@@ -86,14 +121,18 @@ export default function WatchPage() {
     });
 
     socket.on('chat:message', (data: any) => {
+      const isMe = data.senderId?._id === user?._id || data.senderId === user?._id;
       setChatMessages(prev => [
         ...prev,
         {
           senderName: data.senderId?.displayName || 'Partner',
           text: data.content,
-          isMe: data.senderId?._id === user?._id || data.senderId === user?._id,
+          isMe,
         }
       ]);
+      if (!isMe) {
+        soundService.playMessageTone();
+      }
       setTimeout(() => {
         chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
@@ -173,36 +212,125 @@ export default function WatchPage() {
             </button>
           </div>
 
-          <div className="flex flex-1 gap-2 items-center min-w-0">
+          <form onSubmit={handleSearchOrPlay} className="flex flex-1 gap-2 items-center min-w-0">
             <div className="relative flex-1 min-w-0">
               <input
                 type="text"
-                placeholder="Paste YouTube Link or tap below..."
+                placeholder="Search YouTube (e.g. 'baby') or paste link..."
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 className="w-full pl-8 sm:pl-9 pr-3 py-2 sm:py-2.5 rounded-2xl glass-input text-xs text-white placeholder:text-slate-500 outline-none font-medium truncate"
               />
               <span className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
-                <LinkIcon size={14} />
+                {isDirectLink ? <LinkIcon size={14} /> : <Search size={14} />}
               </span>
             </div>
             
             <button
-              onClick={() => handleLoadUrl()}
-              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg cursor-pointer shrink-0 active:scale-95"
+              type="submit"
+              disabled={isSearching}
+              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg cursor-pointer shrink-0 active:scale-95 flex items-center gap-1.5"
             >
-              Play
+              {isSearching ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Searching</span>
+                </>
+              ) : isDirectLink ? (
+                <>
+                  <Play size={12} className="fill-current" />
+                  <span>Play</span>
+                </>
+              ) : (
+                <>
+                  <Search size={13} />
+                  <span>Search</span>
+                </>
+              )}
             </button>
 
             <button
-              onClick={() => setShowQuickPicks(!showQuickPicks)}
+              type="button"
+              onClick={() => {
+                setShowQuickPicks(!showQuickPicks);
+                setShowSearchResults(false);
+              }}
               className="hidden sm:flex px-3.5 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-slate-300 cursor-pointer items-center gap-1.5 shrink-0"
             >
               <Popcorn size={14} className="text-amber-400" />
               <span>Picks</span>
             </button>
-          </div>
+          </form>
         </div>
+
+        {/* YouTube Keyword Search Results Tray */}
+        <AnimatePresence>
+          {showSearchResults && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              className="mt-2.5 p-3.5 sm:p-4 rounded-3xl glass-panel border border-pink-500/30 bg-[#0d0d1b]/95 backdrop-blur-2xl shadow-2xl z-40 max-h-96 overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <span className="text-pink-400 font-bold text-xs">🔍 YouTube Results:</span>
+                  <span className="text-white font-bold text-xs truncate max-w-[200px]">"{url}"</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSearchResults(false)}
+                  className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs text-slate-300 hover:text-white cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {isSearching ? (
+                <div className="p-8 text-center flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                  <Loader2 className="animate-spin text-pink-400" size={24} />
+                  <span>Searching YouTube for "{url}"... 🍿</span>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 text-xs">
+                  No videos found. Try a different keyword or paste a link directly.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                  {searchResults.map(video => (
+                    <button
+                      key={video.id}
+                      type="button"
+                      onClick={() => {
+                        handleLoadUrl(video.id, video.title);
+                        setShowSearchResults(false);
+                      }}
+                      className="flex flex-col text-left p-2 rounded-2xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/5 hover:border-pink-500/40 transition-all group cursor-pointer active:scale-95"
+                    >
+                      <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black mb-2">
+                        <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {video.duration && (
+                          <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/80 text-[10px] font-mono font-bold text-white">
+                            {video.duration}
+                          </span>
+                        )}
+                        <div className="absolute inset-0 bg-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play size={24} className="text-white fill-white drop-shadow-md" />
+                        </div>
+                      </div>
+                      <h4 className="text-xs font-bold text-white line-clamp-2 leading-snug group-hover:text-pink-300 transition-colors">
+                        {video.title}
+                      </h4>
+                      <span className="text-[10px] text-slate-400 truncate mt-1">
+                        {video.channel}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Quick Picks Dropdown */}
         <AnimatePresence>
