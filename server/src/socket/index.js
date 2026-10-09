@@ -71,6 +71,10 @@ const setupSocket = (io) => {
         socket.to(roomChannel).emit('chat:seen', { messageId, seenBy: userId });
       });
 
+      socket.on('chat:vanish', () => {
+        socket.to(roomChannel).emit('chat:vanish');
+      });
+
       // Watch Together
       socket.on('watch:load', ({ videoId }) => {
         socket.to(roomChannel).emit('watch:load', { videoId });

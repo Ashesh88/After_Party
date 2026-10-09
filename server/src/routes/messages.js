@@ -113,4 +113,14 @@ router.patch('/:id/seen', requireRoom, async (req, res, next) => {
   }
 });
 
+// DELETE /api/messages/vanish (Vanish all chat history)
+router.delete('/vanish', requireRoom, async (req, res, next) => {
+  try {
+    await Message.deleteMany({ roomId: req.user.roomId });
+    res.json({ message: 'All chat messages vanished successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

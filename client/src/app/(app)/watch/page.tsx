@@ -154,28 +154,28 @@ export default function WatchPage() {
 
       {/* Top Navbar Header */}
       <header className="relative z-20 px-3 pt-3 pb-2 sm:p-5 max-w-5xl mx-auto w-full shrink-0">
-        <div className="p-3 sm:p-4 rounded-3xl glass-panel flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 shadow-2xl">
-          <div className="flex items-center justify-between w-full sm:w-auto px-1">
-            <div className="flex items-center gap-2.5">
+        <div className="p-2.5 sm:p-3.5 rounded-3xl glass-panel flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 shadow-2xl">
+          <div className="flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 shrink-0">
                 <Film size={18} />
               </div>
-              <div>
-                <h2 className="text-xs sm:text-sm font-black text-white leading-tight">Theater Lounge</h2>
-                <span className="text-[9px] sm:text-[10px] text-pink-400 font-semibold uppercase tracking-wider">Synced & Private</span>
+              <div className="shrink-0">
+                <h2 className="text-xs sm:text-sm font-black text-white whitespace-nowrap leading-tight">Theater Lounge</h2>
+                <span className="text-[9px] sm:text-[10px] text-pink-400 font-semibold uppercase tracking-wider whitespace-nowrap block">Synced & Private</span>
               </div>
             </div>
 
             <button
               onClick={() => setShowQuickPicks(!showQuickPicks)}
-              className="sm:hidden px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-[11px] font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="sm:hidden px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5 active:scale-95"
             >
-              <Popcorn size={13} className="text-amber-400" />
+              <Popcorn size={14} className="text-amber-400" />
               <span>Picks</span>
             </button>
           </div>
 
-          <div className="flex w-full gap-2 items-center">
+          <div className="flex flex-1 gap-2 items-center min-w-0">
             <div className="relative flex-1 min-w-0">
               <input
                 type="text"
