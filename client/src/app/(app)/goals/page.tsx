@@ -7,16 +7,16 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Target, Plus, CheckCircle2, Trash2, 
-  RotateCcw, Sparkles, ChevronRight, X, Heart
+  RotateCcw, Sparkles, X, Layers, Calendar
 } from 'lucide-react';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All', icon: '✨' },
-  { id: 'finance', label: 'Finance', icon: '💰', color: 'from-amber-500/20 to-orange-500/20 text-amber-300 border-amber-500/30' },
-  { id: 'travel', label: 'Travel', icon: '✈️', color: 'from-blue-500/20 to-cyan-500/20 text-cyan-300 border-cyan-500/30' },
-  { id: 'relationship', label: 'Love', icon: '💖', color: 'from-pink-500/20 to-rose-500/20 text-pink-300 border-pink-500/30' },
-  { id: 'health', label: 'Health', icon: '🏃', color: 'from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/30' },
-  { id: 'other', label: 'Other', icon: '🌟', color: 'from-purple-500/20 to-violet-500/20 text-purple-300 border-purple-500/30' },
+  { id: 'all', label: 'All' },
+  { id: 'finance', label: 'Finance', color: 'from-amber-500/15 to-orange-500/15 text-amber-300 border-amber-500/30' },
+  { id: 'travel', label: 'Travel', color: 'from-blue-500/15 to-cyan-500/15 text-cyan-300 border-cyan-500/30' },
+  { id: 'relationship', label: 'Relationship', color: 'from-pink-500/15 to-rose-500/15 text-pink-300 border-pink-500/30' },
+  { id: 'health', label: 'Health', color: 'from-emerald-500/15 to-teal-500/15 text-emerald-300 border-emerald-500/30' },
+  { id: 'other', label: 'Other', color: 'from-purple-500/15 to-violet-500/15 text-purple-300 border-purple-500/30' },
 ];
 
 export default function GoalsPage() {
@@ -116,7 +116,7 @@ export default function GoalsPage() {
         await api.patch(`/goals/${id}/progress`, { progress: clamped });
         socket?.emit('goal:update', { goalId: id, progress: clamped });
         if (clamped === 100) {
-          toast.success('Goal Achieved! You two did it! 🎉💕');
+          toast.success('Goal Achieved!');
         }
       } catch {
         // silently handled
@@ -149,7 +149,7 @@ export default function GoalsPage() {
 
       setGoals(prev => [res.data.goal, ...prev]);
       socket?.emit('goal:update', { created: true });
-      toast.success('New couple goal added! 🎯');
+      toast.success('New goal added');
       setNewTitle('');
       setNewDueDate('');
       setShowAddModal(false);
@@ -191,12 +191,12 @@ export default function GoalsPage() {
       <header className="flex justify-between items-center mb-5 shrink-0 relative z-10">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Goals 🎯</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Goals</h1>
             <span className="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 text-[10px] font-bold">
               Shared Space
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">Grow together, celebrate every milestone 💕</p>
+          <p className="text-xs text-slate-400 mt-0.5">Shared aspirations and milestones</p>
         </div>
 
         <button 
@@ -216,7 +216,7 @@ export default function GoalsPage() {
               <Sparkles size={16} />
             </div>
             <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Couple Sync</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Overall Progress</span>
               <span className="text-sm font-black text-white">{completedGoals} of {totalGoals} Goals Done</span>
             </div>
           </div>
@@ -248,7 +248,6 @@ export default function GoalsPage() {
                 : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] border border-white/5'
             }`}
           >
-            <span>{cat.icon}</span>
             <span>{cat.label}</span>
           </button>
         ))}
@@ -258,19 +257,21 @@ export default function GoalsPage() {
       <div className="space-y-3.5 relative z-10 flex-1">
         {loading ? (
           <div className="p-8 text-center text-slate-400 text-xs animate-pulse">
-            Loading your goals... ✨
+            Loading goals...
           </div>
         ) : filteredGoals.length === 0 ? (
           <div className="p-8 rounded-3xl glass-panel text-center border border-white/5 my-6">
-            <span className="text-3xl block mb-2">🎯</span>
-            <h3 className="font-bold text-sm text-white mb-1">No goals found here</h3>
-            <p className="text-xs text-slate-400 mb-4">Tap the + button above to create a new adventure together!</p>
+            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 mx-auto mb-3 flex items-center justify-center text-slate-400">
+              <Target size={24} />
+            </div>
+            <h3 className="font-bold text-sm text-white mb-1">No goals found</h3>
+            <p className="text-xs text-slate-400 mb-4">Tap the + button above to create a new shared goal.</p>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg inline-flex items-center gap-1.5"
             >
               <Plus size={14} />
-              <span>Add First Goal</span>
+              <span>Add Goal</span>
             </button>
           </div>
         ) : (
@@ -290,13 +291,18 @@ export default function GoalsPage() {
                 {/* Top Row: Category + Owner + Menu */}
                 <div className="flex justify-between items-center mb-2.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-lg border bg-gradient-to-r ${categoryMeta.color || 'from-pink-500/20 to-purple-500/20 text-pink-300 border-pink-500/30'}`}>
+                    <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-lg border bg-gradient-to-r ${categoryMeta.color || 'from-pink-500/15 to-purple-500/15 text-pink-300 border-pink-500/30'}`}>
                       {goal.category || 'Goal'}
                     </span>
                     <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
-                      <Heart size={10} className="text-pink-400" />
-                      {goal.owner === 'me' ? 'For Me' : goal.owner === 'partner' ? 'For Partner' : 'Both of Us'}
+                      {goal.owner === 'me' ? 'Personal' : goal.owner === 'partner' ? 'Partner' : 'Shared'}
                     </span>
+                    {goal.dueDate && (
+                      <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1">
+                        <Calendar size={11} className="text-slate-500" />
+                        {new Date(goal.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
                   </div>
 
                   {/* Context Menu Trigger */}
@@ -354,7 +360,7 @@ export default function GoalsPage() {
                   <div className="flex items-center gap-1.5">
                     {isCompleted ? (
                       <span className="text-emerald-400 font-extrabold flex items-center gap-1 font-mono">
-                        <CheckCircle2 size={13} /> 100% DONE! 🎉
+                        <CheckCircle2 size={13} /> 100% Completed
                       </span>
                     ) : (
                       <span className="text-pink-300 font-black font-mono text-sm">
@@ -417,7 +423,7 @@ export default function GoalsPage() {
                     }`}
                   >
                     <CheckCircle2 size={13} />
-                    <span>{isCompleted ? 'Completed ✓' : 'Finish (100%)'}</span>
+                    <span>{isCompleted ? 'Completed' : 'Set 100%'}</span>
                   </button>
                 </div>
               </div>
@@ -442,7 +448,7 @@ export default function GoalsPage() {
                     <Target size={18} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-base text-white">New Couple Goal 💕</h3>
+                    <h3 className="font-bold text-base text-white">New Goal</h3>
                     <p className="text-[11px] text-slate-400">Plan a shared milestone</p>
                   </div>
                 </div>
@@ -463,7 +469,7 @@ export default function GoalsPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Save for Paris trip, Cook dinner together"
+                    placeholder="e.g. Save for Japan trip, Workout routine"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-pink-500/60"
@@ -481,13 +487,12 @@ export default function GoalsPage() {
                         type="button"
                         key={cat.id}
                         onClick={() => setNewCat(cat.id)}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all border ${
+                        className={`py-2 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center transition-all border ${
                           newCat === cat.id
                             ? 'bg-pink-500/25 text-pink-300 border-pink-500/60 shadow-sm'
                             : 'bg-white/[0.03] text-slate-400 border-white/5 hover:bg-white/[0.06]'
                         }`}
                       >
-                        <span>{cat.icon}</span>
                         <span>{cat.label}</span>
                       </button>
                     ))}
@@ -497,13 +502,13 @@ export default function GoalsPage() {
                 {/* Owner Picker */}
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                    Who is this for?
+                    Assignment
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
-                      { id: 'both', label: 'Both 💕' },
-                      { id: 'me', label: 'For Me 🧸' },
-                      { id: 'partner', label: 'Partner 🐰' },
+                      { id: 'both', label: 'Shared' },
+                      { id: 'me', label: 'Personal' },
+                      { id: 'partner', label: 'Partner' },
                     ].map(item => (
                       <button
                         type="button"
@@ -541,7 +546,7 @@ export default function GoalsPage() {
                   className="w-full py-3 rounded-2xl btn-sexy text-xs font-bold text-white shadow-xl flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer mt-2"
                 >
                   <Plus size={16} />
-                  <span>{submitting ? 'Adding Goal...' : 'Create Goal ✨'}</span>
+                  <span>{submitting ? 'Adding Goal...' : 'Create Goal'}</span>
                 </button>
               </form>
             </motion.div>

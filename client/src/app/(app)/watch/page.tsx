@@ -22,9 +22,15 @@ const CURATED_MOVIES = [
   { title: 'Cozy Lo-Fi Beats', id: 'jfKfPfyJRdk', category: 'Relax & Chat', duration: 'Lo-Fi Chill' },
 ];
 
+interface MediaState {
+  type: 'youtube' | 'direct' | 'embed';
+  src: string;
+  title?: string;
+}
+
 export default function WatchPage() {
   const [url, setUrl] = useState('');
-  const [videoId, setVideoId] = useState<string | null>(null);
+  const [mediaState, setMediaState] = useState<MediaState | null>(null);
   const [reactions, setReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ senderName: string; text: string; isMe: boolean }[]>([]);
@@ -63,21 +69,62 @@ export default function WatchPage() {
     return match ? match[1] : null;
   };
 
-  const isDirectLink = Boolean(extractVideoId(url));
+  const detectMedia = (input: string): MediaState | null => {
+    if (!input) return null;
+    const trimmed = input.trim();
 
-  const handleLoadUrl = (customId?: string, customTitle?: string) => {
-    const id = customId || extractVideoId(url);
-    if (id) {
-      setVideoId(id);
-      setUrl(`https://www.youtube.com/watch?v=${id}`);
-      socket?.emit('watch:load', { videoId: id });
-      if (customTitle) {
-        toast.success(`Playing ${customTitle} 🍿`);
-      } else {
-        toast.success('Video loaded! 🍿');
+    // 1. YouTube check
+    const ytId = extractVideoId(trimmed);
+    if (ytId) {
+      return { type: 'youtube', src: ytId, title: 'YouTube Video' };
+    }
+
+    // 2. Direct video file check (.mp4, .webm, .mkv, .ogv, .mov, etc.)
+    if (/^https?:\/\/.*\.(mp4|webm|ogv|mov|m4v)(\?.*)?$/i.test(trimmed)) {
+      const fileName = trimmed.split('/').pop()?.split('?')[0] || 'Video Stream';
+      return { type: 'direct', src: trimmed, title: decodeURIComponent(fileName) };
+    }
+
+    // 3. Web Stream / Embed URL (FMHY, vidsrc, embed.su, any streaming site)
+    if (/^https?:\/\//i.test(trimmed)) {
+      try {
+        const domain = new URL(trimmed).hostname.replace('www.', '');
+        return { type: 'embed', src: trimmed, title: `${domain} Stream` };
+      } catch {
+        return { type: 'embed', src: trimmed, title: 'Web Stream' };
       }
+    }
+
+    return null;
+  };
+
+  const detectedMedia = detectMedia(url);
+  const isDirectOrStreamLink = Boolean(detectedMedia);
+
+  const handleLoadMedia = (target: MediaState, customTitle?: string) => {
+    const finalState = { ...target, title: customTitle || target.title };
+    setMediaState(finalState);
+    if (finalState.type === 'youtube') {
+      setUrl(`https://www.youtube.com/watch?v=${finalState.src}`);
     } else {
-      toast.error('Please enter a valid YouTube link or ID');
+      setUrl(finalState.src);
+    }
+
+    socket?.emit('watch:load', { 
+      mediaType: finalState.type, 
+      src: finalState.src, 
+      title: finalState.title,
+      videoId: finalState.type === 'youtube' ? finalState.src : undefined 
+    });
+
+    if (customTitle) {
+      toast.success(`Playing ${customTitle} 🍿`);
+    } else if (finalState.type === 'direct') {
+      toast.success('Playing direct video stream 🎬');
+    } else if (finalState.type === 'embed') {
+      toast.success('Streaming link loaded! 🍿');
+    } else {
+      toast.success('Video loaded! 🍿');
     }
   };
 
@@ -85,9 +132,9 @@ export default function WatchPage() {
     if (e) e.preventDefault();
     if (!url.trim()) return;
 
-    const directId = extractVideoId(url);
-    if (directId) {
-      handleLoadUrl(directId);
+    const detected = detectMedia(url);
+    if (detected) {
+      handleLoadMedia(detected);
       setShowSearchResults(false);
       return;
     }
@@ -112,8 +159,14 @@ export default function WatchPage() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('watch:load', (data: { videoId: string }) => {
-      setVideoId(data.videoId);
+    socket.on('watch:load', (data: any) => {
+      if (data?.mediaType && data?.src) {
+        setMediaState({ type: data.mediaType, src: data.src, title: data.title });
+        setUrl(data.src);
+      } else if (data?.videoId) {
+        setMediaState({ type: 'youtube', src: data.videoId, title: data.title });
+        setUrl(`https://www.youtube.com/watch?v=${data.videoId}`);
+      }
     });
 
     socket.on('watch:reaction', (data: { emoji: string }) => {
@@ -216,13 +269,13 @@ export default function WatchPage() {
             <div className="relative flex-1 min-w-0">
               <input
                 type="text"
-                placeholder="Search YouTube (e.g. 'baby') or paste link..."
+                placeholder="Paste movie link (FMHY, MP4, Stream) or search YouTube..."
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 className="w-full pl-8 sm:pl-9 pr-3 py-2 sm:py-2.5 rounded-2xl glass-input text-xs text-white placeholder:text-slate-500 outline-none font-medium truncate"
               />
               <span className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
-                {isDirectLink ? <LinkIcon size={14} /> : <Search size={14} />}
+                {isDirectOrStreamLink ? <LinkIcon size={14} /> : <Search size={14} />}
               </span>
             </div>
             
@@ -236,7 +289,7 @@ export default function WatchPage() {
                   <Loader2 size={13} className="animate-spin" />
                   <span>Searching</span>
                 </>
-              ) : isDirectLink ? (
+              ) : isDirectOrStreamLink ? (
                 <>
                   <Play size={12} className="fill-current" />
                   <span>Play</span>
@@ -274,7 +327,7 @@ export default function WatchPage() {
             >
               <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <span className="text-pink-400 font-bold text-xs">🔍 YouTube Results:</span>
+                  <span className="text-pink-400 font-bold text-xs">YouTube Results:</span>
                   <span className="text-white font-bold text-xs truncate max-w-[200px]">"{url}"</span>
                 </div>
                 <button
@@ -289,7 +342,7 @@ export default function WatchPage() {
               {isSearching ? (
                 <div className="p-8 text-center flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
                   <Loader2 className="animate-spin text-pink-400" size={24} />
-                  <span>Searching YouTube for "{url}"... 🍿</span>
+                  <span>Searching YouTube for "{url}"...</span>
                 </div>
               ) : searchResults.length === 0 ? (
                 <div className="p-6 text-center text-slate-400 text-xs">
@@ -302,7 +355,7 @@ export default function WatchPage() {
                       key={video.id}
                       type="button"
                       onClick={() => {
-                        handleLoadUrl(video.id, video.title);
+                        handleLoadMedia({ type: 'youtube', src: video.id, title: video.title });
                         setShowSearchResults(false);
                       }}
                       className="flex flex-col text-left p-2 rounded-2xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/5 hover:border-pink-500/40 transition-all group cursor-pointer active:scale-95"
@@ -345,7 +398,7 @@ export default function WatchPage() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    handleLoadUrl(item.id, item.title);
+                    handleLoadMedia({ type: 'youtube', src: item.id, title: item.title });
                     setShowQuickPicks(false);
                   }}
                   className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-pink-500/15 border border-white/5 hover:border-pink-500/30 text-left transition-all group cursor-pointer active:scale-95"
@@ -361,29 +414,58 @@ export default function WatchPage() {
 
       {/* Main Video Stage */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-4 py-2 sm:py-6 flex flex-col items-center justify-center relative z-10">
-        {videoId ? (
+        {mediaState ? (
           <div className="w-full flex flex-col items-center gap-3">
-            <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
-                title="Couple Theater"
-                className="w-full h-full border-0 rounded-2xl sm:rounded-[32px]"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
+            <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black">
+              {mediaState.type === 'youtube' && (
+                <iframe
+                  src={`https://www.youtube.com/embed/${mediaState.src}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
+                  title="Couple Theater - YouTube"
+                  className="w-full h-full border-0 rounded-2xl sm:rounded-[32px]"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              )}
+
+              {mediaState.type === 'direct' && (
+                <video
+                  src={mediaState.src}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain rounded-2xl sm:rounded-[32px] bg-black"
+                >
+                  Your browser does not support HTML5 video streaming.
+                </video>
+              )}
+
+              {mediaState.type === 'embed' && (
+                <iframe
+                  src={mediaState.src}
+                  title="Couple Theater - Web Stream"
+                  className="w-full h-full border-0 rounded-2xl sm:rounded-[32px] bg-black"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  allowFullScreen
+                  referrerPolicy="no-referrer"
+                />
+              )}
             </div>
 
             {/* Quick Switch / Close Bar */}
             <div className="flex items-center gap-2 sm:gap-3 py-1 flex-wrap justify-center">
+              <span className="px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/5 text-[11px] font-medium text-slate-300">
+                Playing: <strong className="text-white">{mediaState.title || (mediaState.type === 'youtube' ? 'YouTube' : mediaState.type === 'direct' ? 'Direct Stream' : 'Web Stream')}</strong>
+              </span>
+
               <button
                 onClick={() => {
-                  setVideoId(null);
+                  setMediaState(null);
                   setUrl('');
                 }}
                 className="px-3.5 sm:px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-xs font-semibold text-slate-300 hover:text-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
               >
                 <X size={14} />
-                <span>Switch / Close Video</span>
+                <span>Close Video</span>
               </button>
 
               <button
@@ -403,13 +485,13 @@ export default function WatchPage() {
             </div>
             <h3 className="text-lg sm:text-xl font-extrabold text-white mb-1.5 sm:mb-2">Private Couple Cinema</h3>
             <p className="text-xs text-slate-400 max-w-md mb-4 sm:mb-6 font-medium leading-relaxed px-2">
-              Paste any YouTube video link above, or tap a romantic pick below to stream and sync together in real-time.
+              Paste any streaming link (FMHY movie site, MP4, Web stream) or search YouTube above to watch in sync.
             </p>
             <div className="flex flex-wrap gap-2 sm:gap-2.5 justify-center max-w-lg relative z-20">
               {CURATED_MOVIES.map(m => (
                 <button
                   key={m.id}
-                  onClick={() => handleLoadUrl(m.id, m.title)}
+                  onClick={() => handleLoadMedia({ type: 'youtube', src: m.id, title: m.title })}
                   className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-white/[0.06] hover:bg-pink-500/25 active:bg-pink-500/35 border border-white/10 hover:border-pink-500/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 relative z-20 shadow-md active:scale-95 touch-manipulation"
                 >
                   <Sparkles size={13} className="text-pink-400 shrink-0" />

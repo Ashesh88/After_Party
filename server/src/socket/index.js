@@ -76,8 +76,8 @@ const setupSocket = (io) => {
       });
 
       // Watch Together
-      socket.on('watch:load', ({ videoId }) => {
-        socket.to(roomChannel).emit('watch:load', { videoId });
+      socket.on('watch:load', (data) => {
+        socket.to(roomChannel).emit('watch:load', data);
       });
 
       socket.on('watch:sync', (data) => {
