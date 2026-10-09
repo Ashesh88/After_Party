@@ -10,8 +10,10 @@ import api from '../../../lib/api';
 import { 
   LogOut, Edit3, Sparkles, Clapperboard, Gamepad2, 
   Target, MapPin, CalendarHeart, User, ArrowRight,
-  KeyRound, Copy, Check, Users, RefreshCw
+  KeyRound, Copy, Check, Users, RefreshCw,
+  Flame, Heart, AlertCircle, Palette
 } from 'lucide-react';
+import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
 
 const CUTE_AVATARS = [
   { id: 'cat', emoji: '🐱', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Angel&backgroundColor=ffb6c1', name: 'Pink Bot' },
@@ -39,6 +41,8 @@ export default function DashboardPage() {
   const updateAvatar = useAuthStore((state: any) => state.updateAvatar);
   const setAuthRoom = useAuthStore((state: any) => state.setRoom);
   const partnerOnline = useSocketStore((state: { partnerOnline: boolean }) => state.partnerOnline);
+  const { moodTheme, openModal: openMoodModal } = useMoodStore();
+  const currentMoodConfig = MOOD_CONFIG[moodTheme.current] || MOOD_CONFIG.love;
 
   const fetchRoom = async () => {
     try {
@@ -194,6 +198,18 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={openMoodModal}
+            title={`Mood Theme: ${currentMoodConfig.label} (Set by ${moodTheme.updatedByName || 'Partner'})`}
+            className="w-11 h-11 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+            style={{
+              borderColor: `${currentMoodConfig.primaryColor}50`,
+              backgroundColor: `${currentMoodConfig.primaryColor}15`,
+            }}
+          >
+            <Palette size={17} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 transition-transform" />
+          </button>
+
+          <button
             onClick={() => setShowRoomModal(true)}
             title="Room & Pairing Code"
             className="w-11 h-11 rounded-2xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-slate-300 hover:text-pink-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
@@ -227,6 +243,81 @@ export default function DashboardPage() {
           </button>
         </div>
       </header>
+
+      {/* Couple Mood Atmosphere Card */}
+      <div 
+        onClick={openMoodModal}
+        className="relative p-4 sm:p-5 rounded-3xl glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.01] active:scale-[0.99] overflow-hidden shadow-xl"
+        style={{
+          borderColor: `${currentMoodConfig.primaryColor}35`,
+          background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}12 0%, rgba(255, 255, 255, 0.02) 100%)`
+        }}
+      >
+        <div 
+          className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full blur-2xl pointer-events-none transition-colors duration-700 opacity-40"
+          style={{ backgroundColor: currentMoodConfig.primaryColor }}
+        />
+
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
+            <div 
+              className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-lg group-hover:scale-105 transition-transform shrink-0"
+              style={{
+                backgroundColor: `${currentMoodConfig.primaryColor}25`,
+                borderColor: `${currentMoodConfig.primaryColor}55`,
+              }}
+            >
+              {moodTheme.current === 'love' && <Heart size={22} className="text-pink-400 fill-pink-400/20" />}
+              {moodTheme.current === 'horny' && <Flame size={22} className="text-fuchsia-400 fill-fuchsia-400/20" />}
+              {moodTheme.current === 'angry' && <AlertCircle size={22} className="text-rose-400" />}
+              {moodTheme.current === 'just_friends' && <Users size={22} className="text-cyan-400" />}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                  Couple Mood Theme
+                </span>
+                <span 
+                  className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider"
+                  style={{
+                    backgroundColor: `${currentMoodConfig.primaryColor}20`,
+                    color: currentMoodConfig.primaryColor,
+                    borderColor: `${currentMoodConfig.primaryColor}40`,
+                  }}
+                >
+                  {currentMoodConfig.label}
+                </span>
+              </div>
+
+              <div className="text-xs text-slate-300 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
+                <span>Set by:</span>
+                <strong className="text-white font-bold">{moodTheme.updatedByName || 'Partner'}</strong>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-400">{formatRelativeTime(moodTheme.updatedAt)}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openMoodModal();
+            }}
+            className="px-3 sm:px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95 group-hover:shadow-lg"
+            style={{
+              backgroundColor: `${currentMoodConfig.primaryColor}20`,
+              borderColor: `${currentMoodConfig.primaryColor}50`,
+              color: '#ffffff',
+            }}
+          >
+            <Palette size={13} style={{ color: currentMoodConfig.primaryColor }} />
+            <span className="hidden sm:inline">Customize</span>
+            <span>Mood</span>
+          </button>
+        </div>
+      </div>
 
       {/* Hero Countdown / Next Date Card */}
       <div className="relative p-7 rounded-[32px] overflow-hidden glass-panel border-pink-500/20 group">

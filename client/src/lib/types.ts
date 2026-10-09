@@ -5,10 +5,29 @@ export interface User {
   avatar?: string;
 }
 
+export type MoodType = 'love' | 'horny' | 'angry' | 'just_friends';
+
+export interface MoodHistoryItem {
+  mood: MoodType;
+  setBy?: string;
+  setName: string;
+  createdAt: string;
+}
+
+export interface MoodTheme {
+  current: MoodType;
+  updatedBy?: string;
+  updatedByName: string;
+  updatedAt: string;
+  history: MoodHistoryItem[];
+}
+
 export interface Room {
   _id: string;
   inviteCode: string;
   participants: User[];
+  members?: User[];
+  moodTheme?: MoodTheme;
   createdAt: string;
 }
 

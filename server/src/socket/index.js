@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const GameSession = require('../models/GameSession');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Room = require('../models/Room');
 const ticTacToe = require('../games/ticTacToe');
 
 const setupSocket = (io) => {
@@ -73,6 +74,59 @@ const setupSocket = (io) => {
 
       socket.on('chat:vanish', () => {
         socket.to(roomChannel).emit('chat:vanish');
+      });
+
+      // Mood Theme
+      socket.on('mood:set', async ({ mood }) => {
+        try {
+          const validMoods = ['love', 'horny', 'angry', 'just_friends'];
+          if (!mood || !validMoods.includes(mood)) return;
+
+          const user = await User.findById(userId);
+          const room = await Room.findById(roomId);
+          if (!user || !room) return;
+
+          if (!room.moodTheme) {
+            room.moodTheme = {
+              current: 'love',
+              updatedBy: user._id,
+              updatedByName: user.displayName || 'Partner',
+              updatedAt: new Date(),
+              history: [],
+            };
+          }
+
+          const setByName = user.displayName || 'Partner';
+          const setTime = new Date();
+
+          room.moodTheme.current = mood;
+          room.moodTheme.updatedBy = user._id;
+          room.moodTheme.updatedByName = setByName;
+          room.moodTheme.updatedAt = setTime;
+
+          room.moodTheme.history.unshift({
+            mood,
+            setBy: user._id,
+            setName: setByName,
+            createdAt: setTime,
+          });
+
+          if (room.moodTheme.history.length > 40) {
+            room.moodTheme.history = room.moodTheme.history.slice(0, 40);
+          }
+
+          await room.save();
+
+          io.to(roomChannel).emit('mood:update', {
+            moodTheme: room.moodTheme,
+            changedBy: {
+              _id: user._id,
+              displayName: setByName,
+            },
+          });
+        } catch (err) {
+          console.error('mood:set error:', err);
+        }
       });
 
       // Watch Together

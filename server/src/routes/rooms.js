@@ -114,4 +114,108 @@ router.delete('/leave', async (req, res, next) => {
   }
 });
 
+// GET /api/rooms/mood
+router.get('/mood', async (req, res, next) => {
+  try {
+    if (!req.user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const room = await Room.findById(req.user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    const defaultMood = {
+      current: 'love',
+      updatedByName: 'Couple',
+      updatedAt: new Date(),
+      history: [],
+    };
+
+    res.json({ moodTheme: room.moodTheme || defaultMood });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/rooms/mood
+router.patch('/mood', async (req, res, next) => {
+  try {
+    if (!req.user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const { mood } = req.body;
+    const validMoods = ['love', 'horny', 'angry', 'just_friends'];
+    if (!mood || !validMoods.includes(mood)) {
+      return res.status(400).json({ 
+        message: 'Invalid mood theme. Choose from: love, horny, angry, just_friends' 
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const room = await Room.findById(req.user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    if (!room.moodTheme) {
+      room.moodTheme = {
+        current: 'love',
+        updatedBy: user._id,
+        updatedByName: user.displayName || 'Partner',
+        updatedAt: new Date(),
+        history: [],
+      };
+    }
+
+    const setByName = user.displayName || 'Partner';
+    const setTime = new Date();
+
+    room.moodTheme.current = mood;
+    room.moodTheme.updatedBy = user._id;
+    room.moodTheme.updatedByName = setByName;
+    room.moodTheme.updatedAt = setTime;
+
+    // Add entry to history (most recent first)
+    room.moodTheme.history.unshift({
+      mood,
+      setBy: user._id,
+      setName: setByName,
+      createdAt: setTime,
+    });
+
+    // Keep last 40 entries
+    if (room.moodTheme.history.length > 40) {
+      room.moodTheme.history = room.moodTheme.history.slice(0, 40);
+    }
+
+    await room.save();
+
+    // Broadcast to partner in real-time
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`room:${room._id}`).emit('mood:update', {
+        moodTheme: room.moodTheme,
+        changedBy: {
+          _id: user._id,
+          displayName: setByName,
+        },
+      });
+    }
+
+    res.json({
+      moodTheme: room.moodTheme,
+      message: `Mood changed to ${mood} by ${setByName}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

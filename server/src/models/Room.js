@@ -15,6 +15,46 @@ const roomSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
+    moodTheme: {
+      current: {
+        type: String,
+        enum: ['love', 'horny', 'angry', 'just_friends'],
+        default: 'love',
+      },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      updatedByName: {
+        type: String,
+        default: 'Couple',
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      history: [
+        {
+          mood: {
+            type: String,
+            enum: ['love', 'horny', 'angry', 'just_friends'],
+            required: true,
+          },
+          setBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+          },
+          setName: {
+            type: String,
+            required: true,
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+    },
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );

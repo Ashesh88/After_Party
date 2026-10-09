@@ -5,27 +5,44 @@ import { useSocketStore } from '../../lib/store/socketStore';
 import { useAuthStore } from '../../lib/store/authStore';
 
 import CallOverlay from '../../components/CallOverlay';
+import MoodThemeModal from '../../components/MoodThemeModal';
+import { useMoodStore } from '../../lib/store/moodStore';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { connectSocket, disconnectSocket } = useSocketStore();
+  const { connectSocket, disconnectSocket, socket } = useSocketStore();
   const token = useAuthStore((state) => state.token);
   const fetchMe = useAuthStore((state) => state.fetchMe);
+  const { fetchMood, updateFromSocket } = useMoodStore();
 
   useEffect(() => {
     fetchMe();
+    fetchMood();
     if (token) {
       connectSocket(token);
     }
     return () => {
       disconnectSocket();
     };
-  }, [token, connectSocket, disconnectSocket, fetchMe]);
+  }, [token, connectSocket, disconnectSocket, fetchMe, fetchMood]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('mood:update', updateFromSocket);
+    return () => {
+      socket.off('mood:update', updateFromSocket);
+    };
+  }, [socket, updateFromSocket]);
 
   return (
-    <div className="pb-24">
-      {children}
+    <div className="pb-24 relative min-h-screen overflow-x-hidden">
+      {/* Global Ambient Mood Glow Blobs */}
+      <div className="ambient-glow-mood-primary -top-28 -left-24 pointer-events-none fixed z-0" />
+      <div className="ambient-glow-mood-secondary top-72 -right-28 pointer-events-none fixed z-0" />
+
+      <div className="relative z-10">{children}</div>
       <BottomNav />
       <CallOverlay />
+      <MoodThemeModal />
     </div>
   );
 }
