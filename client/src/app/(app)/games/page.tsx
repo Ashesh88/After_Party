@@ -19,11 +19,11 @@ const games = [
   },
   { 
     id: 'ludo', 
-    name: 'Couples Ludo', 
-    desc: 'Race 2 tokens to the crown',
+    name: 'Couples 3D Ludo', 
+    desc: 'Luxury 3D pawns, Dice & Crown',
     icon: Dices, 
     color: 'from-pink-500 to-purple-600', 
-    tag: 'FAVORITE' 
+    tag: '3D LIVE' 
   },
   { 
     id: 'tictactoe', 

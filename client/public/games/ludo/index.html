@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Couples 3D Ludo Deluxe</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Three.js 3D WebGL Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay HUD Layer -->
+    <div class="ui-layer">
+        <!-- Top Navigation -->
+        <header class="top-nav interactive">
+            <div class="brand-title">
+                <span>🎲 Couples 3D Ludo</span>
+            </div>
+
+            <div class="nav-controls">
+                <!-- Mode Toggle: 2P Pass & Play vs AI Bot -->
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn-mode-pass" title="Play with Partner (Pass & Play)">2-Player</button>
+                    <button class="mode-btn" id="btn-mode-ai" title="Play with AI Bot">vs AI</button>
+                </div>
+
+                <!-- Token Count: 2 Tokens (Quick) vs 4 Tokens (Classic) -->
+                <select id="select-tokens" class="mode-btn interactive" style="background: rgba(255,255,255,0.06); outline: none;">
+                    <option value="4" selected>4 Pawns</option>
+                    <option value="2">2 Pawns (Fast)</option>
+                </select>
+
+                <!-- Audio Toggle -->
+                <button class="btn-icon" id="btn-mute" title="Toggle Sound">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+
+                <!-- Restart Match -->
+                <button class="btn-icon" id="btn-restart" title="New Game">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Player Turn Status Banner -->
+        <div class="status-banner interactive" id="status-banner">
+            Pink Player 💕 rolls first!
+        </div>
+
+        <!-- Players Cards Bar -->
+        <div class="players-bar interactive">
+            <div class="player-hud-card p1 active-turn" id="card-p1">
+                <div class="player-avatar">🌸</div>
+                <div class="player-info">
+                    <span class="player-name" style="color: #f43f5e;">Pink Player</span>
+                    <span class="player-score" id="score-p1">0/4 Home</span>
+                </div>
+            </div>
+
+            <div class="player-hud-card p2" id="card-p2">
+                <div class="player-avatar">🔮</div>
+                <div class="player-info">
+                    <span class="player-name" id="name-p2" style="color: #a855f7;">Purple Player</span>
+                    <span class="player-score" id="score-p2">0/4 Home</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Action HUD -->
+        <footer class="bottom-hud interactive">
+            <button class="btn-roll-main" id="btn-roll-dice">
+                <i class="fa-solid fa-dice"></i>
+                <span>Roll 3D Dice</span>
+            </button>
+            <span class="helper-prompt">💡 Tap the 3D dice or button to roll. Orbit with 1 finger/mouse.</span>
+        </footer>
+    </div>
+
+    <!-- Victory Celebration Modal -->
+    <div class="modal-overlay" id="modal-victory">
+        <div class="victory-card interactive">
+            <div class="victory-icon">👑</div>
+            <h2 class="victory-title" id="victory-title">Victory! 🏆</h2>
+            <p class="victory-desc">All pawns reached the Golden Crown! Congratulations on the championship.</p>
+            <button class="btn-victory-replay" id="btn-play-again">
+                <i class="fa-solid fa-play"></i> Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Bundled Libraries -->
+    <script src="js/lib/three.min.js"></script>
+    <script src="js/lib/OrbitControls.js"></script>
+    <script src="audio.js"></script>
+
+    <!-- 3D Ludo Modules -->
+    <script src="js/board3d.js"></script>
+    <script src="js/pieces3d.js"></script>
+    <script src="js/dice3d.js"></script>
+    <script src="js/ludo-game.js"></script>
+</body>
+</html>
