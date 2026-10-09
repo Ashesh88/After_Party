@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import Peer from 'simple-peer';
 import { Socket } from 'socket.io-client';
+import { soundService } from '../soundService';
 
 export type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'connected';
 export type CallType = 'video' | 'audio';
@@ -20,10 +21,17 @@ interface CallState {
 
   // Actions
   setPartnerInfo: (info: { displayName: string; avatar?: string } | null) => void;
-  startCall: (socket: Socket | null, type: CallType, partnerInfo: { displayName: string; avatar?: string } | null, myInfo: { displayName: string; avatar?: string } | null) => Promise<void>;
+  startCall: (
+    socket: Socket | null, 
+    type: CallType, 
+    partnerInfo: { displayName: string; avatar?: string } | null, 
+    myInfo: { displayName: string; avatar?: string } | null
+  ) => Promise<void>;
   acceptCall: (socket: Socket | null) => Promise<void>;
   rejectCall: (socket: Socket | null) => void;
   endCall: (socket: Socket | null) => void;
+  handleCallAccepted: (socket: Socket | null) => void;
+  handleIncomingSignal: (signal: any) => void;
   toggleMute: () => void;
   toggleVideo: () => void;
   toggleMinimize: () => void;
@@ -35,7 +43,11 @@ const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
 ];
+
+let pendingSignals: any[] = [];
 
 export const useCallStore = create<CallState>((set, get) => ({
   callStatus: 'idle',
@@ -54,8 +66,15 @@ export const useCallStore = create<CallState>((set, get) => ({
 
   setIncomingCall: (incomingCaller) => {
     if (incomingCaller) {
-      set({ incomingCaller, callStatus: 'incoming', callType: incomingCaller.callType });
+      soundService.playIncomingRingtone();
+      set({ 
+        incomingCaller, 
+        callStatus: 'incoming', 
+        callType: incomingCaller.callType,
+        partnerInfo: { displayName: incomingCaller.callerName, avatar: incomingCaller.callerAvatar }
+      });
     } else {
+      soundService.stop();
       set({ incomingCaller, callStatus: 'idle' });
     }
   },
@@ -86,6 +105,8 @@ export const useCallStore = create<CallState>((set, get) => ({
 
   startCall: async (socket, type, partnerInfo, myInfo) => {
     if (!socket) return;
+    pendingSignals = [];
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: type === 'video',
@@ -103,48 +124,81 @@ export const useCallStore = create<CallState>((set, get) => ({
         isMinimized: false,
       });
 
-      // Inform partner via socket
+      // Play outgoing ringtone ("tuuut... tuuut...")
+      soundService.playOutgoingTone();
+
+      // Emit incoming call alert to partner
       socket.emit('webrtc:call-user', {
         callType: type,
         callerName: myInfo?.displayName || 'Partner',
         callerAvatar: myInfo?.avatar,
       });
+    } catch (err) {
+      console.error('Failed to get media devices for startCall:', err);
+      soundService.stop();
+      set({ callStatus: 'idle' });
+      throw err;
+    }
+  },
 
+  handleCallAccepted: (socket) => {
+    // Partner accepted our call! Stop outgoing ringtone and transition caller to connected state
+    soundService.playConnectTone();
+    const { localStream } = get();
+
+    set({ callStatus: 'connected' });
+
+    if (!localStream) {
+      console.error('No localStream available when call was accepted');
+      return;
+    }
+
+    try {
+      // Caller initiates the WebRTC offer peer
       const peer = new Peer({
         initiator: true,
         trickle: true,
-        stream,
+        stream: localStream,
         config: { iceServers: ICE_SERVERS },
       });
 
       peer.on('signal', (signal) => {
-        socket.emit('webrtc:signal', { signal });
+        socket?.emit('webrtc:signal', { signal });
       });
 
       peer.on('stream', (remoteStream) => {
-        set({ remoteStream, callStatus: 'connected' });
+        set({ remoteStream });
       });
 
       peer.on('error', (err) => {
-        console.error('Peer error:', err);
-        get().endCall(socket);
+        console.error('Peer error on caller side:', err);
       });
 
       peer.on('close', () => {
         get().endCall(socket);
       });
 
+      // Drain any signals that arrived early
+      while (pendingSignals.length > 0) {
+        const sig = pendingSignals.shift();
+        try {
+          peer.signal(sig);
+        } catch (e) {
+          console.error('Error draining signal on caller:', e);
+        }
+      }
+
       set({ peer });
     } catch (err) {
-      console.error('Failed to get media devices:', err);
-      set({ callStatus: 'idle' });
-      throw err;
+      console.error('Failed to create initiator peer:', err);
     }
   },
 
   acceptCall: async (socket) => {
     const { incomingCaller } = get();
     if (!socket || !incomingCaller) return;
+
+    soundService.playConnectTone();
 
     try {
       const isVideo = incomingCaller.callType === 'video';
@@ -164,8 +218,10 @@ export const useCallStore = create<CallState>((set, get) => ({
         isVideoOff: false,
       });
 
+      // Tell caller we accepted!
       socket.emit('webrtc:accept-call');
 
+      // Receiver creates non-initiator peer
       const peer = new Peer({
         initiator: false,
         trickle: true,
@@ -178,26 +234,50 @@ export const useCallStore = create<CallState>((set, get) => ({
       });
 
       peer.on('stream', (remoteStream) => {
-        set({ remoteStream, callStatus: 'connected' });
+        set({ remoteStream });
       });
 
       peer.on('error', (err) => {
-        console.error('Peer error on accept:', err);
-        get().endCall(socket);
+        console.error('Peer error on receiver side:', err);
       });
 
       peer.on('close', () => {
         get().endCall(socket);
       });
 
+      // Drain any signals that arrived early
+      while (pendingSignals.length > 0) {
+        const sig = pendingSignals.shift();
+        try {
+          peer.signal(sig);
+        } catch (e) {
+          console.error('Error draining signal on receiver:', e);
+        }
+      }
+
       set({ peer });
     } catch (err) {
       console.error('Failed to accept call:', err);
+      soundService.stop();
       get().rejectCall(socket);
     }
   },
 
+  handleIncomingSignal: (signal) => {
+    const { peer } = get();
+    if (peer && !peer.destroyed) {
+      try {
+        peer.signal(signal);
+      } catch (e) {
+        console.error('Error passing signal to peer:', e);
+      }
+    } else {
+      pendingSignals.push(signal);
+    }
+  },
+
   rejectCall: (socket) => {
+    soundService.stop();
     if (socket) {
       socket.emit('webrtc:reject-call');
     }
@@ -205,6 +285,7 @@ export const useCallStore = create<CallState>((set, get) => ({
   },
 
   endCall: (socket) => {
+    soundService.stop();
     const { peer, localStream, callStatus } = get();
     if (callStatus === 'idle') return;
 
@@ -221,6 +302,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
     }
+
+    pendingSignals = [];
 
     set({
       callStatus: 'idle',

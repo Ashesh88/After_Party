@@ -1,18 +1,16 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSocketStore } from '../lib/store/socketStore';
-import { useAuthStore } from '../lib/store/authStore';
 import { useCallStore } from '../lib/store/callStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
   Phone, PhoneOff, Mic, MicOff, Video, VideoOff, 
-  Minimize2, Maximize2, User, Sparkles, Volume2 
+  Minimize2, Maximize2, User
 } from 'lucide-react';
 
 export default function CallOverlay() {
   const socket = useSocketStore(state => state.socket);
-  const user = useAuthStore(state => state.user);
 
   const {
     callStatus,
@@ -25,7 +23,6 @@ export default function CallOverlay() {
     incomingCaller,
     localStream,
     remoteStream,
-    peer,
     acceptCall,
     rejectCall,
     endCall,
@@ -72,42 +69,42 @@ export default function CallOverlay() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('webrtc:incoming-call', (data: any) => {
+    const handleIncoming = (data: any) => {
       setIncomingCall(data);
-    });
+    };
 
-    socket.on('webrtc:signal', ({ signal }: any) => {
-      if (peer) {
-        try {
-          peer.signal(signal);
-        } catch (e) {
-          console.error('Error signaling peer:', e);
-        }
-      }
-    });
+    const handleSignal = ({ signal }: any) => {
+      useCallStore.getState().handleIncomingSignal(signal);
+    };
 
-    socket.on('webrtc:call-accepted', () => {
-      // Remote accepted
-    });
+    const handleAccepted = () => {
+      useCallStore.getState().handleCallAccepted(socket);
+    };
 
-    socket.on('webrtc:call-rejected', () => {
+    const handleRejected = () => {
       toast('Partner was unable to answer', { icon: '📞' });
-      endCall(null);
-    });
+      useCallStore.getState().endCall(null);
+    };
 
-    socket.on('webrtc:hangup', () => {
+    const handleHangup = () => {
       toast('Call ended', { icon: '📞' });
-      endCall(null);
-    });
+      useCallStore.getState().endCall(null);
+    };
+
+    socket.on('webrtc:incoming-call', handleIncoming);
+    socket.on('webrtc:signal', handleSignal);
+    socket.on('webrtc:call-accepted', handleAccepted);
+    socket.on('webrtc:call-rejected', handleRejected);
+    socket.on('webrtc:hangup', handleHangup);
 
     return () => {
-      socket.off('webrtc:incoming-call');
-      socket.off('webrtc:signal');
-      socket.off('webrtc:call-accepted');
-      socket.off('webrtc:call-rejected');
-      socket.off('webrtc:hangup');
+      socket.off('webrtc:incoming-call', handleIncoming);
+      socket.off('webrtc:signal', handleSignal);
+      socket.off('webrtc:call-accepted', handleAccepted);
+      socket.off('webrtc:call-rejected', handleRejected);
+      socket.off('webrtc:hangup', handleHangup);
     };
-  }, [socket, peer, endCall, setIncomingCall]);
+  }, [socket, setIncomingCall]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -119,15 +116,15 @@ export default function CallOverlay() {
 
   return (
     <>
-      {/* 1. INCOMING CALL MODAL (WhatsApp Style) */}
+      {/* 1. INCOMING CALL MODAL (WhatsApp Style with Ringing Melody) */}
       <AnimatePresence>
         {callStatus === 'incoming' && incomingCaller && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.85, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: 30 }}
-              className="relative w-full max-w-sm rounded-[36px] glass-panel border border-pink-500/30 p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+              className="relative w-full max-w-sm rounded-[36px] glass-panel border border-pink-500/30 p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.85)] overflow-hidden"
             >
               <div className="ambient-glow-pink -top-20 -left-20 pointer-events-none" />
               
@@ -146,9 +143,9 @@ export default function CallOverlay() {
                 </div>
 
                 <h3 className="text-xl font-black text-white mb-1">
-                  {incomingCaller.callerName}
+                  {incomingCaller.callerName || 'Your Partner'}
                 </h3>
-                <p className="text-xs text-pink-300 font-semibold uppercase tracking-wider mb-8 flex items-center justify-center gap-1.5">
+                <p className="text-xs text-pink-300 font-semibold uppercase tracking-wider mb-8 flex items-center justify-center gap-1.5 animate-pulse">
                   <span>{incomingCaller.callType === 'video' ? 'Incoming Video Call 📹' : 'Incoming Voice Call 📞'}</span>
                 </p>
 
@@ -183,7 +180,7 @@ export default function CallOverlay() {
       {/* 2. OUTGOING CALL SCREEN */}
       <AnimatePresence>
         {callStatus === 'outgoing' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -229,7 +226,7 @@ export default function CallOverlay() {
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed right-4 bottom-24 z-50 w-36 sm:w-44 h-52 sm:h-60 rounded-3xl glass-panel border border-pink-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col group cursor-pointer"
+            className="fixed right-4 bottom-24 z-[90] w-36 sm:w-44 h-52 sm:h-60 rounded-3xl glass-panel border border-pink-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col group cursor-pointer"
             onClick={toggleMinimize}
             title="Click to expand (Bada karein)"
           >
@@ -300,15 +297,15 @@ export default function CallOverlay() {
       {/* 4. ACTIVE CONNECTED CALL: EXPANDED (Bada WhatsApp-Style Interface) */}
       <AnimatePresence>
         {callStatus === 'connected' && !isMinimized && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/85 backdrop-blur-2xl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-2xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-4xl h-[92vh] max-h-[820px] rounded-[36px] glass-panel border border-white/10 shadow-[0_25px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col"
+              className="relative w-full max-w-4xl h-[88vh] max-h-[780px] rounded-[36px] glass-panel border border-white/10 shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col"
             >
               {/* WhatsApp Call Header */}
-              <div className="shrink-0 p-4 sm:p-5 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent relative z-20">
+              <div className="shrink-0 p-4 sm:p-5 flex items-center justify-between bg-gradient-to-b from-black/85 via-black/50 to-transparent relative z-20">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 p-[2px]">
                     <div className="w-full h-full rounded-[14px] bg-[#0c0c18] flex items-center justify-center overflow-hidden">
@@ -339,10 +336,10 @@ export default function CallOverlay() {
                 <button
                   onClick={toggleMinimize}
                   title="Chota karein (Minimize to floating badge)"
-                  className="px-3 py-1.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/10 text-xs font-bold text-slate-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                  className="px-3.5 py-2 rounded-2xl bg-white/[0.1] hover:bg-white/[0.2] border border-white/15 text-xs font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
                 >
                   <Minimize2 size={15} />
-                  <span className="hidden sm:inline">Chota karein</span>
+                  <span>Chota karein</span>
                 </button>
               </div>
 
@@ -397,15 +394,15 @@ export default function CallOverlay() {
                 )}
               </div>
 
-              {/* Bottom WhatsApp-Style Control Dock */}
-              <div className="shrink-0 p-5 sm:p-6 bg-[#0a0a14]/95 backdrop-blur-2xl border-t border-white/[0.08] flex items-center justify-center gap-4 sm:gap-6 z-20">
+              {/* Bottom WhatsApp-Style Control Dock - Cleanly raised and clearly unobstructed */}
+              <div className="shrink-0 py-4 sm:py-5 px-6 bg-[#090913]/95 backdrop-blur-2xl border-t border-white/[0.08] flex items-center justify-center gap-5 sm:gap-7 z-20">
                 {/* 1. Mute / Unmute Button */}
                 <button
                   onClick={toggleMute}
                   className={`w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                     isMuted
                       ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-rose-500/20'
-                      : 'bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/10'
+                      : 'bg-white/[0.1] hover:bg-white/[0.18] text-white border border-white/10'
                   }`}
                   title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
                 >
@@ -419,7 +416,7 @@ export default function CallOverlay() {
                     className={`w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                       isVideoOff
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-rose-500/20'
-                        : 'bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/10'
+                        : 'bg-white/[0.1] hover:bg-white/[0.18] text-white border border-white/10'
                     }`}
                     title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
                   >
