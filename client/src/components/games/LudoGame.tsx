@@ -20,7 +20,7 @@ export default function LudoGame({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0a0c10] flex flex-col select-none">
+    <div className="fixed inset-0 z-[100] bg-[#0a0c10] flex flex-col select-none">
       {/* Top Header Navigation matching Couples Arcade theme */}
       <header className="h-14 px-4 flex items-center justify-between border-b border-white/10 bg-black/60 backdrop-blur-xl z-20">
         <button

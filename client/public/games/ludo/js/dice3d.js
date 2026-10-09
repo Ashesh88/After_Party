@@ -105,8 +105,8 @@ class LudoDice3D {
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
 
-        // Default rest position (rest above center or right side)
-        this.restPos = new THREE.Vector3(2.8, 0.32, -2.8);
+        // Default rest position (rest outside board on side tray, never overlaps pawns!)
+        this.restPos = new THREE.Vector3(4.35, 0.30, 0);
         this.mesh.position.copy(this.restPos);
         this.setFaceUp(6); // Default show 6
 

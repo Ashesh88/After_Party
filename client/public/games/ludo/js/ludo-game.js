@@ -14,12 +14,12 @@ class ClassicLudo3D {
         this.isMoving = false;
         this.winner = null;
 
-        // Player Definitions
+        // Player Definitions - Deep, rich, eye-friendly tones
         this.playerConfigs = {
             red: {
                 id: 'red',
                 name: 'Red Player 🔴',
-                colorHex: 0xe52521,
+                colorHex: 0xb91c1c, // Deep Crimson
                 startOffset: 0,
                 homeColKey: 'red',
                 yardKey: 'red',
@@ -29,7 +29,7 @@ class ClassicLudo3D {
             green: {
                 id: 'green',
                 name: 'Green Player 🟢',
-                colorHex: 0x00a651,
+                colorHex: 0x15803d, // Deep Emerald
                 startOffset: 13,
                 homeColKey: 'green',
                 yardKey: 'green',
@@ -39,7 +39,7 @@ class ClassicLudo3D {
             yellow: {
                 id: 'yellow',
                 name: 'Yellow Player 🟡',
-                colorHex: 0xf59e0b,
+                colorHex: 0xb45309, // Deep Amber Gold
                 startOffset: 26,
                 homeColKey: 'yellow',
                 yardKey: 'yellow',
@@ -49,7 +49,7 @@ class ClassicLudo3D {
             blue: {
                 id: 'blue',
                 name: 'Blue Player 🔵',
-                colorHex: 0x0072ce,
+                colorHex: 0x1d4ed8, // Deep Royal Blue
                 startOffset: 39,
                 homeColKey: 'blue',
                 yardKey: 'blue',
@@ -74,9 +74,11 @@ class ClassicLudo3D {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0c10);
 
-        // Natural 3D Perspective
-        this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
-        this.camera.position.set(0, 9.8, 7.8);
+        // Responsive Camera: perfectly framed for mobile portrait & desktop
+        const isMobile = window.innerWidth < 650;
+        const initialFov = isMobile ? 54 : 40;
+        this.camera = new THREE.PerspectiveCamera(initialFov, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera.position.set(0, isMobile ? 12.8 : 10.5, isMobile ? 5.2 : 6.2);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -84,31 +86,31 @@ class ClassicLudo3D {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMappingExposure = 0.95; // Soft natural exposure, zero eye strain
         this.container.appendChild(this.renderer.domElement);
 
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        this.controls.maxPolarAngle = Math.PI / 2.2;
+        this.controls.maxPolarAngle = Math.PI / 2.25;
         this.controls.minDistance = 4;
         this.controls.maxDistance = 16;
-        this.controls.target.set(0, 0.2, 0);
+        this.controls.target.set(0, isMobile ? 0.35 : 0.1, 0);
 
-        // Balanced Lighting
-        const ambient = new THREE.AmbientLight(0xfff8f0, 0.92);
+        // Soft, Eye-Friendly Diffused Lighting (Zero harsh white glare)
+        const ambient = new THREE.AmbientLight(0xfff5ea, 0.65);
         this.scene.add(ambient);
 
-        const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
-        keyLight.position.set(5, 14, 7);
+        const keyLight = new THREE.DirectionalLight(0xfff8ee, 0.55);
+        keyLight.position.set(4, 15, 6);
         keyLight.castShadow = true;
         keyLight.shadow.mapSize.width = 2048;
         keyLight.shadow.mapSize.height = 2048;
         keyLight.shadow.bias = -0.0004;
         this.scene.add(keyLight);
 
-        const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.4);
-        fillLight.position.set(-6, 12, -6);
+        const fillLight = new THREE.DirectionalLight(0x94a3b8, 0.35);
+        fillLight.position.set(-5, 10, -5);
         this.scene.add(fillLight);
 
         // Floor Shadow Catcher
@@ -121,6 +123,8 @@ class ClassicLudo3D {
         this.scene.add(floor);
 
         window.addEventListener('resize', () => {
+            const isMob = window.innerWidth < 650;
+            this.camera.fov = isMob ? 54 : 40;
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);

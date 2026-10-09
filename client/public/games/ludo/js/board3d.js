@@ -64,15 +64,15 @@ class LudoBoard3D {
         const ctx = canvas.getContext('2d');
         const W = 2048 / 15; // Width per cell = ~136.53px
 
-        // Colors matching media_1791588980021.png exactly
-        const GREEN = '#00a651';
-        const YELLOW = '#ffcc00';
-        const RED = '#e52521';
-        const BLUE = '#0072ce';
-        const WHITE = '#ffffff';
-        const BLACK = '#000000';
+        // Darker, rich, eye-friendly tones (comfortably dark, zero eye strain)
+        const GREEN = '#15803d';  // Deep Forest Green
+        const YELLOW = '#b45309'; // Deep Amber Gold / Warm Mustard
+        const RED = '#b91c1c';    // Deep Crimson Red
+        const BLUE = '#1d4ed8';   // Deep Royal Blue
+        const WHITE = '#cbd5e1';  // Soft matte slate cream (no blinding white glare)
+        const BLACK = '#0f172a';
 
-        // 1. Fill entire background with white
+        // 1. Fill entire background with soft matte base
         ctx.fillStyle = WHITE;
         ctx.fillRect(0, 0, 2048, 2048);
 
@@ -93,7 +93,7 @@ class LudoBoard3D {
         ctx.fillStyle = BLUE;
         ctx.fillRect(9 * W, 9 * W, 6 * W, 6 * W);
 
-        // 3. Draw Large White Rounded Boxes inside the 4 Yards with 4 Colored Circles
+        // 3. Draw Large Soft Rounded Boxes inside the 4 Yards with 4 Colored Circles
         const drawYardBase = (startX, startY, color) => {
             const pad = 36;
             const size = 6 * W - pad * 2;
@@ -101,8 +101,8 @@ class LudoBoard3D {
             const x = startX + pad;
             const y = startY + pad;
 
-            // White rounded box
-            ctx.fillStyle = WHITE;
+            // Soft matte rounded box
+            ctx.fillStyle = '#e2e8f0';
             ctx.beginPath();
             ctx.roundRect(x, y, size, size, radius);
             ctx.fill();
@@ -318,8 +318,8 @@ class LudoBoard3D {
 
         const topMat = new THREE.MeshStandardMaterial({
             map: topTexture,
-            roughness: 0.2,
-            metalness: 0.05
+            roughness: 0.92, // Soft matte finish - completely eliminates blinding white glare
+            metalness: 0.0
         });
 
         // Box materials: +X, -X, +Y (top), -Y, +Z, -Z
