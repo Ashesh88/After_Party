@@ -9,6 +9,7 @@ export interface LocationData {
 
 export const useLocation = (socket: Socket | null) => {
   const [isSharing, setIsSharing] = useState(false);
+  const [location, setLocation] = useState<LocationData | null>(null);
   const [partnerLocation, setPartnerLocation] = useState<LocationData | null>(null);
   const [watchId, setWatchId] = useState<number | null>(null);
 
@@ -37,12 +38,13 @@ export const useLocation = (socket: Socket | null) => {
 
     const id = navigator.geolocation.watchPosition(
       (position) => {
+        const data = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          updatedAt: new Date().toISOString()
+        };
+        setLocation(data);
         if (socket) {
-          const data = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            updatedAt: new Date().toISOString()
-          };
           socket.emit('location:update', data);
         }
       },
@@ -65,5 +67,5 @@ export const useLocation = (socket: Socket | null) => {
     setIsSharing(false);
   };
 
-  return { isSharing, startSharing, stopSharing, partnerLocation };
+  return { isSharing, location, startSharing, stopSharing, partnerLocation };
 };

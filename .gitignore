@@ -33,3 +33,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# PWA service worker build artifacts
+client/public/sw.js
+client/public/sw.js.map
+client/public/workbox-*.js
+client/public/workbox-*.js.map
+
