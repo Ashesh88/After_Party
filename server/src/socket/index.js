@@ -151,6 +151,11 @@ const setupSocket = (io) => {
         socket.to(roomChannel).emit('location:stop', { userId });
       });
 
+      // Goals sync
+      socket.on('goal:update', (data) => {
+        socket.to(roomChannel).emit('goal:update', data);
+      });
+
       // Games
       socket.on('game:start', async ({ gameType, partnerId }) => {
         try {

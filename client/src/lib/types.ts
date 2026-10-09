@@ -28,9 +28,11 @@ export interface Goal {
   description?: string;
   category: string;
   dueDate?: string;
-  ownerId: string;
-  completed: boolean;
+  owner?: 'me' | 'partner' | 'both';
+  completedAt?: string | null;
   progress: number;
+  streak?: number;
+  createdAt?: string;
 }
 
 export interface Reminder {
