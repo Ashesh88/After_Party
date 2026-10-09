@@ -11,11 +11,11 @@ import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, Gamepad2 } from 'lu
 const games = [
   { 
     id: 'chess', 
-    name: 'Classic Chess', 
-    desc: 'Real FIDE rules & checkmate',
+    name: 'Zen 3D Chess', 
+    desc: 'Luxury 3D pieces, AI & Video Call',
     icon: Crown, 
     color: 'from-amber-400 to-rose-500', 
-    tag: 'STRATEGY' 
+    tag: '3D LIVE' 
   },
   { 
     id: 'ludo', 

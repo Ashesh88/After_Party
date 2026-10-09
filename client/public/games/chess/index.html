@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zen Chess 3D - Online Multiplayer & AI</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Local Bundled Libraries (Offline & Zero-CORS Ready) -->
+    <script src="js/lib/three.min.js"></script>
+    <script src="js/lib/OrbitControls.js"></script>
+    <script src="js/lib/chess.min.js"></script>
+    <script src="js/lib/peerjs.min.js"></script>
+</head>
+<body>
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-overlay">
+        
+        <!-- Top Navigation -->
+        <header class="top-nav interactive">
+            <div class="brand">
+                <i class="fa-solid fa-chess-knight brand-icon"></i>
+                <span class="brand-title">ZEN CHESS 3D</span>
+            </div>
+
+            <!-- Game Mode Tabs -->
+            <div class="nav-tabs">
+                <button class="nav-btn active" id="btn-mode-ai" data-mode="ai">
+                    <i class="fa-solid fa-robot"></i> Play AI
+                </button>
+                <button class="nav-btn" id="btn-mode-online" data-mode="online">
+                    <i class="fa-solid fa-users"></i> Online Friend
+                </button>
+                <button class="nav-btn" id="btn-mode-local" data-mode="local">
+                    <i class="fa-solid fa-people-arrows"></i> Pass & Play
+                </button>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="nav-actions">
+                <button class="btn-icon" id="btn-mute" title="Toggle Sound">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+                <button class="btn-primary" id="btn-open-invite">
+                    <i class="fa-solid fa-user-plus"></i> Invite Friend
+                </button>
+            </div>
+        </header>
+
+        <!-- Turn Status Indicator Banner -->
+        <div class="status-banner">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">White to move</span>
+        </div>
+
+        <!-- Main Workspace (Left & Right Glass Sidebars) -->
+        <main class="workspace">
+            
+            <!-- Left Sidebar: Players & Timers -->
+            <aside class="glass-panel interactive sidebar-left" id="sidebar-left">
+                <!-- Top action row with New Game & Minimize toggle -->
+                <div class="sidebar-top-row">
+                    <button class="btn-danger btn-compact" id="btn-new-game" title="Start New Game">
+                        <i class="fa-solid fa-play"></i> New Game
+                    </button>
+                    <button class="btn-minimize" id="btn-toggle-left-sidebar" title="Minimize / Expand Panel">
+                        <i class="fa-solid fa-chevron-left" id="icon-toggle-left"></i>
+                    </button>
+                </div>
+
+                <!-- Collapsible content -->
+                <div class="sidebar-collapsible" id="left-sidebar-content">
+                    <div class="panel-title" style="margin-top: 4px;">Player Profiles</div>
+
+                    <!-- White Player Card -->
+                    <div class="player-card active-turn" id="card-white">
+                        <div class="player-header">
+                            <div class="avatar" style="color: #f1f5f9;">♔</div>
+                            <div class="player-meta">
+                                <div class="player-name" id="name-white">White Player</div>
+                                <div class="player-tag" id="tag-white">You (Playing White)</div>
+                            </div>
+                        </div>
+                        <div class="chess-clock">
+                            <span class="clock-label">Timer</span>
+                            <span class="clock-time" id="timer-white">10:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Black Player Card -->
+                    <div class="player-card" id="card-black">
+                        <div class="player-header">
+                            <div class="avatar" style="color: #64748b;">♚</div>
+                            <div class="player-meta">
+                                <div class="player-name" id="name-black">Stockfish AI</div>
+                                <div class="player-tag" id="tag-black">Computer (Medium)</div>
+                            </div>
+                        </div>
+                        <div class="chess-clock">
+                            <span class="clock-label">Timer</span>
+                            <span class="clock-time" id="timer-black">10:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Captured Pieces Tray -->
+                    <div class="captured-box">
+                        <div class="panel-title" style="margin-bottom: 4px;">Captured Pieces</div>
+                        <div class="captured-list" id="captured-white"></div>
+                        <div class="captured-list" id="captured-black" style="margin-top: 4px;"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Sidebar: Live Video & Voice Call & Match Settings -->
+            <aside class="glass-panel interactive sidebar-right" id="sidebar-right">
+                <div class="sidebar-top-row" style="justify-content: space-between;">
+                    <span class="panel-title" style="margin: 0;"><i class="fa-solid fa-video"></i> Video & Call</span>
+                    <button class="btn-minimize" id="btn-toggle-right-sidebar" title="Minimize / Expand Panel">
+                        <i class="fa-solid fa-chevron-right" id="icon-toggle-right"></i>
+                    </button>
+                </div>
+
+                <!-- Collapsible content -->
+                <div class="sidebar-collapsible" id="right-sidebar-content">
+                    <div class="video-container" id="video-container">
+                        <video id="remote-video" class="remote-video" autoplay playsinline></video>
+                        <video id="local-video" class="local-video" autoplay playsinline muted></video>
+                        <div class="video-placeholder" id="video-placeholder">
+                            <i class="fa-solid fa-video-slash"></i>
+                            <span id="call-status-label">Call Inactive</span>
+                        </div>
+                        <div class="video-controls">
+                            <button class="call-btn" id="btn-toggle-cam" title="Camera On/Off"><i class="fa-solid fa-video"></i></button>
+                            <button class="call-btn" id="btn-toggle-mic" title="Mic Mute/Unmute"><i class="fa-solid fa-microphone"></i></button>
+                            <button class="call-btn btn-call-start" id="btn-start-call" title="Start Video Call"><i class="fa-solid fa-phone"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="controls-group">
+                        <div class="select-wrapper" id="ai-difficulty-wrapper">
+                            <label class="panel-title">AI Difficulty</label>
+                            <select class="select-input" id="select-difficulty">
+                                <option value="easy">Casual (Easy)</option>
+                                <option value="medium" selected>Tactician (Medium)</option>
+                                <option value="hard">Grandmaster (Hard)</option>
+                            </select>
+                        </div>
+
+                        <div class="select-wrapper" id="time-control-wrapper">
+                            <label class="panel-title">Time Control</label>
+                            <select class="select-input" id="select-time">
+                                <option value="180">3 Min (Blitz)</option>
+                                <option value="600" selected>10 Min (Rapid)</option>
+                                <option value="1800">30 Min (Classical)</option>
+                                <option value="0">Unlimited (No Timer)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+        </main>
+    </div>
+
+    <!-- Floating Air-Glass Corner Chat HUD (See-through floating in air, borderless) -->
+    <div class="floating-corner-chat interactive" id="floating-chat">
+        <div class="air-chat-messages" id="panel-chat-messages">
+            <div class="air-msg them">Welcome! Chat floating in air.</div>
+        </div>
+        <!-- Corner Emojis Bar -->
+        <div class="air-chat-emojis">
+            <button class="emoji-btn" data-emoji="👍">👍</button>
+            <button class="emoji-btn" data-emoji="🔥">🔥</button>
+            <button class="emoji-btn" data-emoji="👑">👑</button>
+            <button class="emoji-btn" data-emoji="♟️">♟️</button>
+            <button class="emoji-btn" data-emoji="😮">😮</button>
+        </div>
+        <!-- Transparent Air Input -->
+        <form class="air-chat-input-bar" id="panel-chat-form">
+            <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+    </div>
+
+    <!-- Invite Friends / Join Room Modal -->
+    <div class="modal-backdrop" id="modal-invite">
+        <div class="modal-card interactive">
+            <div class="modal-header">
+                <h3 class="modal-title">Play Online with a Friend</h3>
+                <button class="btn-icon" id="btn-close-invite" style="width: 32px; height: 32px;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                Create a private room and share the link with your friend to play in real-time with zero lag!
+            </p>
+
+            <div class="room-code-display" id="display-room-code">Generating...</div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" id="btn-copy-link" style="flex: 1; justify-content: center;">
+                    <i class="fa-solid fa-copy"></i> Copy Link
+                </button>
+                <button class="btn-secondary" id="btn-whatsapp" style="flex: 1; justify-content: center; background: #25D366; border-color: #25D366; color: #fff;">
+                    <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                </button>
+            </div>
+
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin: 4px 0;">— OR JOIN FRIEND'S ROOM —</div>
+
+            <div class="input-group">
+                <input type="text" class="input-box" id="input-join-code" placeholder="Enter Room Code (e.g. ZEN-A7B8C9)">
+                <button class="btn-secondary" id="btn-join-room" style="justify-content: center; width: 100%;">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Join Match
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pawn Promotion Modal -->
+    <div class="modal-backdrop" id="modal-promotion">
+        <div class="modal-card interactive" style="max-width: 340px; text-align: center;">
+            <h3 class="modal-title">Promote Pawn</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Select the piece to promote your pawn to:</p>
+            <div class="promo-options">
+                <button class="promo-btn" data-promo="q" title="Queen">♛</button>
+                <button class="promo-btn" data-promo="r" title="Rook">♜</button>
+                <button class="promo-btn" data-promo="b" title="Bishop">♝</button>
+                <button class="promo-btn" data-promo="n" title="Knight">♞</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-backdrop" id="modal-gameover">
+        <div class="modal-card interactive" style="text-align: center; max-width: 380px;">
+            <i class="fa-solid fa-trophy" style="font-size: 48px; color: var(--accent-gold); margin-bottom: 8px;"></i>
+            <h2 class="modal-title" id="gameover-title">Game Over</h2>
+            <p id="gameover-reason" style="font-size: 0.95rem; color: var(--text-secondary);">Checkmate! White wins.</p>
+            <div style="display: flex; gap: 10px; margin-top: 14px;">
+                <button class="btn-primary" id="btn-gameover-rematch" style="flex: 1; justify-content: center;">
+                    <i class="fa-solid fa-rotate-right"></i> Rematch
+                </button>
+                <button class="btn-secondary" id="btn-close-gameover" style="flex: 1; justify-content: center;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/chess-pieces.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/multiplayer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
