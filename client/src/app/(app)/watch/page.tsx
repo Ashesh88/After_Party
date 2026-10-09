@@ -1,0 +1,438 @@
+'use client';
+import { useState, useRef, useEffect } from 'react';
+import YouTube from 'react-youtube';
+import { useSocketStore } from '../../../lib/store/socketStore';
+import { useAuthStore } from '../../../lib/store/authStore';
+import { useWebRTC } from '../../../hooks/useWebRTC';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Heart, Sparkles, MessageSquareHeart, Phone, PhoneOff, MonitorUp, 
+  Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon 
+} from 'lucide-react';
+
+const CURATED_MOVIES = [
+  { title: 'La La Land (City of Stars)', id: 'GTWqwSNQ58Y', category: 'Romantic Musical', duration: '3 min preview' },
+  { title: 'Midnight in Paris (Lo-Fi Walk)', id: 'FAkjc64W864', category: 'Cozy Atmosphere', duration: 'Vibe check' },
+  { title: 'Romantic Rainy Cafe Ambience', id: 'mPZkdNFkNps', category: 'Couples Chill & Chat', duration: 'Background Loop' },
+  { title: 'About Time (Emotional Moments)', id: 'T7A810duHvw', category: 'Love & Memories', duration: 'Highlights' },
+];
+
+export default function WatchPage() {
+  const [url, setUrl] = useState('');
+  const [videoId, setVideoId] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<{ id: number; emoji: string; x: number }[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ senderName: string; text: string; isMe: boolean }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [showQuickPicks, setShowQuickPicks] = useState(false);
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const socket = useSocketStore(state => state.socket);
+  const user = useAuthStore(state => state.user);
+  const [partner, setPartner] = useState<{ displayName: string; avatar?: string } | null>(null);
+  const { startCall, endCall, inCall, startScreenShare, isScreenSharing } = useWebRTC(socket, localVideoRef, remoteVideoRef);
+
+  useEffect(() => {
+    import('../../../lib/api').then(({ default: api }) => {
+      api.get('/rooms/mine').then(res => {
+        const members = res.data.room?.members || [];
+        const otherMember = members.find((m: any) => m._id !== user?._id);
+        if (otherMember) {
+          setPartner({ displayName: otherMember.displayName, avatar: otherMember.avatar });
+        }
+      }).catch(() => {});
+    });
+  }, [user]);
+
+  const extractVideoId = (input: string) => {
+    const match = input.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+    return match ? match[1] : null;
+  };
+
+  const handleLoadUrl = (customId?: string) => {
+    const id = customId || extractVideoId(url);
+    if (id) {
+      setVideoId(id);
+      socket?.emit('watch:load', { videoId: id });
+    }
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('watch:load', (data: { videoId: string }) => {
+      setVideoId(data.videoId);
+    });
+
+    socket.on('watch:reaction', (data: { emoji: string }) => {
+      showReaction(data.emoji);
+    });
+
+    socket.on('chat:message', (data: any) => {
+      setChatMessages(prev => [
+        ...prev,
+        {
+          senderName: data.senderId?.displayName || 'Partner',
+          text: data.content,
+          isMe: data.senderId?._id === user?._id || data.senderId === user?._id,
+        }
+      ]);
+      setTimeout(() => {
+        chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    });
+
+    return () => {
+      socket.off('watch:load');
+      socket.off('watch:reaction');
+      socket.off('chat:message');
+    };
+  }, [socket, user]);
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !socket) return;
+    socket.emit('chat:message', { content: chatInput, type: 'text' });
+    setChatInput('');
+  };
+
+  const showReaction = (emoji: string) => {
+    const newReaction = { id: Date.now(), emoji, x: Math.random() * 80 + 10 };
+    setReactions(prev => [...prev, newReaction]);
+    setTimeout(() => {
+      setReactions(prev => prev.filter(r => r.id !== newReaction.id));
+    }, 2000);
+  };
+
+  const sendReaction = (emoji: string) => {
+    showReaction(emoji);
+    socket?.emit('watch:reaction', { emoji });
+  };
+
+  return (
+    <div className="relative min-h-screen bg-[#07070f] text-slate-100 overflow-hidden flex flex-col pb-28">
+      {/* Ambient Romantic Orbs */}
+      <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
+      <div className="ambient-glow-purple -bottom-28 -right-20 pointer-events-none" />
+
+      {/* Floating Reaction Overlay */}
+      <div className="absolute inset-0 pointer-events-none z-50">
+        <AnimatePresence>
+          {reactions.map(r => (
+            <motion.div
+              key={r.id}
+              initial={{ y: '100%', opacity: 1, x: `${r.x}%` }}
+              animate={{ y: '-30%', opacity: 0, scale: 2.2 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 2.2, ease: "easeOut" }}
+              className="absolute bottom-24 text-4xl"
+            >
+              {r.emoji}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Top Navbar Header */}
+      <header className="relative z-30 p-4 sm:p-5 max-w-5xl mx-auto w-full">
+        <div className="p-3 sm:p-4 rounded-3xl glass-panel flex flex-col sm:flex-row items-center gap-3 shadow-2xl">
+          <div className="flex items-center gap-2.5 px-2">
+            <div className="w-9 h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
+              <Film size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-white leading-tight">Theater Lounge</h2>
+              <span className="text-[10px] text-pink-400 font-semibold uppercase tracking-wider">Synced & Private</span>
+            </div>
+          </div>
+
+          <div className="flex-1 flex w-full gap-2 items-center">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Paste YouTube Link or pick below..."
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-2xl glass-input text-xs text-white placeholder:text-slate-500 outline-none font-medium"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                <LinkIcon size={14} />
+              </span>
+            </div>
+            
+            <button
+              onClick={() => handleLoadUrl()}
+              className="px-5 py-2.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg cursor-pointer"
+            >
+              Play
+            </button>
+
+            <button
+              onClick={() => setShowQuickPicks(!showQuickPicks)}
+              className="px-3.5 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-slate-300 cursor-pointer flex items-center gap-1.5"
+            >
+              <Popcorn size={14} className="text-amber-400" />
+              <span className="hidden sm:inline">Picks</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Picks Dropdown */}
+        <AnimatePresence>
+          {showQuickPicks && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-2 p-3 rounded-2xl glass-panel grid grid-cols-2 sm:grid-cols-4 gap-2 z-40 border border-pink-500/20"
+            >
+              {CURATED_MOVIES.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    handleLoadUrl(item.id);
+                    setShowQuickPicks(false);
+                  }}
+                  className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-pink-500/15 border border-white/5 hover:border-pink-500/30 text-left transition-all group cursor-pointer"
+                >
+                  <p className="text-xs font-bold text-white group-hover:text-pink-300 truncate">{item.title}</p>
+                  <span className="text-[10px] text-slate-400 font-medium">{item.category}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      {/* Main Video Stage */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 flex flex-col items-center justify-center relative z-10">
+        {videoId ? (
+          <div className="w-full aspect-video rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative">
+            <YouTube
+              videoId={videoId}
+              className="absolute inset-0 w-full h-full"
+              iframeClassName="w-full h-full"
+              opts={{
+                width: '100%',
+                height: '100%',
+                playerVars: { autoplay: 1, controls: 1, modestbranding: 1 }
+              }}
+              onPlay={() => socket?.emit('watch:sync', { state: 'play' })}
+              onPause={() => socket?.emit('watch:sync', { state: 'pause' })}
+            />
+          </div>
+        ) : (
+          <div className="w-full aspect-video max-w-3xl rounded-[32px] glass-panel border border-white/[0.08] flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/5 via-transparent to-purple-500/5" />
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-pink-500/20 to-purple-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-4 shadow-[0_0_30px_rgba(244,63,142,0.3)] animate-float">
+              <Film size={36} strokeWidth={1.8} />
+            </div>
+            <h3 className="text-xl font-extrabold text-white mb-2">Private Couple Cinema</h3>
+            <p className="text-xs text-slate-400 max-w-md mb-6 font-medium">
+              Paste any YouTube video link, movie trailer, or music playlist to stream and sync perfectly together in real-time.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {CURATED_MOVIES.slice(0, 3).map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => handleLoadUrl(m.id)}
+                  className="px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/40 text-[11px] font-semibold text-slate-300 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles size={12} className="text-pink-400" />
+                  <span>{m.title.split('(')[0]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Floating Video Call & Cute Avatar Tiles */}
+      <div className="fixed right-4 bottom-28 flex flex-col gap-2.5 z-30">
+        {/* Partner Tile */}
+        <div className="relative w-24 h-32 rounded-2xl overflow-hidden glass-panel border border-purple-500/30 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group">
+          <video ref={remoteVideoRef} autoPlay playsInline className={`w-full h-full object-cover ${inCall ? 'block' : 'hidden'}`} />
+          {!inCall && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-[#0d0d18]/95 backdrop-blur-md">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 p-1 mb-1.5 shadow-[0_0_15px_rgba(147,51,234,0.3)]">
+                {partner?.avatar ? (
+                  <img src={partner.avatar} alt="Partner" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <span className="text-2xl flex items-center justify-center h-full">🐰</span>
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-purple-300 truncate max-w-full">
+                {partner?.displayName || 'Partner'}
+              </span>
+              <span className="text-[8px] text-slate-500 uppercase font-bold tracking-wider">Ready</span>
+            </div>
+          )}
+        </div>
+
+        {/* You Tile */}
+        <div className="relative w-24 h-32 rounded-2xl overflow-hidden glass-panel border border-pink-500/40 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group">
+          <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${inCall ? 'block' : 'hidden'}`} />
+          {!inCall && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-[#0d0d18]/95 backdrop-blur-md">
+              <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/30 p-1 mb-1.5 shadow-[0_0_15px_rgba(244,63,142,0.3)]">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="You" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <span className="text-2xl flex items-center justify-center h-full">🧸</span>
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-pink-300 truncate max-w-full">
+                {user?.displayName || 'You'}
+              </span>
+              <span className="text-[8px] text-slate-500 uppercase font-bold tracking-wider">Host</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Bottom Reaction & Call Controller Bar */}
+      <div className="fixed bottom-20 left-4 right-4 max-w-xl mx-auto z-30 pointer-events-none">
+        <div className="pointer-events-auto p-2.5 rounded-full bg-[#0d0d1c]/85 backdrop-blur-2xl border border-white/[0.1] shadow-[0_15px_35px_rgba(0,0,0,0.7)] flex justify-between items-center gap-2">
+          {/* Reaction Bursts */}
+          <div className="flex gap-1.5 pl-1">
+            {[
+              { id: 'heart', icon: Heart, color: 'text-pink-400 hover:text-pink-300' },
+              { id: 'fire', icon: Flame, color: 'text-amber-400 hover:text-amber-300' },
+              { id: 'laugh', icon: Laugh, color: 'text-emerald-400 hover:text-emerald-300' },
+              { id: 'sparkles', icon: Sparkles, color: 'text-purple-400 hover:text-purple-300' },
+            ].map(item => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => sendReaction(item.id === 'heart' ? '❤️' : item.id === 'fire' ? '🔥' : item.id === 'laugh' ? '😂' : '✨')}
+                  className={`w-9 h-9 rounded-full bg-white/[0.04] hover:bg-white/[0.08] hover:scale-125 active:scale-95 flex items-center justify-center transition-all cursor-pointer ${item.color}`}
+                >
+                  <Icon size={18} strokeWidth={2.2} />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Action Controls */}
+          <div className="flex items-center gap-2 pr-1">
+            <button
+              onClick={() => setChatOpen(!chatOpen)}
+              className={`px-3.5 py-2 rounded-full flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+                chatOpen 
+                  ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(244,63,142,0.5)]' 
+                  : 'bg-white/[0.06] hover:bg-white/[0.12] text-slate-200'
+              }`}
+            >
+              <MessageSquareHeart size={15} />
+              <span>Whisper</span>
+              {chatMessages.length > 0 && !chatOpen && (
+                <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-ping" />
+              )}
+            </button>
+
+            {!inCall ? (
+              <button 
+                onClick={startCall} 
+                className="px-3.5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <Phone size={14} />
+                <span>Call</span>
+              </button>
+            ) : (
+              <div className="flex gap-1.5">
+                <button 
+                  onClick={isScreenSharing ? undefined : startScreenShare} 
+                  className="p-2 rounded-full bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs cursor-pointer"
+                >
+                  <MonitorUp size={14} />
+                </button>
+                <button 
+                  onClick={() => endCall()} 
+                  className="p-2 rounded-full bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-xs cursor-pointer"
+                >
+                  <PhoneOff size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Chat Slide-Over */}
+      <AnimatePresence>
+        {chatOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: 50, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 50, scale: 0.95 }}
+            className="fixed top-24 right-4 bottom-32 w-80 sm:w-96 rounded-3xl glass-panel z-40 flex flex-col overflow-hidden shadow-2xl border border-pink-500/30"
+          >
+            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#0d0d1a]/80">
+              <div className="flex items-center gap-2">
+                <span className="text-pink-400">💕</span>
+                <h3 className="font-bold text-sm text-white">Movie Whispers</h3>
+              </div>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-xs text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 p-3.5 overflow-y-auto space-y-2.5">
+              {chatMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center text-xs text-slate-400 p-4">
+                  <span className="text-3xl mb-2">🍿</span>
+                  Send love notes and whispers while watching!
+                </div>
+              ) : (
+                chatMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}
+                  >
+                    <span className="text-[10px] text-slate-400 px-1 mb-0.5">
+                      {msg.isMe ? 'You' : msg.senderName}
+                    </span>
+                    <div
+                      className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-xs font-medium ${
+                        msg.isMe 
+                          ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-tr-sm shadow-md shadow-pink-500/20' 
+                          : 'bg-white/10 text-slate-100 rounded-tl-sm'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={chatScrollRef} />
+            </div>
+
+            <form onSubmit={handleSendChat} className="p-3 border-t border-white/10 bg-[#0d0d1a]/80 flex gap-2">
+              <input
+                type="text"
+                placeholder="Whisper something..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                className="flex-1 bg-white/5 border border-white/10 rounded-full px-3.5 py-2 text-xs text-white placeholder:text-slate-500 outline-none focus:border-pink-500 font-medium"
+              />
+              <button
+                type="submit"
+                disabled={!chatInput.trim()}
+                className="w-8 h-8 rounded-full btn-sexy disabled:opacity-40 text-white flex items-center justify-center text-xs shadow-md cursor-pointer"
+              >
+                ➤
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
