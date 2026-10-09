@@ -1,63 +1,83 @@
-// Couples Ludo 3D - Complete Game Controller & Physics Loop
-// OrbitControls, 3D Hopping Animations, AI Bot, and Authentic Rules
+// Authentic Classic 3D Ludo - Complete Game Engine
+// Matching the iconic Red, Green, Yellow, Blue board with 3D pawns, 3D dice, and AI
 
-class LudoGame3D {
+class ClassicLudo3D {
     constructor() {
         this.container = document.getElementById('canvas-container');
-        this.gameMode = 'pass'; // 'pass' (2-player) | 'ai' (vs Bot)
+        this.gameMode = '2p'; // '2p' (Red vs Yellow) | '4p' (Red, Green, Yellow, Blue) | 'ai' (vs Computer)
         this.tokenCount = 4; // 2 or 4 tokens per player
-        this.currentTurn = 'p1'; // 'p1' (Pink) | 'p2' (Purple)
+        this.activePlayerIds = ['red', 'yellow']; // Default 2P head-to-head
+        this.currentTurnIdx = 0;
         this.diceRolled = null;
         this.hasRolled = false;
         this.consecutiveSixes = 0;
         this.isMoving = false;
         this.winner = null;
 
-        // Player Tokens State
-        // step: -1 = Yard, 0..50 = Main Track, 51..55 = Home Column, 56 = Finished at Crown
-        this.players = {
-            p1: {
-                id: 'p1',
-                name: 'Pink Player 💕',
-                colorHex: 0xf43f5e,
+        // Player Definitions
+        this.playerConfigs = {
+            red: {
+                id: 'red',
+                name: 'Red Player 🔴',
+                colorHex: 0xe52521,
                 startOffset: 0,
+                homeColKey: 'red',
+                yardKey: 'red',
                 tokens: [-1, -1, -1, -1],
                 meshList: []
             },
-            p2: {
-                id: 'p2',
-                name: 'Purple Player 💜',
-                colorHex: 0x8b5cf6,
+            green: {
+                id: 'green',
+                name: 'Green Player 🟢',
+                colorHex: 0x00a651,
+                startOffset: 13,
+                homeColKey: 'green',
+                yardKey: 'green',
+                tokens: [-1, -1, -1, -1],
+                meshList: []
+            },
+            yellow: {
+                id: 'yellow',
+                name: 'Yellow Player 🟡',
+                colorHex: 0xf59e0b,
                 startOffset: 26,
+                homeColKey: 'yellow',
+                yardKey: 'yellow',
+                tokens: [-1, -1, -1, -1],
+                meshList: []
+            },
+            blue: {
+                id: 'blue',
+                name: 'Blue Player 🔵',
+                colorHex: 0x0072ce,
+                startOffset: 39,
+                homeColKey: 'blue',
+                yardKey: 'blue',
                 tokens: [-1, -1, -1, -1],
                 meshList: []
             }
         };
 
-        // Raycasting for piece selection
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
 
         this.initThree();
-        this.initGameEntities();
+        this.initEntities();
         this.initEvents();
         this.updateUI();
 
-        // Animation loop
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
     }
 
     initThree() {
-        // Scene
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0c10);
 
-        // Camera: natural 3D isometric perspective
+        // Natural 3D Perspective
         this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
-        this.camera.position.set(0, 9.5, 7.5);
+        this.camera.position.set(0, 9.8, 7.8);
 
-        // WebGL Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -67,7 +87,6 @@ class LudoGame3D {
         this.renderer.toneMappingExposure = 1.05;
         this.container.appendChild(this.renderer.domElement);
 
-        // OrbitControls
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
@@ -76,8 +95,8 @@ class LudoGame3D {
         this.controls.maxDistance = 16;
         this.controls.target.set(0, 0.2, 0);
 
-        // Lighting: Warm Luxury Studio
-        const ambient = new THREE.AmbientLight(0xfff5ea, 0.9);
+        // Balanced Lighting
+        const ambient = new THREE.AmbientLight(0xfff8f0, 0.92);
         this.scene.add(ambient);
 
         const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
@@ -88,16 +107,16 @@ class LudoGame3D {
         keyLight.shadow.bias = -0.0004;
         this.scene.add(keyLight);
 
-        const rimLight = new THREE.DirectionalLight(0xc084fc, 0.45);
-        rimLight.position.set(-6, 10, -6);
-        this.scene.add(rimLight);
+        const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.4);
+        fillLight.position.set(-6, 12, -6);
+        this.scene.add(fillLight);
 
-        // Soft floor shadow receiver
+        // Floor Shadow Catcher
         const floorGeo = new THREE.PlaneGeometry(50, 50);
-        const floorMat = new THREE.ShadowMaterial({ opacity: 0.4 });
+        const floorMat = new THREE.ShadowMaterial({ opacity: 0.35 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -0.41;
+        floor.position.y = -0.32;
         floor.receiveShadow = true;
         this.scene.add(floor);
 
@@ -108,74 +127,62 @@ class LudoGame3D {
         });
     }
 
-    initGameEntities() {
-        // 1. 3D Board
+    initEntities() {
         this.board = new LudoBoard3D(this.scene);
-
-        // 2. 3D Dice
         this.dice = new LudoDice3D(this.scene);
-
-        // 3. 3D Pawn Pieces Factory
         this.pieceFactory = new LudoPieceFactory();
-        this.spawnAllTokens();
+        this.spawnTokens();
     }
 
-    spawnAllTokens() {
-        // Clear previous meshes
-        ['p1', 'p2'].forEach(pId => {
-            this.players[pId].meshList.forEach(m => this.scene.remove(m));
-            this.players[pId].meshList = [];
+    spawnTokens() {
+        // Clear all existing pawns
+        Object.values(this.playerConfigs).forEach(p => {
+            p.meshList.forEach(m => this.scene.remove(m));
+            p.meshList = [];
         });
 
-        // Spawn P1 (Pink) Tokens
-        for (let i = 0; i < this.tokenCount; i++) {
-            const mesh = this.pieceFactory.createTokenMesh(this.players.p1.colorHex, 'p1', i);
-            const yardSlot = this.board.p1YardSlots[i];
-            const worldPos = this.board.gridToWorld(yardSlot[0], yardSlot[1], 0.12);
-            mesh.position.copy(worldPos);
-            this.scene.add(mesh);
-            this.players.p1.meshList.push(mesh);
-        }
-
-        // Spawn P2 (Purple) Tokens
-        for (let i = 0; i < this.tokenCount; i++) {
-            const mesh = this.pieceFactory.createTokenMesh(this.players.p2.colorHex, 'p2', i);
-            const yardSlot = this.board.p2YardSlots[i];
-            const worldPos = this.board.gridToWorld(yardSlot[0], yardSlot[1], 0.12);
-            mesh.position.copy(worldPos);
-            this.scene.add(mesh);
-            this.players.p2.meshList.push(mesh);
-        }
+        // Spawn pawns for active players
+        this.activePlayerIds.forEach(pId => {
+            const p = this.playerConfigs[pId];
+            for (let i = 0; i < this.tokenCount; i++) {
+                const mesh = this.pieceFactory.createTokenMesh(p.colorHex, pId, i);
+                const slot = this.board.yardSlots[p.yardKey][i];
+                const worldPos = this.board.gridToWorld(slot[0], slot[1], 0.14);
+                mesh.position.copy(worldPos);
+                this.scene.add(mesh);
+                p.meshList.push(mesh);
+            }
+        });
     }
 
     getStepWorldPos(playerId, step, tokenIndex) {
+        const p = this.playerConfigs[playerId];
+
         if (step === -1) {
-            // In Yard Base
-            const slots = playerId === 'p1' ? this.board.p1YardSlots : this.board.p2YardSlots;
-            const s = slots[tokenIndex];
-            return this.board.gridToWorld(s[0], s[1], 0.12);
+            // Inside Yard Base
+            const slot = this.board.yardSlots[p.yardKey][tokenIndex];
+            return this.board.gridToWorld(slot[0], slot[1], 0.14);
         }
 
         if (step >= 0 && step <= 50) {
-            // Main Perimeter Track
-            const offset = this.players[playerId].startOffset;
-            const trackIdx = (offset + step) % 52;
+            // Main 52-step Track
+            const trackIdx = (p.startOffset + step) % 52;
             const coord = this.board.trackCoords[trackIdx];
-            return this.board.gridToWorld(coord[0], coord[1], 0.08);
+            return this.board.gridToWorld(coord[0], coord[1], 0.14);
         }
 
         if (step >= 51 && step <= 55) {
             // Home Column
-            const homeCoords = playerId === 'p1' ? this.board.p1HomeCoords : this.board.p2HomeCoords;
-            const coord = homeCoords[step - 51];
-            return this.board.gridToWorld(coord[0], coord[1], 0.08);
+            const homeList = this.board.homeColumns[p.homeColKey];
+            const coord = homeList[step - 51];
+            return this.board.gridToWorld(coord[0], coord[1], 0.14);
         }
 
         if (step >= 56) {
-            // Center Victory Crown 👑
-            const angle = (tokenIndex * Math.PI * 2) / 4;
+            // Center Crown Destination 👑
+            const angle = (tokenIndex * Math.PI * 2) / 4 + Math.PI / 4;
             const r = 0.28;
-            return new THREE.Vector3(Math.cos(angle) * r, 0.22, Math.sin(angle) * r);
+            return new THREE.Vector3(Math.cos(angle) * r, 0.24, Math.sin(angle) * r);
         }
 
         return new THREE.Vector3(0, 0, 0);
@@ -183,17 +190,17 @@ class LudoGame3D {
 
     getTrackIndex(playerId, step) {
         if (step < 0 || step > 50) return -1;
-        const offset = this.players[playerId].startOffset;
-        return (offset + step) % 52;
+        const p = this.playerConfigs[playerId];
+        return (p.startOffset + step) % 52;
     }
 
     initEvents() {
-        // Click to Roll Dice (HUD button)
+        // Roll Dice Button
         document.getElementById('btn-roll-dice').addEventListener('click', () => {
             this.handleRollClick();
         });
 
-        // 3D Canvas Click Handler
+        // 3D Canvas Raycasting Click
         this.renderer.domElement.addEventListener('pointerdown', (e) => {
             if (e.target.closest('.interactive')) return;
 
@@ -203,18 +210,19 @@ class LudoGame3D {
 
             const intersects = this.raycaster.intersectObjects(this.scene.children, true);
             for (const hit of intersects) {
-                // Click on 3D Dice to roll
+                // Click on 3D Dice directly
                 if (hit.object === this.dice.mesh || hit.object.parent === this.dice.mesh) {
                     this.handleRollClick();
                     return;
                 }
 
-                // Click on playable Token
+                // Click on playable Pawn
                 let obj = hit.object;
                 while (obj && obj !== this.scene) {
                     if (obj.userData && obj.userData.isLudoToken) {
                         const { playerId, tokenIndex } = obj.userData;
-                        if (playerId === this.currentTurn && this.hasRolled && !this.isMoving) {
+                        const currentPId = this.activePlayerIds[this.currentTurnIdx];
+                        if (playerId === currentPId && this.hasRolled && !this.isMoving) {
                             if (this.canTokenMove(playerId, tokenIndex, this.diceRolled)) {
                                 this.executeTokenMove(playerId, tokenIndex);
                                 return;
@@ -226,21 +234,21 @@ class LudoGame3D {
             }
         });
 
-        // Mode Switching
-        document.getElementById('btn-mode-pass').addEventListener('click', () => {
-            this.setGameMode('pass');
-        });
-        document.getElementById('btn-mode-ai').addEventListener('click', () => {
-            this.setGameMode('ai');
+        // Game Mode Switching (2P, 4P, AI)
+        ['2p', '4p', 'ai'].forEach(mode => {
+            const btn = document.getElementById(`btn-mode-${mode}`);
+            if (btn) {
+                btn.addEventListener('click', () => this.setGameMode(mode));
+            }
         });
 
-        // Token Count Selector (2 vs 4 tokens)
+        // Token Count Selector (2 vs 4 pawns)
         document.getElementById('select-tokens').addEventListener('change', (e) => {
             this.tokenCount = parseInt(e.target.value, 10);
             this.resetGame();
         });
 
-        // Audio Mute Toggle
+        // Audio Mute
         document.getElementById('btn-mute').addEventListener('click', (e) => {
             if (window.ludoAudio) {
                 window.ludoAudio.muted = !window.ludoAudio.muted;
@@ -249,7 +257,7 @@ class LudoGame3D {
             }
         });
 
-        // Restart / New Game
+        // New Game / Reset
         document.getElementById('btn-restart').addEventListener('click', () => {
             this.resetGame();
         });
@@ -261,16 +269,25 @@ class LudoGame3D {
 
     setGameMode(mode) {
         this.gameMode = mode;
-        document.getElementById('btn-mode-pass').classList.toggle('active', mode === 'pass');
-        document.getElementById('btn-mode-ai').classList.toggle('active', mode === 'ai');
-        this.players.p2.name = (mode === 'ai') ? 'Romantic AI Bot 🤖' : 'Purple Player 💜';
+        ['2p', '4p', 'ai'].forEach(m => {
+            const el = document.getElementById(`btn-mode-${m}`);
+            if (el) el.classList.toggle('active', m === mode);
+        });
+
+        if (mode === '4p') {
+            this.activePlayerIds = ['red', 'green', 'yellow', 'blue'];
+        } else {
+            // 2P or AI: Red vs Yellow (opposite sides)
+            this.activePlayerIds = ['red', 'yellow'];
+        }
+
+        this.playerConfigs.yellow.name = (mode === 'ai') ? 'Computer Bot 🤖' : 'Yellow Player 🟡';
         this.resetGame();
     }
 
     handleRollClick() {
         if (this.dice.isRolling || this.hasRolled || this.isMoving || this.winner) return;
 
-        // Roll 1 to 6
         const rollValue = Math.floor(Math.random() * 6) + 1;
         this.hasRolled = true;
         this.diceRolled = rollValue;
@@ -286,7 +303,7 @@ class LudoGame3D {
             this.consecutiveSixes++;
             if (this.consecutiveSixes >= 3) {
                 this.consecutiveSixes = 0;
-                this.showStatus('Three 6s! Penalty skips turn.');
+                this.showStatus('Three 6s in a row! Penalty skips turn.');
                 this.endTurn(false);
                 return;
             }
@@ -294,41 +311,40 @@ class LudoGame3D {
             this.consecutiveSixes = 0;
         }
 
-        // Check legal moves
+        const currentPId = this.activePlayerIds[this.currentTurnIdx];
         const legalIndices = [];
         for (let i = 0; i < this.tokenCount; i++) {
-            if (this.canTokenMove(this.currentTurn, i, val)) {
+            if (this.canTokenMove(currentPId, i, val)) {
                 legalIndices.push(i);
             }
         }
 
         if (legalIndices.length === 0) {
-            this.showStatus(`Rolled ${val}! No valid moves available.`);
+            this.showStatus(`Rolled ${val}! No legal moves.`);
             setTimeout(() => this.endTurn(false), 900);
             return;
         }
 
-        // Highlight selectable tokens
-        this.highlightTokens(this.currentTurn, legalIndices);
+        this.highlightTokens(currentPId, legalIndices);
 
-        // If only 1 move available and pass mode, or if AI turn
-        if (this.gameMode === 'ai' && this.currentTurn === 'p2') {
+        // AI Move Logic
+        if (this.gameMode === 'ai' && currentPId === 'yellow') {
             setTimeout(() => {
                 const bestToken = this.chooseAiToken(legalIndices, val);
-                this.executeTokenMove('p2', bestToken);
-            }, 650);
+                this.executeTokenMove('yellow', bestToken);
+            }, 600);
         } else if (legalIndices.length === 1) {
-            // Auto-move single legal piece for smooth gameplay
+            // Auto-move single legal pawn
             setTimeout(() => {
-                this.executeTokenMove(this.currentTurn, legalIndices[0]);
-            }, 500);
+                this.executeTokenMove(currentPId, legalIndices[0]);
+            }, 450);
         } else {
-            this.showStatus(`Rolled ${val}! Tap a glowing token to move.`);
+            this.showStatus(`Rolled ${val}! Select a highlighted pawn.`);
         }
     }
 
     canTokenMove(playerId, tokenIndex, roll) {
-        const curStep = this.players[playerId].tokens[tokenIndex];
+        const curStep = this.playerConfigs[playerId].tokens[tokenIndex];
 
         // Yard token: needs a 6 to open
         if (curStep === -1) {
@@ -338,7 +354,7 @@ class LudoGame3D {
         // Already at Crown
         if (curStep >= 56) return false;
 
-        // Check if move exceeds Crown (exact roll required for 56)
+        // Must land exactly on Crown 56
         if (curStep + roll > 56) return false;
 
         return true;
@@ -347,7 +363,7 @@ class LudoGame3D {
     highlightTokens(playerId, tokenIndices) {
         this.clearHighlights();
         tokenIndices.forEach(idx => {
-            const mesh = this.players[playerId].meshList[idx];
+            const mesh = this.playerConfigs[playerId].meshList[idx];
             if (mesh && mesh.userData.aura) {
                 mesh.userData.aura.visible = true;
             }
@@ -355,8 +371,8 @@ class LudoGame3D {
     }
 
     clearHighlights() {
-        ['p1', 'p2'].forEach(pId => {
-            this.players[pId].meshList.forEach(m => {
+        Object.values(this.playerConfigs).forEach(p => {
+            p.meshList.forEach(m => {
                 if (m && m.userData.aura) m.userData.aura.visible = false;
             });
         });
@@ -367,13 +383,13 @@ class LudoGame3D {
         this.isMoving = true;
         this.clearHighlights();
 
-        const curStep = this.players[playerId].tokens[tokenIndex];
+        const curStep = this.playerConfigs[playerId].tokens[tokenIndex];
         const roll = this.diceRolled;
-        const mesh = this.players[playerId].meshList[tokenIndex];
+        const mesh = this.playerConfigs[playerId].meshList[tokenIndex];
 
         // 1. Moving OUT of Yard onto Start Square
         if (curStep === -1) {
-            this.players[playerId].tokens[tokenIndex] = 0;
+            this.playerConfigs[playerId].tokens[tokenIndex] = 0;
             const targetPos = this.getStepWorldPos(playerId, 0, tokenIndex);
             this.animateHopTo(mesh, targetPos, () => {
                 if (window.ludoAudio) window.ludoAudio.playTokenStep();
@@ -397,8 +413,7 @@ class LudoGame3D {
                 if (intermediateStep < targetStep) {
                     hopNextStep();
                 } else {
-                    // Reached final destination
-                    this.players[playerId].tokens[tokenIndex] = targetStep;
+                    this.playerConfigs[playerId].tokens[tokenIndex] = targetStep;
                     const bonusTurn = (roll === 6) || (targetStep === 56);
                     if (targetStep === 56 && window.ludoAudio) window.ludoAudio.playEnterHome();
                     this.checkCaptureOrWin(playerId, tokenIndex, bonusTurn);
@@ -411,15 +426,14 @@ class LudoGame3D {
 
     animateHopTo(mesh, targetPos, onComplete) {
         const startPos = mesh.position.clone();
-        const duration = 160; // ms per hop
+        const duration = 150; // ms
         const startTime = performance.now();
-        const hopHeight = 0.35;
+        const hopHeight = 0.32;
 
         const animate = (time) => {
             const elapsed = time - startTime;
             const progress = Math.min(elapsed / duration, 1.0);
 
-            // Parabolic lift
             const lift = Math.sin(progress * Math.PI) * hopHeight;
 
             mesh.position.x = THREE.MathUtils.lerp(startPos.x, targetPos.x, progress);
@@ -438,42 +452,44 @@ class LudoGame3D {
     }
 
     checkCaptureOrWin(playerId, tokenIndex, hasBonusTurn) {
-        const finalStep = this.players[playerId].tokens[tokenIndex];
+        const finalStep = this.playerConfigs[playerId].tokens[tokenIndex];
 
-        // 1. Check Win Condition
-        const allFinished = this.players[playerId].tokens.slice(0, this.tokenCount).every(s => s === 56);
+        // 1. Victory Check
+        const allFinished = this.playerConfigs[playerId].tokens.slice(0, this.tokenCount).every(s => s === 56);
         if (allFinished) {
             this.handleVictory(playerId);
             return;
         }
 
-        // 2. Check Capturing Opponent Token
+        // 2. Capture Opponent Check
         let captured = false;
         if (finalStep >= 0 && finalStep <= 50) {
             const trackIdx = this.getTrackIndex(playerId, finalStep);
             const isSafe = this.board.safeIndices.includes(trackIdx);
 
             if (!isSafe) {
-                const opponentId = (playerId === 'p1') ? 'p2' : 'p1';
-                for (let oIdx = 0; oIdx < this.tokenCount; oIdx++) {
-                    const oppStep = this.players[opponentId].tokens[oIdx];
-                    if (oppStep >= 0 && oppStep <= 50) {
-                        const oppTrackIdx = this.getTrackIndex(opponentId, oppStep);
-                        if (oppTrackIdx === trackIdx) {
-                            // CAPTURE!
-                            captured = true;
-                            this.players[opponentId].tokens[oIdx] = -1; // Send back to base!
-                            const oppMesh = this.players[opponentId].meshList[oIdx];
-                            const yardPos = this.getStepWorldPos(opponentId, -1, oIdx);
+                // Check all other active opponents
+                this.activePlayerIds.forEach(oppId => {
+                    if (oppId === playerId) return;
+                    for (let oIdx = 0; oIdx < this.tokenCount; oIdx++) {
+                        const oppStep = this.playerConfigs[oppId].tokens[oIdx];
+                        if (oppStep >= 0 && oppStep <= 50) {
+                            if (this.getTrackIndex(oppId, oppStep) === trackIdx) {
+                                // CAPTURE! Send opponent back to base
+                                captured = true;
+                                this.playerConfigs[oppId].tokens[oIdx] = -1;
+                                const oppMesh = this.playerConfigs[oppId].meshList[oIdx];
+                                const yardPos = this.getStepWorldPos(oppId, -1, oIdx);
 
-                            if (window.ludoAudio) window.ludoAudio.playCapture();
-                            this.showStatus(`💥 ${this.players[playerId].name} captured ${this.players[opponentId].name}'s token! Bonus Turn!`);
+                                if (window.ludoAudio) window.ludoAudio.playCapture();
+                                this.showStatus(`💥 ${this.playerConfigs[playerId].name} captured ${this.playerConfigs[oppId].name}! Bonus Turn!`);
 
-                            this.animateHopTo(oppMesh, yardPos, () => {});
-                            break;
+                                this.animateHopTo(oppMesh, yardPos, () => {});
+                                break;
+                            }
                         }
                     }
-                }
+                });
             }
         }
 
@@ -491,57 +507,63 @@ class LudoGame3D {
         if (this.winner) return;
 
         if (grantBonus) {
-            this.showStatus(`🎉 Bonus Turn for ${this.players[this.currentTurn].name}!`);
+            const currentPId = this.activePlayerIds[this.currentTurnIdx];
+            this.showStatus(`🎉 Bonus Turn for ${this.playerConfigs[currentPId].name}!`);
         } else {
-            this.currentTurn = (this.currentTurn === 'p1') ? 'p2' : 'p1';
-            this.showStatus(`${this.players[this.currentTurn].name}'s Turn`);
+            this.currentTurnIdx = (this.currentTurnIdx + 1) % this.activePlayerIds.length;
+            const nextPId = this.activePlayerIds[this.currentTurnIdx];
+            this.showStatus(`${this.playerConfigs[nextPId].name}'s Turn`);
         }
 
         this.updateUI();
 
-        // AI Turn Trigger
-        if (this.gameMode === 'ai' && this.currentTurn === 'p2' && !this.winner) {
+        // AI trigger
+        const activePId = this.activePlayerIds[this.currentTurnIdx];
+        if (this.gameMode === 'ai' && activePId === 'yellow' && !this.winner) {
             setTimeout(() => {
                 this.handleRollClick();
-            }, 800);
+            }, 750);
         }
     }
 
     chooseAiToken(legalIndices, roll) {
-        // AI Evaluation:
-        // 1. Move to Crown (step 56)
+        // AI move selection priority
+        // 1. Move to Crown 56
         for (const idx of legalIndices) {
-            if (this.players.p2.tokens[idx] + roll === 56) return idx;
+            if (this.playerConfigs.yellow.tokens[idx] + roll === 56) return idx;
         }
 
-        // 2. Capture opponent token
+        // 2. Capture opponent
         for (const idx of legalIndices) {
-            const step = this.players.p2.tokens[idx];
+            const step = this.playerConfigs.yellow.tokens[idx];
             if (step >= 0 && step <= 50) {
-                const targetTrack = this.getTrackIndex('p2', step + roll);
+                const targetTrack = this.getTrackIndex('yellow', step + roll);
                 if (!this.board.safeIndices.includes(targetTrack)) {
-                    for (let p1Idx = 0; p1Idx < this.tokenCount; p1Idx++) {
-                        const p1Step = this.players.p1.tokens[p1Idx];
-                        if (this.getTrackIndex('p1', p1Step) === targetTrack) {
-                            return idx; // Prioritize capture!
+                    for (const oppId of this.activePlayerIds) {
+                        if (oppId === 'yellow') return;
+                        for (let o = 0; o < this.tokenCount; o++) {
+                            const oppStep = this.playerConfigs[oppId].tokens[o];
+                            if (this.getTrackIndex(oppId, oppStep) === targetTrack) {
+                                return idx;
+                            }
                         }
                     }
                 }
             }
         }
 
-        // 3. Open token from yard on 6
+        // 3. Open pawn from yard on 6
         if (roll === 6) {
-            const yardToken = legalIndices.find(idx => this.players.p2.tokens[idx] === -1);
+            const yardToken = legalIndices.find(idx => this.playerConfigs.yellow.tokens[idx] === -1);
             if (yardToken !== undefined) return yardToken;
         }
 
-        // 4. Advance closest token to home
+        // 4. Advance closest pawn
         return legalIndices[0];
     }
 
     handleVictory(playerId) {
-        this.winner = this.players[playerId].name;
+        this.winner = this.playerConfigs[playerId].name;
         this.isMoving = false;
         if (window.ludoAudio) window.ludoAudio.playVictory();
 
@@ -555,15 +577,18 @@ class LudoGame3D {
         this.hasRolled = false;
         this.diceRolled = null;
         this.consecutiveSixes = 0;
-        this.currentTurn = 'p1';
+        this.currentTurnIdx = 0;
 
-        this.players.p1.tokens = [-1, -1, -1, -1];
-        this.players.p2.tokens = [-1, -1, -1, -1];
+        Object.values(this.playerConfigs).forEach(p => {
+            p.tokens = [-1, -1, -1, -1];
+        });
 
-        this.spawnAllTokens();
+        this.spawnTokens();
         this.dice.setFaceUp(6);
         this.clearHighlights();
-        this.showStatus('New Match Started! Pink Player rolls first.');
+
+        const firstPId = this.activePlayerIds[0];
+        this.showStatus(`New Game! ${this.playerConfigs[firstPId].name} rolls first.`);
         this.updateUI();
     }
 
@@ -573,16 +598,27 @@ class LudoGame3D {
     }
 
     updateUI() {
-        const isP1 = this.currentTurn === 'p1';
-        document.getElementById('card-p1').classList.toggle('active-turn', isP1);
-        document.getElementById('card-p2').classList.toggle('active-turn', !isP1);
+        const activePId = this.activePlayerIds[this.currentTurnIdx];
+        const container = document.getElementById('players-bar');
+        if (!container) return;
 
-        // Tokens Finished count
-        const p1Done = this.players.p1.tokens.slice(0, this.tokenCount).filter(s => s === 56).length;
-        const p2Done = this.players.p2.tokens.slice(0, this.tokenCount).filter(s => s === 56).length;
+        container.innerHTML = '';
+        this.activePlayerIds.forEach(pId => {
+            const p = this.playerConfigs[pId];
+            const isTurn = pId === activePId;
+            const finishedCount = p.tokens.slice(0, this.tokenCount).filter(s => s === 56).length;
 
-        document.getElementById('score-p1').textContent = `${p1Done}/${this.tokenCount} Home`;
-        document.getElementById('score-p2').textContent = `${p2Done}/${this.tokenCount} Home`;
+            const card = document.createElement('div');
+            card.className = `player-hud-card ${pId} ${isTurn ? 'active-turn' : ''}`;
+            card.innerHTML = `
+                <div class="player-indicator" style="background: #${p.colorHex.toString(16).padStart(6, '0')};"></div>
+                <div class="player-info">
+                    <span class="player-name">${p.name}</span>
+                    <span class="player-score">${finishedCount}/${this.tokenCount} Home</span>
+                </div>
+            `;
+            container.appendChild(card);
+        });
     }
 
     animate() {
@@ -592,7 +628,6 @@ class LudoGame3D {
     }
 }
 
-// Bootstrap once DOM is loaded
 window.addEventListener('DOMContentLoaded', () => {
-    window.ludoGame = new LudoGame3D();
+    window.ludoGame = new ClassicLudo3D();
 });
