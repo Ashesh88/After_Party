@@ -4,6 +4,8 @@ import BottomNav from '../../components/BottomNav';
 import { useSocketStore } from '../../lib/store/socketStore';
 import { useAuthStore } from '../../lib/store/authStore';
 
+import CallOverlay from '../../components/CallOverlay';
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { connectSocket, disconnectSocket } = useSocketStore();
   const token = useAuthStore((state) => state.token);
@@ -22,6 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="pb-24">
       {children}
+      <CallOverlay />
       <BottomNav />
     </div>
   );

@@ -6,9 +6,10 @@ import api from '../../../lib/api';
 import { Message } from '../../../lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useCallStore } from '../../../lib/store/callStore';
 import { 
   Send, CheckCheck, MessageCircleHeart, 
-  Flame, Lock 
+  Flame, Lock, Phone, Video 
 } from 'lucide-react';
 
 export default function ChatPage() {
@@ -20,6 +21,7 @@ export default function ChatPage() {
 
   const socket = useSocketStore(state => state.socket);
   const user = useAuthStore(state => state.user);
+  const startCall = useCallStore(state => state.startCall);
   const feedRef = useRef<HTMLDivElement>(null);
 
   // Fetch partner info
@@ -177,32 +179,49 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Vanish Mode Controls */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* WhatsApp Call Buttons & Vanish Mode Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Audio Call */}
+            <button
+              onClick={() => startCall(socket, 'audio', partner, user)}
+              title="Start WhatsApp Voice Call"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/[0.04] hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <Phone size={15} />
+            </button>
+
+            {/* Video Call */}
+            <button
+              onClick={() => startCall(socket, 'video', partner, user)}
+              title="Start WhatsApp Video Call"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/[0.04] hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/30 text-purple-400 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <Video size={15} />
+            </button>
+
+            {/* Vanish Mode Toggle */}
             <button
               onClick={() => {
                 const next = !vanishMode;
                 setVanishMode(next);
-                toast(next ? 'Vanish Mode: Whispers vanish 👻' : 'Keep Mode: Chat saved 💬', { 
-                  icon: next ? '👻' : '💬' 
-                });
               }}
               title="Toggle Vanish Mode"
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer border active:scale-95 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer border active:scale-95 ${
                 vanishMode
                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.4)] animate-pulse'
                   : 'bg-white/[0.04] text-slate-300 border-white/10 hover:bg-white/[0.08]'
               }`}
             >
-              <span>{vanishMode ? '👻 Vanish ON' : '💬 Keep Mode'}</span>
+              <span>{vanishMode ? '👻 Vanish' : '💬 Keep'}</span>
             </button>
 
+            {/* Burn/Vanish Chat Button */}
             <button
               onClick={handleVanishChat}
               title="Vanish all chat messages"
-              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer group active:scale-95"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer group active:scale-95"
             >
-              <Flame size={16} className="group-hover:scale-110 text-amber-400 group-hover:text-rose-300 transition-transform" />
+              <Flame size={15} className="group-hover:scale-110 text-amber-400 group-hover:text-rose-300 transition-transform" />
             </button>
           </div>
         </header>

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { useSocketStore } from '../../../lib/store/socketStore';
 import { useAuthStore } from '../../../lib/store/authStore';
-import { useWebRTC } from '../../../hooks/useWebRTC';
+import { useCallStore } from '../../../lib/store/callStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
@@ -29,14 +29,12 @@ export default function WatchPage() {
   const [chatInput, setChatInput] = useState('');
   const [showQuickPicks, setShowQuickPicks] = useState(false);
 
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const socket = useSocketStore(state => state.socket);
   const user = useAuthStore(state => state.user);
   const [partner, setPartner] = useState<{ displayName: string; avatar?: string } | null>(null);
-  const { startCall, endCall, inCall, startScreenShare, isScreenSharing } = useWebRTC(socket, localVideoRef, remoteVideoRef);
+  const { callStatus, startCall: startGlobalCall, endCall: endGlobalCall } = useCallStore();
 
   useEffect(() => {
     import('../../../lib/api').then(({ default: api }) => {
@@ -295,49 +293,6 @@ export default function WatchPage() {
         )}
       </main>
 
-      {/* Floating Video Call & Cute Avatar Tiles */}
-      <div className="fixed right-3 sm:right-4 bottom-28 sm:bottom-32 flex flex-col gap-2.5 z-30 pointer-events-none">
-        {/* Partner Tile */}
-        <div className={`pointer-events-auto relative ${inCall ? 'w-24 h-32 sm:w-28 sm:h-36 flex' : 'hidden md:flex w-24 h-32'} rounded-2xl overflow-hidden glass-panel border border-purple-500/30 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group`}>
-          <video ref={remoteVideoRef} autoPlay playsInline className={`w-full h-full object-cover ${inCall ? 'block' : 'hidden'}`} />
-          {!inCall && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-[#0d0d18]/95 backdrop-blur-md">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 p-1 mb-1.5 shadow-[0_0_15px_rgba(147,51,234,0.3)]">
-                {partner?.avatar ? (
-                  <img src={partner.avatar} alt="Partner" className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <span className="text-2xl flex items-center justify-center h-full">🐰</span>
-                )}
-              </div>
-              <span className="text-[10px] font-bold text-purple-300 truncate max-w-full">
-                {partner?.displayName || 'Partner'}
-              </span>
-              <span className="text-[8px] text-slate-500 uppercase font-bold tracking-wider">Ready</span>
-            </div>
-          )}
-        </div>
-
-        {/* You Tile */}
-        <div className={`pointer-events-auto relative ${inCall ? 'w-24 h-32 sm:w-28 sm:h-36 flex' : 'hidden md:flex w-24 h-32'} rounded-2xl overflow-hidden glass-panel border border-pink-500/40 shadow-[0_10px_25px_rgba(0,0,0,0.6)] group`}>
-          <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${inCall ? 'block' : 'hidden'}`} />
-          {!inCall && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-[#0d0d18]/95 backdrop-blur-md">
-              <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/30 p-1 mb-1.5 shadow-[0_0_15px_rgba(244,63,142,0.3)]">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt="You" className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <span className="text-2xl flex items-center justify-center h-full">🧸</span>
-                )}
-              </div>
-              <span className="text-[10px] font-bold text-pink-300 truncate max-w-full">
-                {user?.displayName || 'You'}
-              </span>
-              <span className="text-[8px] text-slate-500 uppercase font-bold tracking-wider">Host</span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Floating Bottom Reaction & Call Controller Bar */}
       <div className="fixed bottom-[74px] sm:bottom-20 left-3 right-3 sm:left-4 sm:right-4 max-w-xl mx-auto z-30 pointer-events-none">
         <div className="pointer-events-auto p-2 sm:p-2.5 rounded-full bg-[#0d0d1c]/90 backdrop-blur-2xl border border-white/[0.1] shadow-[0_15px_35px_rgba(0,0,0,0.7)] flex justify-between items-center gap-2">
@@ -379,29 +334,28 @@ export default function WatchPage() {
               )}
             </button>
 
-            {!inCall ? (
+            {callStatus === 'idle' ? (
               <button 
-                onClick={startCall} 
-                className="px-3.5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg"
+                onClick={() => {
+                  if (socket) {
+                    startGlobalCall(socket, 'video', partner, user);
+                  } else {
+                    toast.error('Connection not ready');
+                  }
+                }} 
+                className="px-3.5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
               >
                 <Phone size={14} />
                 <span>Call</span>
               </button>
             ) : (
-              <div className="flex gap-1.5">
-                <button 
-                  onClick={isScreenSharing ? undefined : startScreenShare} 
-                  className="p-2 rounded-full bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs cursor-pointer"
-                >
-                  <MonitorUp size={14} />
-                </button>
-                <button 
-                  onClick={() => endCall()} 
-                  className="p-2 rounded-full bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-xs cursor-pointer"
-                >
-                  <PhoneOff size={14} />
-                </button>
-              </div>
+              <button 
+                onClick={() => endGlobalCall(socket)} 
+                className="px-3.5 py-2 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
+              >
+                <PhoneOff size={14} />
+                <span>End Call</span>
+              </button>
             )}
           </div>
         </div>

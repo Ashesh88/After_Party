@@ -100,7 +100,36 @@ const setupSocket = (io) => {
         socket.to(roomChannel).emit('watch:leave', { userId });
       });
 
-      // WebRTC
+      // WebRTC Call Signaling
+      socket.on('webrtc:call-user', ({ callType, callerName, callerAvatar }) => {
+        socket.to(roomChannel).emit('webrtc:incoming-call', {
+          callerId: userId,
+          callerName,
+          callerAvatar,
+          callType: callType || 'video',
+        });
+      });
+
+      socket.on('webrtc:accept-call', () => {
+        socket.to(roomChannel).emit('webrtc:call-accepted');
+      });
+
+      socket.on('webrtc:reject-call', () => {
+        socket.to(roomChannel).emit('webrtc:call-rejected');
+      });
+
+      socket.on('webrtc:signal', ({ signal }) => {
+        socket.to(roomChannel).emit('webrtc:signal', { signal, senderId: userId });
+      });
+
+      socket.on('webrtc:hangup', () => {
+        socket.to(roomChannel).emit('webrtc:hangup', { senderId: userId });
+      });
+
+      socket.on('webrtc:end', () => {
+        socket.to(roomChannel).emit('webrtc:hangup', { senderId: userId });
+      });
+
       socket.on('webrtc:offer', (offer) => {
         socket.to(roomChannel).emit('webrtc:offer', { offer, senderId: userId });
       });
@@ -111,10 +140,6 @@ const setupSocket = (io) => {
 
       socket.on('webrtc:ice-candidate', (candidate) => {
         socket.to(roomChannel).emit('webrtc:ice-candidate', { candidate, senderId: userId });
-      });
-
-      socket.on('webrtc:hangup', () => {
-        socket.to(roomChannel).emit('webrtc:hangup', { senderId: userId });
       });
 
       // Location
