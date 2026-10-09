@@ -5,16 +5,19 @@ import { useSocketStore } from '../../../lib/store/socketStore';
 import { useAuthStore } from '../../../lib/store/authStore';
 import { useWebRTC } from '../../../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { 
   Heart, Sparkles, MessageSquareHeart, Phone, PhoneOff, MonitorUp, 
   Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon 
 } from 'lucide-react';
 
 const CURATED_MOVIES = [
-  { title: 'La La Land (City of Stars)', id: 'GTWqwSNQ58Y', category: 'Romantic Musical', duration: '3 min preview' },
-  { title: 'Midnight in Paris (Lo-Fi Walk)', id: 'FAkjc64W864', category: 'Cozy Atmosphere', duration: 'Vibe check' },
-  { title: 'Romantic Rainy Cafe Ambience', id: 'mPZkdNFkNps', category: 'Couples Chill & Chat', duration: 'Background Loop' },
-  { title: 'About Time (Emotional Moments)', id: 'T7A810duHvw', category: 'Love & Memories', duration: 'Highlights' },
+  { title: 'La La Land (Trailer)', id: '0pdqf4P9MB8', category: 'Romantic Musical', duration: 'Trailer' },
+  { title: 'Ed Sheeran - Perfect', id: '2Vv-BfVoq4g', category: 'Romantic Ballad', duration: 'Official Video' },
+  { title: 'Rainy Cafe & Jazz', id: 'c0_ejQQcrwI', category: 'Cozy Atmosphere', duration: 'Chill Session' },
+  { title: 'About Time (Movie Trailer)', id: 'T7A810duHvw', category: 'Love Story', duration: 'Trailer' },
+  { title: 'Bruno Mars - Just The Way You Are', id: 'LjhCEhWiKXk', category: 'Couples Hit', duration: 'Music Video' },
+  { title: 'Cozy Lo-Fi Beats', id: 'jfKfPfyJRdk', category: 'Relax & Chat', duration: 'Lo-Fi Chill' },
 ];
 
 export default function WatchPage() {
@@ -48,15 +51,28 @@ export default function WatchPage() {
   }, [user]);
 
   const extractVideoId = (input: string) => {
-    const match = input.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+    if (!input) return null;
+    const trimmed = input.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+      return trimmed;
+    }
+    const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([^&?/\s]+)/);
     return match ? match[1] : null;
   };
 
-  const handleLoadUrl = (customId?: string) => {
+  const handleLoadUrl = (customId?: string, customTitle?: string) => {
     const id = customId || extractVideoId(url);
     if (id) {
       setVideoId(id);
+      setUrl(`https://www.youtube.com/watch?v=${id}`);
       socket?.emit('watch:load', { videoId: id });
+      if (customTitle) {
+        toast.success(`Playing ${customTitle} 🍿`);
+      } else {
+        toast.success('Video loaded! 🍿');
+      }
+    } else {
+      toast.error('Please enter a valid YouTube link or ID');
     }
   };
 
@@ -193,7 +209,7 @@ export default function WatchPage() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    handleLoadUrl(item.id);
+                    handleLoadUrl(item.id, item.title);
                     setShowQuickPicks(false);
                   }}
                   className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-pink-500/15 border border-white/5 hover:border-pink-500/30 text-left transition-all group cursor-pointer"
@@ -210,19 +226,38 @@ export default function WatchPage() {
       {/* Main Video Stage */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 flex flex-col items-center justify-center relative z-10">
         {videoId ? (
-          <div className="w-full aspect-video rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative">
-            <YouTube
-              videoId={videoId}
-              className="absolute inset-0 w-full h-full"
-              iframeClassName="w-full h-full"
-              opts={{
-                width: '100%',
-                height: '100%',
-                playerVars: { autoplay: 1, controls: 1, modestbranding: 1 }
-              }}
-              onPlay={() => socket?.emit('watch:sync', { state: 'play' })}
-              onPause={() => socket?.emit('watch:sync', { state: 'pause' })}
-            />
+          <div className="w-full flex flex-col items-center gap-3">
+            <div className="w-full aspect-video rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
+                title="Couple Theater"
+                className="w-full h-full border-0 rounded-[32px]"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+
+            {/* Quick Switch / Close Bar */}
+            <div className="flex items-center gap-3 py-1">
+              <button
+                onClick={() => {
+                  setVideoId(null);
+                  setUrl('');
+                }}
+                className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-xs font-semibold text-slate-300 hover:text-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <X size={14} />
+                <span>Switch / Close Video</span>
+              </button>
+
+              <button
+                onClick={() => setShowQuickPicks(true)}
+                className="px-4 py-1.5 rounded-full bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs font-semibold text-pink-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <Popcorn size={14} className="text-amber-400" />
+                <span>Pick Another Video</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="w-full aspect-video max-w-3xl rounded-[32px] glass-panel border border-white/[0.08] flex flex-col items-center justify-center p-8 text-center shadow-2xl relative overflow-hidden group">
@@ -234,15 +269,15 @@ export default function WatchPage() {
             <p className="text-xs text-slate-400 max-w-md mb-6 font-medium">
               Paste any YouTube video link, movie trailer, or music playlist to stream and sync perfectly together in real-time.
             </p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {CURATED_MOVIES.slice(0, 3).map(m => (
+            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+              {CURATED_MOVIES.map(m => (
                 <button
                   key={m.id}
-                  onClick={() => handleLoadUrl(m.id)}
-                  className="px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/40 text-[11px] font-semibold text-slate-300 transition-all cursor-pointer flex items-center gap-1.5"
+                  onClick={() => handleLoadUrl(m.id, m.title)}
+                  className="px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/40 text-[11px] font-semibold text-slate-300 transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
                 >
                   <Sparkles size={12} className="text-pink-400" />
-                  <span>{m.title.split('(')[0]}</span>
+                  <span>{m.title}</span>
                 </button>
               ))}
             </div>
