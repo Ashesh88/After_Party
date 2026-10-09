@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
   Heart, Sparkles, MessageSquareHeart, Phone, PhoneOff, MonitorUp, 
-  Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon, Search, Loader2, Play 
+  Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon, Search, Loader2, Play,
+  ExternalLink, RefreshCw, ShieldAlert
 } from 'lucide-react';
 import { soundService } from '../../../lib/soundService';
 import api from '../../../lib/api';
@@ -39,6 +40,7 @@ export default function WatchPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [useProxy, setUseProxy] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +48,7 @@ export default function WatchPage() {
   const user = useAuthStore(state => state.user);
   const [partner, setPartner] = useState<{ displayName: string; avatar?: string } | null>(null);
   const { callStatus, startCall: startGlobalCall, endCall: endGlobalCall } = useCallStore();
+  const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
 
   useEffect(() => {
     import('../../../lib/api').then(({ default: api }) => {
@@ -104,6 +107,7 @@ export default function WatchPage() {
   const handleLoadMedia = (target: MediaState, customTitle?: string) => {
     const finalState = { ...target, title: customTitle || target.title };
     setMediaState(finalState);
+    setUseProxy(false);
     if (finalState.type === 'youtube') {
       setUrl(`https://www.youtube.com/watch?v=${finalState.src}`);
     } else {
@@ -160,6 +164,7 @@ export default function WatchPage() {
     if (!socket) return;
 
     socket.on('watch:load', (data: any) => {
+      setUseProxy(false);
       if (data?.mediaType && data?.src) {
         setMediaState({ type: data.mediaType, src: data.src, title: data.title });
         setUrl(data.src);
@@ -441,7 +446,12 @@ export default function WatchPage() {
 
               {mediaState.type === 'embed' && (
                 <iframe
-                  src={mediaState.src}
+                  key={`${mediaState.src}-${useProxy}`}
+                  src={
+                    useProxy
+                      ? `${apiOrigin}/api/watch/proxy?url=${encodeURIComponent(mediaState.src)}`
+                      : mediaState.src
+                  }
                   title="Couple Theater - Web Stream"
                   className="w-full h-full border-0 rounded-2xl sm:rounded-[32px] bg-black"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -451,11 +461,71 @@ export default function WatchPage() {
               )}
             </div>
 
+            {/* Unblock & Popout Assistant Bar for Web Streams */}
+            {mediaState.type === 'embed' && (
+              <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-200 shadow-lg">
+                <div className="flex items-center gap-2 text-left">
+                  <ShieldAlert size={18} className="text-amber-400 shrink-0" />
+                  <span>
+                    {useProxy ? (
+                      <strong className="text-emerald-300">⚡ Proxy unblock active (stripping X-Frame-Options & CSP headers). If still blank, use Popout Tab:</strong>
+                    ) : (
+                      <span>Site blocked or refused to connect (sad face)? Tap <strong>Proxy Unblock</strong> or <strong>Popout Tab</strong>:</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !useProxy;
+                      setUseProxy(next);
+                      toast(next ? 'Proxy Unblock activated ⚡' : 'Switched to Direct Embed', { icon: '⚡' });
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 ${
+                      useProxy
+                        ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold shadow-amber-500/20'
+                    }`}
+                  >
+                    <RefreshCw size={13} className={useProxy ? 'animate-spin' : ''} />
+                    <span>{useProxy ? '⚡ Using Proxy' : '⚡ Try Proxy Unblock'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(mediaState.src, '_blank');
+                      toast.success('Opened stream in popout tab! Call & chat remain active here.');
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+                  >
+                    <ExternalLink size={13} className="text-pink-400" />
+                    <span>↗ Popout Tab</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Quick Switch / Close Bar */}
             <div className="flex items-center gap-2 sm:gap-3 py-1 flex-wrap justify-center">
               <span className="px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/5 text-[11px] font-medium text-slate-300">
                 Playing: <strong className="text-white">{mediaState.title || (mediaState.type === 'youtube' ? 'YouTube' : mediaState.type === 'direct' ? 'Direct Stream' : 'Web Stream')}</strong>
               </span>
+
+              {mediaState.type === 'embed' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(mediaState.src, '_blank');
+                    toast.success('Opened stream in popout window! Call & chat remain active here.');
+                  }}
+                  className="px-3.5 sm:px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/15 border border-white/10 text-xs font-semibold text-slate-200 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
+                  title="Open stream in synced popout tab"
+                >
+                  <ExternalLink size={14} className="text-pink-400" />
+                  <span>Popout Tab</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {

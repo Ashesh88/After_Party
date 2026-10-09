@@ -1,9 +1,58 @@
 const express = require('express');
 const https = require('https');
+const http = require('http');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// GET /api/watch/proxy?url=targetUrl
+// Strips X-Frame-Options and Content-Security-Policy so streaming embeds work in iframes
+router.get('/proxy', (req, res) => {
+  const targetUrl = (req.query.url || '').toString().trim();
+  if (!targetUrl || !targetUrl.startsWith('http')) {
+    return res.status(400).send('Invalid or missing stream URL');
+  }
+
+  try {
+    const parsed = new URL(targetUrl);
+    const client = parsed.protocol === 'https:' ? https : http;
+
+    const options = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      }
+    };
+
+    client.get(targetUrl, options, (upstreamRes) => {
+      // Handle HTTP redirects
+      if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400 && upstreamRes.headers.location) {
+        let redirect = upstreamRes.headers.location;
+        if (!redirect.startsWith('http')) {
+          redirect = new URL(redirect, targetUrl).href;
+        }
+        return res.redirect(`/api/watch/proxy?url=${encodeURIComponent(redirect)}`);
+      }
+
+      // Strip headers that cause "refuse to connect"
+      const headers = { ...upstreamRes.headers };
+      delete headers['x-frame-options'];
+      delete headers['content-security-policy'];
+      delete headers['content-security-policy-report-only'];
+      headers['access-control-allow-origin'] = '*';
+
+      res.writeHead(upstreamRes.statusCode || 200, headers);
+      upstreamRes.pipe(res);
+    }).on('error', (err) => {
+      res.status(502).send('Error connecting to streaming server: ' + err.message);
+    });
+  } catch (err) {
+    res.status(500).send('Invalid URL format');
+  }
+});
+
+// Protect remaining endpoints
 router.use(auth);
 
 // Helper to scrape top YouTube search results safely
