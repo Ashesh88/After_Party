@@ -228,7 +228,7 @@ export default function CallOverlay() {
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             className="fixed right-4 bottom-24 z-[90] w-36 sm:w-44 h-52 sm:h-60 rounded-3xl glass-panel border border-pink-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col group cursor-pointer"
             onClick={toggleMinimize}
-            title="Click to expand (Bada karein)"
+            title="Click to expand"
           >
             {/* Video preview / Avatar */}
             <div className="relative flex-1 bg-black">
@@ -259,6 +259,7 @@ export default function CallOverlay() {
                   e.stopPropagation();
                   toggleMinimize();
                 }}
+                title="Expand full screen"
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
               >
                 <Maximize2 size={13} />
@@ -332,14 +333,14 @@ export default function CallOverlay() {
                   </div>
                 </div>
 
-                {/* Chota (Minimize) Button */}
+                {/* Minimize Button */}
                 <button
                   onClick={toggleMinimize}
-                  title="Chota karein (Minimize to floating badge)"
+                  title="Minimize Call"
                   className="px-3.5 py-2 rounded-2xl bg-white/[0.1] hover:bg-white/[0.2] border border-white/15 text-xs font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
                 >
                   <Minimize2 size={15} />
-                  <span>Chota karein</span>
+                  <span>Minimize</span>
                 </button>
               </div>
 
