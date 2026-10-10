@@ -53,7 +53,9 @@ const games = [
     desc: 'Luxury 3D pawns, Dice & Crown',
     icon: Dices, 
     color: 'from-pink-500 to-purple-600', 
-    tag: '3D LIVE' 
+    tag: '3D LIVE',
+    video: '/videos/ludo-preview.mp4',
+    thumb: '/videos/ludo-thumb.jpg'
   },
   { 
     id: 'pool', 
@@ -61,7 +63,9 @@ const games = [
     desc: '8-Ball billiards, Cue physics & AI',
     icon: CircleDot, 
     color: 'from-emerald-400 to-teal-500', 
-    tag: '3D LIVE' 
+    tag: '3D LIVE',
+    video: '/videos/pool-preview.mp4',
+    thumb: '/videos/pool-thumb.jpg'
   },
   { 
     id: 'tictactoe', 
@@ -135,6 +139,35 @@ export default function GamesPage() {
           const videoSrc = (game as any).video;
           const thumbSrc = (game as any).thumb;
 
+          // For video games (Chess, Ludo, Pool): Full section video, zero padding, edge-to-edge, floating Play now in bottom-right corner
+          if (videoSrc) {
+            return (
+              <button
+                key={game.id}
+                onClick={() => setActiveGame(game.id)}
+                className="w-full aspect-video rounded-[24px] sm:rounded-[28px] overflow-hidden relative cursor-pointer group glass-panel border border-white/10 hover:border-pink-500/50 shadow-xl transition-all duration-300 p-0"
+              >
+                <video
+                  src={videoSrc}
+                  poster={thumbSrc}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity pointer-events-none" />
+
+                {/* Floating "Play now →" button in right-bottom corner */}
+                <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-pink-500/85 hover:bg-pink-500 text-white text-[10px] font-extrabold shadow-lg backdrop-blur-md border border-white/20 group-hover:translate-x-0.5 group-hover:scale-105 transition-all">
+                  <span>Play now</span>
+                  <span>→</span>
+                </div>
+              </button>
+            );
+          }
+
+          // For standard cards without video
           return (
             <button
               key={game.id}
@@ -144,38 +177,16 @@ export default function GamesPage() {
               <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-15 transition-opacity`} />
               
               <div>
-                {videoSrc ? (
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-lg relative bg-black/80 group-hover:border-pink-500/30 transition-all">
-                    <video
-                      src={videoSrc}
-                      poster={thumbSrc}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-contain"
-                    />
-                    <div className="absolute top-2 left-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-pink-400 shadow-md">
-                      <Icon size={14} strokeWidth={2} />
-                    </div>
-                    {game.tag && (
-                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/30 text-pink-300 border border-pink-500/40 backdrop-blur-md">
-                        {game.tag}
-                      </span>
-                    )}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-pink-400 group-hover:scale-110 group-hover:border-pink-500/40 transition-all shadow-md">
+                    <Icon size={22} strokeWidth={2} />
                   </div>
-                ) : (
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-pink-400 group-hover:scale-110 group-hover:border-pink-500/40 transition-all shadow-md">
-                      <Icon size={22} strokeWidth={2} />
-                    </div>
-                    {game.tag && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                        {game.tag}
-                      </span>
-                    )}
-                  </div>
-                )}
+                  {game.tag && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                      {game.tag}
+                    </span>
+                  )}
+                </div>
 
                 <h3 className="font-extrabold text-white text-sm mb-0.5 group-hover:text-pink-200 transition-colors">
                   {game.name}
