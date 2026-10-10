@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>3D Pub Darts Studio</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay -->
+  <div id="ui-overlay">
+    <!-- Top Scoreboard -->
+    <div class="top-dashboard">
+      <div id="p1-card" class="player-card active">
+        <div class="player-header">
+          <div class="player-avatar p1-avatar">1</div>
+          <div id="p1-name" class="player-name">Player 1</div>
+        </div>
+        <div id="p1-score" class="player-score">301</div>
+        <div class="player-stats">
+          <span>Target: 0</span>
+          <span id="p1-round-score">Rd: 0</span>
+        </div>
+      </div>
+
+      <div class="match-info-center">
+        <div id="turn-indicator" class="turn-pill">Player 1's Turn</div>
+        <div class="darts-remaining">
+          <span id="dart-icon-1" class="dart-icon active">🎯</span>
+          <span id="dart-icon-2" class="dart-icon active">🎯</span>
+          <span id="dart-icon-3" class="dart-icon active">🎯</span>
+        </div>
+        <div id="last-hit-display" class="last-hit-text">Aim & Throw!</div>
+      </div>
+
+      <div id="p2-card" class="player-card">
+        <div class="player-header">
+          <div class="player-avatar p2-avatar">2</div>
+          <div id="p2-name" class="player-name">Friend</div>
+        </div>
+        <div id="p2-score" class="player-score">301</div>
+        <div class="player-stats">
+          <span>Target: 0</span>
+          <span id="p2-round-score">Rd: 0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aim Reticle (follows aim coordinates) -->
+    <div id="aim-crosshair">
+      <div class="crosshair-ring"></div>
+      <div class="crosshair-center"></div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="bottom-controls-bar interactive">
+      <div class="control-row">
+        <div class="aim-sliders-group">
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>Horizontal Aim</span>
+              <span id="aim-x-val">0°</span>
+            </div>
+            <input type="range" id="aim-x-slider" min="-30" max="30" value="0" />
+          </div>
+
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>Height / Elevation</span>
+              <span id="aim-y-val">0</span>
+            </div>
+            <input type="range" id="aim-y-slider" min="-30" max="30" value="0" />
+          </div>
+        </div>
+
+        <button id="throw-btn" class="throw-btn">
+          <span>🎯</span>
+          <span>Throw</span>
+        </button>
+      </div>
+
+      <div class="action-buttons-row">
+        <div style="display: flex; gap: 8px;">
+          <button id="mode-btn" class="chip-btn">Mode: 301 Classic</button>
+          <button id="ai-btn" class="chip-btn">Opponent: Friend (2P)</button>
+        </div>
+        <button id="reset-btn" class="chip-btn">Reset Match</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory / Game Over Modal -->
+  <div id="win-modal" class="interactive">
+    <div id="win-title">🏆 VICTORY!</div>
+    <div id="win-subtitle">Player 1 hit the perfect checkout!</div>
+    <button id="modal-restart-btn" class="throw-btn" style="margin: 0 auto; width: 100%; justify-content: center;">
+      Play Again
+    </button>
+  </div>
+
+  <script src="js/lib/three.min.js"></script>
+  <script src="audio.js"></script>
+  <script src="js/darts-game.js"></script>
+</body>
+</html>
