@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LocationData } from '../hooks/useLocation';
-import { Layers, Moon, Globe, Map as MapIcon } from 'lucide-react';
+import { Moon, Globe, Map as MapIcon } from 'lucide-react';
 
 interface LiveProximityMapProps {
   userLocation: LocationData | null;
