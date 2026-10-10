@@ -327,25 +327,98 @@ body, html {
     transform: scale(1.05);
 }
 
-/* Floating Air-Glass Corner Chat HUD (Max 5 Messages, Emojis, No Header) */
+/* Top Chat Toggle Button */
+.btn-chat-toggle {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fbbf24;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-chat-toggle:hover {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: #fbbf24;
+    transform: scale(1.06);
+}
+
+.chat-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    display: none;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.chat-dot.active {
+    display: block;
+}
+
+/* Floating Air-Glass Corner Chat HUD (Collapsible) */
 .floating-corner-chat {
     position: fixed;
     right: 14px;
-    bottom: 84px;
-    width: 240px;
+    top: 76px;
+    width: 250px;
     max-width: calc(100vw - 28px);
-    z-index: 25;
-    background: rgba(10, 14, 23, 0.55);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 8px;
+    z-index: 40;
+    background: rgba(10, 14, 23, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-    transition: all 0.3s ease;
+    gap: 8px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top right;
+}
+
+.floating-corner-chat.closed {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.9) translateY(-10px);
+}
+
+.air-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-close-chat {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s ease;
+}
+
+.btn-close-chat:hover {
+    color: #fff;
 }
 
 .air-chat-messages {

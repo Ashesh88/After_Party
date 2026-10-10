@@ -95,6 +95,57 @@ body, html {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.view-toggle-mini {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.btn-chat-toggle {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #38bdf8;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-chat-toggle:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    transform: scale(1.06);
+}
+
+.chat-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    display: none;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.chat-dot.active {
+    display: block;
+}
+
 .toggle-btn {
     padding: 4px 8px;
     border: none;
@@ -108,6 +159,7 @@ body, html {
     display: flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
 }
 
 .toggle-btn.active {
@@ -205,7 +257,7 @@ body, html {
 /* Bottom Controls HUD */
 .bottom-hud {
     position: fixed;
-    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    bottom: max(22px, env(safe-area-inset-bottom, 22px));
     left: 0;
     right: 0;
     display: flex;
@@ -213,15 +265,16 @@ body, html {
     align-items: center;
     gap: 8px;
     z-index: 20;
-    max-width: 500px;
+    max-width: 440px;
     margin: 0 auto;
-    padding: 0 12px;
+    padding: 0 16px;
 }
 
 .bottom-hud-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    gap: 16px;
     width: 100%;
 }
 
@@ -251,13 +304,13 @@ body, html {
 }
 
 .power-control-panel {
-    flex: 1;
+    width: 100%;
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
     border-radius: 14px;
-    padding: 5px 12px;
+    padding: 6px 14px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
@@ -577,25 +630,58 @@ body, html {
     color: var(--text-muted);
 }
 
-/* Floating Air-Glass Corner Chat HUD (Max 5 Messages, Emojis, No Header) */
+/* Floating Air-Glass Corner Chat HUD (Collapsible) */
 .floating-corner-chat {
     position: fixed;
     right: 14px;
-    bottom: 84px;
-    width: 240px;
+    top: 76px;
+    width: 250px;
     max-width: calc(100vw - 28px);
-    z-index: 25;
-    background: rgba(10, 14, 23, 0.55);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 8px;
+    z-index: 40;
+    background: rgba(10, 14, 23, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-    transition: all 0.3s ease;
+    gap: 8px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top right;
+}
+
+.floating-corner-chat.closed {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.9) translateY(-10px);
+}
+
+.air-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-close-chat {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s ease;
+}
+
+.btn-close-chat:hover {
+    color: #fff;
 }
 
 .air-chat-messages {

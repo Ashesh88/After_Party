@@ -21,6 +21,10 @@
                 <div class="players-bar" id="players-bar">
                     <!-- Dynamically populated by JS for active players -->
                 </div>
+                <button class="btn-chat-toggle" id="btn-chat-toggle" title="Open Chat">
+                    <i class="fa-solid fa-comment-dots"></i>
+                    <span class="chat-dot" id="chat-badge-dot"></span>
+                </button>
             </div>
         </div>
 
@@ -33,8 +37,12 @@
         </footer>
     </div>
 
-    <!-- Floating Air-Glass Corner Chat HUD (Borderless, No Header, Clean 5-Msg Stack) -->
-    <div class="floating-corner-chat interactive" id="floating-chat">
+    <!-- Floating Air-Glass Corner Chat HUD (Collapsible) -->
+    <div class="floating-corner-chat interactive closed" id="floating-chat">
+        <div class="air-chat-header">
+            <span><i class="fa-solid fa-comments"></i> In-Game Chat</span>
+            <button class="btn-close-chat" id="btn-close-chat" title="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
         <div class="air-chat-messages" id="panel-chat-messages">
             <!-- Up to 5 live match chat messages -->
         </div>

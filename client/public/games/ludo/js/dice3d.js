@@ -105,8 +105,9 @@ class LudoDice3D {
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
 
-        // Default rest position (rest outside board on side tray, never overlaps pawns!)
-        this.restPos = new THREE.Vector3(4.35, 0.30, 0);
+        // Default rest position (Positioned bottom-center, right above the "Roll 3D Dice" button!)
+        this.size = 0.72;
+        this.restPos = new THREE.Vector3(0, 0.38, 4.35);
         this.mesh.position.copy(this.restPos);
         this.setFaceUp(6); // Default show 6
 
@@ -115,14 +116,20 @@ class LudoDice3D {
 
     setFaceUp(val) {
         this.value = val;
-        // Rotations to bring target face to point directly upward (+Y)
+        // Rotations to bring target face normal to point directly upward (+Y)
+        // Face 0 (+X): pip 1 -> z = +PI / 2
+        // Face 1 (-X): pip 6 -> z = -PI / 2
+        // Face 2 (+Y): pip 2 -> (0, 0, 0)
+        // Face 3 (-Y): pip 5 -> x = PI
+        // Face 4 (+Z): pip 3 -> x = -PI / 2
+        // Face 5 (-Z): pip 4 -> x = +PI / 2
         const rotMap = {
-            1: { x: 0, y: 0, z: -Math.PI / 2 },
-            6: { x: 0, y: 0, z: Math.PI / 2 },
+            1: { x: 0, y: 0, z: Math.PI / 2 },
+            6: { x: 0, y: 0, z: -Math.PI / 2 },
             2: { x: 0, y: 0, z: 0 },
             5: { x: Math.PI, y: 0, z: 0 },
-            3: { x: Math.PI / 2, y: 0, z: 0 },
-            4: { x: -Math.PI / 2, y: 0, z: 0 }
+            3: { x: -Math.PI / 2, y: 0, z: 0 },
+            4: { x: Math.PI / 2, y: 0, z: 0 }
         };
         const target = rotMap[val] || { x: 0, y: 0, z: 0 };
         this.mesh.rotation.set(target.x, target.y, target.z);
@@ -136,18 +143,18 @@ class LudoDice3D {
         if (window.ludoAudio) window.ludoAudio.playDiceShake();
 
         const startPos = this.mesh.position.clone();
-        const peakHeight = 2.4;
+        const peakHeight = 2.0;
         const duration = 750; // ms
         const startTime = performance.now();
 
         // Target rotation for face up + wild extra spins
         const rotMap = {
-            1: { x: 0, y: 0, z: -Math.PI / 2 },
-            6: { x: 0, y: 0, z: Math.PI / 2 },
+            1: { x: 0, y: 0, z: Math.PI / 2 },
+            6: { x: 0, y: 0, z: -Math.PI / 2 },
             2: { x: 0, y: 0, z: 0 },
             5: { x: Math.PI, y: 0, z: 0 },
-            3: { x: Math.PI / 2, y: 0, z: 0 },
-            4: { x: -Math.PI / 2, y: 0, z: 0 }
+            3: { x: -Math.PI / 2, y: 0, z: 0 },
+            4: { x: Math.PI / 2, y: 0, z: 0 }
         };
         const baseRot = rotMap[targetValue];
 

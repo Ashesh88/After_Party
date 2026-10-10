@@ -110,11 +110,12 @@ class ClassicLudo3D {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0c10);
 
-        // Responsive Camera: perfectly framed for mobile portrait & desktop
+        // Responsive Camera: perfectly framed for mobile portrait & desktop with dice at bottom
         const isMobile = window.innerWidth < 650;
-        const initialFov = isMobile ? 54 : 40;
+        const initialFov = isMobile ? 52 : 38;
         this.camera = new THREE.PerspectiveCamera(initialFov, window.innerWidth / window.innerHeight, 0.1, 100);
-        this.camera.position.set(0, isMobile ? 12.8 : 10.5, isMobile ? 5.2 : 6.2);
+        this.camera.position.set(0, isMobile ? 13.8 : 11.5, isMobile ? 6.2 : 6.6);
+        this.camera.lookAt(0, 0, 0.6);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -131,7 +132,7 @@ class ClassicLudo3D {
         this.controls.maxPolarAngle = Math.PI / 2.25;
         this.controls.minDistance = 4;
         this.controls.maxDistance = 16;
-        this.controls.target.set(0, isMobile ? 0.35 : 0.1, 0);
+        this.controls.target.set(0, 0, 0.6);
 
         // Soft, Eye-Friendly Diffused Lighting (Zero harsh white glare)
         const ambient = new THREE.AmbientLight(0xfff5ea, 0.65);
@@ -160,8 +161,10 @@ class ClassicLudo3D {
 
         window.addEventListener('resize', () => {
             const isMob = window.innerWidth < 650;
-            this.camera.fov = isMob ? 54 : 40;
+            this.camera.fov = isMob ? 52 : 38;
             this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.position.set(0, isMob ? 13.8 : 11.5, isMob ? 6.2 : 6.6);
+            this.camera.lookAt(0, 0, 0.6);
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
@@ -436,6 +439,28 @@ class ClassicLudo3D {
                 }
             });
         });
+
+        // Chat Flyout Open / Close Toggle
+        const btnChatToggle = document.getElementById('btn-chat-toggle');
+        const floatingChat = document.getElementById('floating-chat');
+        const btnCloseChat = document.getElementById('btn-close-chat');
+        const unreadDot = document.getElementById('chat-badge-dot');
+
+        if (btnChatToggle && floatingChat) {
+            btnChatToggle.addEventListener('click', () => {
+                const isClosed = floatingChat.classList.toggle('closed');
+                if (!isClosed) {
+                    if (unreadDot) unreadDot.classList.remove('active');
+                    document.getElementById('panel-chat-input')?.focus();
+                }
+            });
+        }
+
+        if (btnCloseChat && floatingChat) {
+            btnCloseChat.addEventListener('click', () => {
+                floatingChat.classList.add('closed');
+            });
+        }
     }
 
     appendChatMessage(text, senderType = 'self', senderName = '') {
@@ -458,6 +483,15 @@ class ClassicLudo3D {
         }
 
         container.scrollTop = container.scrollHeight;
+
+        // If remote message received and chat is closed, light unread dot
+        if (senderType === 'remote') {
+            const floatingChat = document.getElementById('floating-chat');
+            const unreadDot = document.getElementById('chat-badge-dot');
+            if (floatingChat && floatingChat.classList.contains('closed') && unreadDot) {
+                unreadDot.classList.add('active');
+            }
+        }
     }
 
     setGameMode(mode) {

@@ -133,6 +133,7 @@ class PoolGameApp {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.setCameraView(this.cameraViewMode);
         });
     }
 
@@ -413,6 +414,28 @@ class PoolGameApp {
                 }
             });
         });
+
+        // Chat Flyout Open / Close Toggle
+        const btnChatToggle = document.getElementById('btn-chat-toggle');
+        const floatingChat = document.getElementById('floating-chat');
+        const btnCloseChat = document.getElementById('btn-close-chat');
+        const unreadDot = document.getElementById('chat-badge-dot');
+
+        if (btnChatToggle && floatingChat) {
+            btnChatToggle.addEventListener('click', () => {
+                const isClosed = floatingChat.classList.toggle('closed');
+                if (!isClosed) {
+                    if (unreadDot) unreadDot.classList.remove('active');
+                    document.getElementById('panel-chat-input')?.focus();
+                }
+            });
+        }
+
+        if (btnCloseChat && floatingChat) {
+            btnCloseChat.addEventListener('click', () => {
+                floatingChat.classList.add('closed');
+            });
+        }
     }
 
     appendChatMessage(text, senderType = 'self', senderName = '') {
@@ -434,6 +457,15 @@ class PoolGameApp {
         }
 
         container.scrollTop = container.scrollHeight;
+
+        // If remote message arrived and chat is closed, illuminate unread notification dot
+        if (senderType === 'remote') {
+            const floatingChat = document.getElementById('floating-chat');
+            const unreadDot = document.getElementById('chat-badge-dot');
+            if (floatingChat && floatingChat.classList.contains('closed') && unreadDot) {
+                unreadDot.classList.add('active');
+            }
+        }
     }
 
     setGameMode(mode) {
@@ -450,11 +482,25 @@ class PoolGameApp {
         document.getElementById(`btn-view-${view}`)?.classList.add('active');
 
         const isMob = window.innerWidth < 768;
+        const isPortrait = window.innerHeight > window.innerWidth;
+
+        // Reset camera up vector to default +Y initially
+        this.camera.up.set(0, 1, 0);
 
         if (view === 'top') {
             // Direct Top-Down Bird's Eye Tactical View
             this.controls.enabled = false;
-            this.camera.position.set(0, isMob ? 11.5 : 9.5, 0);
+            if (isPortrait) {
+                // Table length is along X (-3.6 to +3.6) and width along Z (-1.8 to +1.8).
+                // On a portrait mobile phone, orient camera up vector along (1, 0, 0)
+                // so the table's length runs along the tall phone screen without clipping!
+                this.camera.position.set(0, isMob ? 14.5 : 12.0, 0);
+                this.camera.up.set(1, 0, 0);
+            } else {
+                // Landscape / Desktop: Table length (X) aligns horizontally across screen
+                this.camera.position.set(0, isMob ? 12.0 : 9.8, 0);
+                this.camera.up.set(0, 0, -1);
+            }
             this.camera.lookAt(0, 0, 0);
             this.controls.target.set(0, 0, 0);
         } else if (view === 'cue') {
@@ -464,7 +510,11 @@ class PoolGameApp {
         } else {
             // Free Orbit 3D View
             this.controls.enabled = true;
-            this.camera.position.set(0, isMob ? 9.8 : 7.8, isMob ? 6.8 : 6.2);
+            if (isPortrait) {
+                this.camera.position.set(0, 12.5, 8.5);
+            } else {
+                this.camera.position.set(0, isMob ? 10.5 : 8.8, isMob ? 7.5 : 6.8);
+            }
             this.camera.lookAt(0, 0, 0);
             this.controls.target.set(0, 0, 0);
         }
@@ -475,15 +525,17 @@ class PoolGameApp {
         const cueBall = this.ballsData[0];
         if (!cueBall || cueBall.inPocket) return;
 
-        // Position camera behind cue ball along aim angle
-        const camDist = 2.4;
-        const camHeight = 1.1;
+        const isMob = window.innerWidth < 768;
+        // Comfortable, professional distance (not cramped or over-zoomed)
+        const camDist = isMob ? 3.4 : 3.0;
+        const camHeight = isMob ? 1.7 : 1.45;
         const camX = cueBall.x - Math.cos(this.aimAngle) * camDist;
         const camZ = cueBall.z - Math.sin(this.aimAngle) * camDist;
 
+        this.camera.up.set(0, 1, 0);
         this.camera.position.set(camX, camHeight, camZ);
-        const lookX = cueBall.x + Math.cos(this.aimAngle) * 2.0;
-        const lookZ = cueBall.z + Math.sin(this.aimAngle) * 2.0;
+        const lookX = cueBall.x + Math.cos(this.aimAngle) * 2.8;
+        const lookZ = cueBall.z + Math.sin(this.aimAngle) * 2.8;
         this.camera.lookAt(lookX, 0.1, lookZ);
         this.controls.target.set(lookX, 0.1, lookZ);
     }
