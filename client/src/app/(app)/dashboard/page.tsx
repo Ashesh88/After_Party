@@ -324,7 +324,7 @@ export default function DashboardPage() {
   const greeting = "Good evening";
 
   return (
-    <div className="relative min-h-screen p-3.5 sm:p-6 max-w-xl mx-auto space-y-5 pb-28">
+    <div className="relative min-h-screen p-3.5 sm:p-6 md:p-8 lg:p-10 w-full max-w-md sm:max-w-xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto space-y-5 pb-32">
       {/* Subtle ambient lighting */}
       <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple top-64 -right-28 pointer-events-none" />
@@ -451,7 +451,7 @@ export default function DashboardPage() {
       {/* Couple Mood Atmosphere Card */}
       <div 
         onClick={openMoodModal}
-        className="relative p-4 rounded-3xl glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.01] active:scale-[0.99] overflow-hidden shadow-xl"
+        className="relative p-4 sm:p-5 rounded-3xl glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.01] active:scale-[0.99] overflow-hidden shadow-xl"
         style={{
           borderColor: `${currentMoodConfig.primaryColor}35`,
           background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}12 0%, rgba(255, 255, 255, 0.02) 100%)`
@@ -518,7 +518,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Hero Countdown / Next Date Card - Fully Editable with Date & Time */}
-      <div className="relative p-5 sm:p-6 rounded-[32px] overflow-hidden glass-panel border border-pink-500/25 shadow-xl group">
+      <div className="relative p-5 sm:p-6 md:p-7 rounded-[32px] overflow-hidden glass-panel border border-pink-500/25 shadow-xl group">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
         
         <div className="relative z-10 flex justify-between items-start gap-3 mb-4">
@@ -535,7 +535,7 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <h3 className="text-lg sm:text-xl font-extrabold text-white mt-1.5 truncate">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white mt-1.5 truncate">
               {room?.plannedEvent?.title || eventTitle}
             </h3>
           </div>
@@ -558,18 +558,18 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2 pt-1 text-center">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 pt-1 text-center">
             {[
               { val: timeLeft.days, label: 'Days' },
               { val: timeLeft.hours, label: 'Hours' },
               { val: timeLeft.mins, label: 'Mins' },
               { val: timeLeft.secs, label: 'Secs' },
             ].map((item, idx) => (
-              <div key={idx} className="p-2.5 sm:p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-                <div className="text-xl sm:text-3xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
+              <div key={idx} className="p-2.5 sm:p-3 md:p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+                <div className="text-xl sm:text-3xl md:text-4xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
                   {item.val}
                 </div>
-                <div className="text-[9px] sm:text-[10px] font-bold tracking-widest uppercase text-slate-400 mt-0.5">
+                <div className="text-[9px] sm:text-[10px] md:text-xs font-bold tracking-widest uppercase text-slate-400 mt-0.5">
                   {item.label}
                 </div>
               </div>
@@ -578,17 +578,19 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Widgets Grid */}
-      <div className="grid grid-cols-2 gap-3.5">
+      {/* Widgets Grid - 2x2 on Mobile, 4-across on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
         <Link 
           href="/watch" 
-          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-pink-500/40 transition-all duration-300 group overflow-hidden"
+          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-pink-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
         >
-          <div className="w-11 h-11 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(244,63,142,0.2)]">
-            <Clapperboard size={22} />
+          <div>
+            <div className="w-11 h-11 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(244,63,142,0.2)]">
+              <Clapperboard size={22} />
+            </div>
+            <h3 className="font-bold text-white text-sm sm:text-base">Watch Together</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Synced YouTube & Video</p>
           </div>
-          <h3 className="font-bold text-white text-sm sm:text-base">Watch Together</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Synced YouTube & Video</p>
           <div className="mt-3 flex items-center text-xs font-semibold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform">
             <span>Stream now</span>
             <ArrowRight size={12} />
@@ -597,54 +599,65 @@ export default function DashboardPage() {
 
         <Link 
           href="/games" 
-          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-purple-500/40 transition-all duration-300 group overflow-hidden"
+          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-purple-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
         >
-          <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(147,51,234,0.2)]">
-            <Gamepad2 size={22} />
+          <div>
+            <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(147,51,234,0.2)]">
+              <Gamepad2 size={22} />
+            </div>
+            <h3 className="font-bold text-white text-sm sm:text-base">Couples Arcade</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Chess, Ludo & Quizzes</p>
           </div>
-          <h3 className="font-bold text-white text-sm sm:text-base">Couples Arcade</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Chess, Ludo & Quizzes</p>
           <div className="mt-3 flex items-center text-xs font-semibold text-purple-400 gap-1 group-hover:translate-x-1 transition-transform">
             <span>Play now</span>
             <ArrowRight size={12} />
           </div>
         </Link>
-      </div>
 
-      {/* Secondary Row: Goals & Live Map */}
-      <div className="grid grid-cols-2 gap-3.5">
         <Link 
           href="/goals" 
-          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-white/20 transition-all group"
+          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-emerald-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
         >
-          <div className="flex justify-between items-center mb-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <Target size={18} />
+          <div>
+            <div className="flex justify-between items-center mb-2.5">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                <Target size={20} />
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                70% Done
+              </span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              70% Done
-            </span>
+            <h4 className="font-bold text-white text-sm sm:text-base">Shared Goals</h4>
+            <div className="w-full h-1.5 bg-white/[0.08] rounded-full mt-2.5 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500 w-[70%]" />
+            </div>
           </div>
-          <h4 className="font-bold text-white text-xs sm:text-sm">Shared Goals</h4>
-          <div className="w-full h-1.5 bg-white/[0.08] rounded-full mt-2.5 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500 w-[70%]" />
+          <div className="mt-3 flex items-center text-xs font-semibold text-emerald-400 gap-1 group-hover:translate-x-1 transition-transform">
+            <span>View goals</span>
+            <ArrowRight size={12} />
           </div>
         </Link>
 
         <Link 
           href="/map" 
-          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-white/20 transition-all group"
+          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-blue-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
         >
-          <div className="flex justify-between items-center mb-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <MapPin size={18} />
+          <div>
+            <div className="flex justify-between items-center mb-2.5">
+              <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                <MapPin size={20} />
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                Live GPS
+              </span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Live GPS
-            </span>
+            <h4 className="font-bold text-white text-sm sm:text-base">Real-time Map</h4>
+            <p className="text-[11px] text-slate-400 mt-0.5">Distance & Presence</p>
           </div>
-          <h4 className="font-bold text-white text-xs sm:text-sm">Real-time Map</h4>
-          <p className="text-[11px] text-slate-400 mt-0.5">Distance & Presence</p>
+          <div className="mt-3 flex items-center text-xs font-semibold text-blue-400 gap-1 group-hover:translate-x-1 transition-transform">
+            <span>Explore map</span>
+            <ArrowRight size={12} />
+          </div>
         </Link>
       </div>
 
