@@ -8,15 +8,38 @@ class ClassicLudo3D {
         // Parse URL params for mode and names
         const params = new URLSearchParams(window.location.search);
         const urlMode = params.get('mode');
-        if (urlMode === '4p' || urlMode === 'friends') this.gameMode = '4p';
-        else if (urlMode === 'ai') this.gameMode = 'ai';
-        else this.gameMode = '2p';
+        this.sessionCode = params.get('code') || null;
+        this.myRole = params.get('role') || 'red'; // 'red' (Host) or 'yellow' (Guest)
+        this.isMatchStarted = params.get('started') === '1' || urlMode !== 'online';
 
-        this.p1Name = params.get('p1') || 'You';
-        this.p2Name = params.get('p2') || 'Partner';
+        const rawP1 = params.get('name') || params.get('p1') || 'You';
+        const rawP2 = params.get('opponent') || params.get('p2') || 'Friend';
+
+        if (urlMode === 'online') {
+            this.gameMode = 'online';
+            if (this.myRole === 'red') {
+                this.p1Name = `${rawP1} (You)`;
+                this.p2Name = rawP2;
+            } else {
+                this.p1Name = rawP2;
+                this.p2Name = `${rawP1} (You)`;
+            }
+        } else if (urlMode === '4p' || urlMode === 'friends') {
+            this.gameMode = '4p';
+            this.p1Name = rawP1;
+            this.p2Name = rawP2;
+        } else if (urlMode === 'ai') {
+            this.gameMode = 'ai';
+            this.p1Name = rawP1;
+            this.p2Name = 'Computer Bot';
+        } else {
+            this.gameMode = '2p';
+            this.p1Name = rawP1;
+            this.p2Name = rawP2;
+        }
 
         this.tokenCount = 4; // 2 or 4 tokens per player
-        this.activePlayerIds = this.gameMode === '4p' ? ['red', 'green', 'yellow', 'blue'] : ['red', 'yellow'];
+        this.activePlayerIds = (this.gameMode === '4p') ? ['red', 'green', 'yellow', 'blue'] : ['red', 'yellow'];
         this.currentTurnIdx = 0;
         this.diceRolled = null;
         this.hasRolled = false;
@@ -75,6 +98,13 @@ class ClassicLudo3D {
         this.initEntities();
         this.initEvents();
         this.updateUI();
+
+        if (this.gameMode === 'online') {
+            const modeToggle = document.querySelector('.mode-toggle');
+            if (modeToggle) modeToggle.style.display = 'none';
+            const selectTokens = document.getElementById('select-tokens');
+            if (selectTokens) selectTokens.style.display = 'none';
+        }
 
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
@@ -238,7 +268,7 @@ class ClassicLudo3D {
                         const currentPId = this.activePlayerIds[this.currentTurnIdx];
                         if (playerId === currentPId && this.hasRolled && !this.isMoving) {
                             if (this.canTokenMove(playerId, tokenIndex, this.diceRolled)) {
-                                this.executeTokenMove(playerId, tokenIndex);
+                                this.userSelectToken(playerId, tokenIndex);
                                 return;
                             }
                         }
@@ -273,20 +303,69 @@ class ClassicLudo3D {
 
         // New Game / Reset
         document.getElementById('btn-restart').addEventListener('click', () => {
+            if (this.gameMode === 'online' && window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'LUDO_LOCAL_RESTART', sessionCode: this.sessionCode }, '*');
+            }
             this.resetGame();
         });
         document.getElementById('btn-play-again').addEventListener('click', () => {
             document.getElementById('modal-victory').classList.remove('open');
+            if (this.gameMode === 'online' && window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'LUDO_LOCAL_RESTART', sessionCode: this.sessionCode }, '*');
+            }
             this.resetGame();
         });
 
         // Listen for postMessage from parent React component
         window.addEventListener('message', (e) => {
-            if (e.data && e.data.type === 'SET_MODE') {
+            if (!e.data || typeof e.data !== 'object') return;
+
+            if (e.data.type === 'LUDO_REMOTE_ROLL') {
+                const { roll } = e.data;
+                if (this.dice.isRolling || this.isMoving) return;
+                this.hasRolled = true;
+                this.diceRolled = roll;
+                const btnRoll = document.getElementById('btn-roll-dice');
+                if (btnRoll) btnRoll.disabled = true;
+
+                this.dice.roll(roll, (val) => {
+                    this.onDiceRollComplete(val);
+                });
+            }
+
+            if (e.data.type === 'LUDO_REMOTE_MOVE') {
+                const { playerId, tokenIndex, roll } = e.data;
+                this.diceRolled = roll;
+                this.executeTokenMove(playerId, tokenIndex);
+            }
+
+            if (e.data.type === 'LUDO_START_MATCH') {
+                this.isMatchStarted = true;
+                this.updateUI();
+                const firstPId = this.activePlayerIds[0];
+                const isMyTurn = (firstPId === this.myRole);
+                const btnRoll = document.getElementById('btn-roll-dice');
+                if (btnRoll) btnRoll.disabled = !isMyTurn;
+                this.showStatus(isMyTurn ? 'Match Started! Your turn to roll 🎲' : `Match Started! ${this.playerConfigs[firstPId].name}'s turn to roll 🎲`);
+            }
+
+            if (e.data.type === 'LUDO_REMATCH') {
+                this.resetGame();
+            }
+
+            if (e.data.type === 'LUDO_TOGGLE_MUTE') {
+                if (window.ludoAudio) {
+                    window.ludoAudio.muted = Boolean(e.data.muted);
+                    const icon = document.querySelector('#btn-mute i');
+                    if (icon) icon.className = window.ludoAudio.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+                }
+            }
+
+            if (e.data.type === 'SET_MODE') {
                 const modeMap = { couple: '2p', friends: '4p', ai: 'ai', '2p': '2p', '4p': '4p' };
                 if (modeMap[e.data.mode]) this.setGameMode(modeMap[e.data.mode]);
             }
-            if (e.data && e.data.type === 'SET_NAMES') {
+            if (e.data.type === 'SET_NAMES') {
                 if (e.data.p1) {
                     this.p1Name = e.data.p1;
                     this.playerConfigs.red.name = `${this.p1Name} 🔴`;
@@ -319,13 +398,52 @@ class ClassicLudo3D {
         this.resetGame();
     }
 
+    userSelectToken(playerId, tokenIndex) {
+        if (this.gameMode === 'online') {
+            if (playerId !== this.myRole) return;
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'LUDO_LOCAL_MOVE',
+                    sessionCode: this.sessionCode,
+                    playerId: playerId,
+                    tokenIndex: tokenIndex,
+                    roll: this.diceRolled
+                }, '*');
+            }
+        }
+        this.executeTokenMove(playerId, tokenIndex);
+    }
+
     handleRollClick() {
         if (this.dice.isRolling || this.hasRolled || this.isMoving || this.winner) return;
+
+        if (this.gameMode === 'online') {
+            if (!this.isMatchStarted) {
+                this.showStatus('Waiting for friend to accept challenge... ⏳');
+                return;
+            }
+            const activePId = this.activePlayerIds[this.currentTurnIdx];
+            if (activePId !== this.myRole) {
+                this.showStatus(`Not your turn! Waiting for ${this.playerConfigs[activePId].name} to roll...`);
+                return;
+            }
+        }
 
         const rollValue = Math.floor(Math.random() * 6) + 1;
         this.hasRolled = true;
         this.diceRolled = rollValue;
-        document.getElementById('btn-roll-dice').disabled = true;
+        const btnRoll = document.getElementById('btn-roll-dice');
+        if (btnRoll) btnRoll.disabled = true;
+
+        if (this.gameMode === 'online' && window.parent && window.parent !== window) {
+            const activePId = this.activePlayerIds[this.currentTurnIdx];
+            window.parent.postMessage({
+                type: 'LUDO_LOCAL_ROLL',
+                sessionCode: this.sessionCode,
+                playerId: activePId,
+                roll: rollValue
+            }, '*');
+        }
 
         this.dice.roll(rollValue, (val) => {
             this.onDiceRollComplete(val);
@@ -367,6 +485,18 @@ class ClassicLudo3D {
                 const bestToken = this.chooseAiToken(legalIndices, val);
                 this.executeTokenMove('yellow', bestToken);
             }, 600);
+        } else if (this.gameMode === 'online') {
+            if (currentPId === this.myRole) {
+                if (legalIndices.length === 1) {
+                    setTimeout(() => {
+                        this.userSelectToken(currentPId, legalIndices[0]);
+                    }, 450);
+                } else {
+                    this.showStatus(`Rolled ${val}! Select a highlighted pawn.`);
+                }
+            } else {
+                this.showStatus(`Opponent rolled ${val}! Waiting for them to move... ⏳`);
+            }
         } else if (legalIndices.length === 1) {
             // Auto-move single legal pawn
             setTimeout(() => {
@@ -551,6 +681,23 @@ class ClassicLudo3D {
 
         this.updateUI();
 
+        // Online mode turn status and button gating
+        if (this.gameMode === 'online') {
+            const activePId = this.activePlayerIds[this.currentTurnIdx];
+            const isMyTurn = (activePId === this.myRole) && this.isMatchStarted;
+            const btnRoll = document.getElementById('btn-roll-dice');
+            if (btnRoll) btnRoll.disabled = !isMyTurn;
+
+            if (!this.isMatchStarted) {
+                this.showStatus('Waiting for friend to accept challenge... ⏳');
+            } else if (isMyTurn) {
+                this.showStatus('Your turn! Roll the 3D dice 🎲');
+            } else {
+                this.showStatus(`Waiting for ${this.playerConfigs[activePId].name} to roll... ⏳`);
+            }
+            return;
+        }
+
         // AI trigger
         const activePId = this.activePlayerIds[this.currentTurnIdx];
         if (this.gameMode === 'ai' && activePId === 'yellow' && !this.winner) {
@@ -622,7 +769,18 @@ class ClassicLudo3D {
         this.clearHighlights();
 
         const firstPId = this.activePlayerIds[0];
-        this.showStatus(`New Game! ${this.playerConfigs[firstPId].name} rolls first.`);
+        if (this.gameMode === 'online') {
+            const isMyTurn = (firstPId === this.myRole) && this.isMatchStarted;
+            const btnRoll = document.getElementById('btn-roll-dice');
+            if (btnRoll) btnRoll.disabled = !isMyTurn;
+            if (!this.isMatchStarted) {
+                this.showStatus('Waiting for friend to accept challenge... ⏳');
+            } else {
+                this.showStatus(isMyTurn ? 'New Game! Your turn to roll 🎲' : `New Game! ${this.playerConfigs[firstPId].name} rolls first.`);
+            }
+        } else {
+            this.showStatus(`New Game! ${this.playerConfigs[firstPId].name} rolls first.`);
+        }
         this.updateUI();
     }
 

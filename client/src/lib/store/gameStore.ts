@@ -4,7 +4,7 @@ export type GamePlayMode = 'couple' | 'friends' | 'ai';
 
 export interface GameSessionData {
   sessionCode?: string;
-  role?: 'w' | 'b';
+  role?: string;
   opponentName?: string;
   opponentId?: string;
 }

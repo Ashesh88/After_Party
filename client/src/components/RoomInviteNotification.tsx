@@ -104,12 +104,14 @@ export default function RoomInviteNotification() {
       });
     }
 
-    toast.success(`Joining ${currentGameInvite.senderName}'s Chess Match! ♟️`);
+    const isLudo = currentGameInvite.game === 'ludo';
+    const gameLabel = isLudo ? 'Ludo Match 🎲' : 'Chess Match ♟️';
+    toast.success(`Joining ${currentGameInvite.senderName}'s ${gameLabel}!`);
 
-    // Launch Chess in multiplayer mode as Black (client who accepted)
-    setActiveGame('chess', {
+    // Launch game in multiplayer mode as Guest/Opponent (yellow for Ludo, b for Chess)
+    setActiveGame(isLudo ? 'ludo' : 'chess', {
       sessionCode: currentGameInvite.sessionCode,
-      role: 'b',
+      role: isLudo ? 'yellow' : 'b',
       opponentName: currentGameInvite.senderName,
       opponentId: currentGameInvite.senderId,
     });
@@ -232,7 +234,7 @@ export default function RoomInviteNotification() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span>♟️</span>
+                      <span>{currentGameInvite.game === 'ludo' ? '🎲' : '♟️'}</span>
                     )}
                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#140e26]" />
                   </div>
@@ -240,7 +242,7 @@ export default function RoomInviteNotification() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-black uppercase tracking-wider text-pink-400">
-                        Live Chess Duel
+                        {currentGameInvite.game === 'ludo' ? 'Live Ludo Duel 🎲' : 'Live Chess Duel ⚔️'}
                       </span>
                       <Swords size={12} className="text-pink-400" />
                     </div>
@@ -248,7 +250,11 @@ export default function RoomInviteNotification() {
                       {currentGameInvite.senderName}
                     </h4>
                     <p className="text-[11px] text-slate-300">
-                      Challenged you to a live match of <strong className="text-pink-300">Zen 3D Chess</strong>!
+                      Challenged you to a live match of{' '}
+                      <strong className="text-pink-300">
+                        {currentGameInvite.game === 'ludo' ? 'Classic 3D Ludo' : 'Zen 3D Chess'}
+                      </strong>
+                      !
                     </p>
                   </div>
                 </div>
@@ -275,8 +281,17 @@ export default function RoomInviteNotification() {
                   onClick={handleAcceptGame}
                   className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-xs font-black text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
                 >
-                  <Swords size={14} strokeWidth={2.5} />
-                  <span>Accept & Play ⚔️</span>
+                  {currentGameInvite.game === 'ludo' ? (
+                    <>
+                      <span>🎲</span>
+                      <span>Accept & Roll Dice</span>
+                    </>
+                  ) : (
+                    <>
+                      <Swords size={14} strokeWidth={2.5} />
+                      <span>Accept & Play ⚔️</span>
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

@@ -582,6 +582,51 @@ const setupSocket = (io) => {
       });
     });
 
+    // Real-Time Ludo Match Events
+    socket.on('ludo:join', ({ sessionCode, role, playerName }) => {
+      if (!sessionCode) return;
+      socket.join(`ludo:${sessionCode}`);
+      socket.to(`ludo:${sessionCode}`).emit('ludo:opponent_joined', {
+        role,
+        playerName,
+        userId,
+      });
+    });
+
+    socket.on('ludo:roll', ({ sessionCode, playerId, roll }) => {
+      if (!sessionCode) return;
+      socket.to(`ludo:${sessionCode}`).emit('ludo:roll', {
+        playerId,
+        roll,
+        senderId: userId,
+      });
+    });
+
+    socket.on('ludo:move', ({ sessionCode, playerId, tokenIndex, roll }) => {
+      if (!sessionCode) return;
+      socket.to(`ludo:${sessionCode}`).emit('ludo:move', {
+        playerId,
+        tokenIndex,
+        roll,
+        senderId: userId,
+      });
+    });
+
+    socket.on('ludo:restart', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.to(`ludo:${sessionCode}`).emit('ludo:restart', {
+        senderId: userId,
+      });
+    });
+
+    socket.on('ludo:leave', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.leave(`ludo:${sessionCode}`);
+      socket.to(`ludo:${sessionCode}`).emit('ludo:opponent_left', {
+        senderId: userId,
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${userId}`);
       onlineUsers.delete(userId.toString());
