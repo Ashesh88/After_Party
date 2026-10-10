@@ -158,10 +158,10 @@ export default function GamesPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity pointer-events-none" />
 
-                {/* Floating "Play now →" button in right-bottom corner */}
-                <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-pink-500/85 hover:bg-pink-500 text-white text-[10px] font-extrabold shadow-lg backdrop-blur-md border border-white/20 group-hover:translate-x-0.5 group-hover:scale-105 transition-all">
-                  <span>Play now</span>
-                  <span>→</span>
+                {/* Floating "Play now →" button in left-bottom corner, minimized, clean glass without pink background */}
+                <div className="absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/60 hover:bg-black/80 text-white text-[9px] sm:text-[10px] font-bold shadow-md backdrop-blur-md border border-white/20 group-hover:scale-105 transition-all">
+                  <span className="text-white/90">Play now</span>
+                  <span className="text-pink-400 font-extrabold">→</span>
                 </div>
               </button>
             );

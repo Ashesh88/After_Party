@@ -1219,6 +1219,45 @@ body {
     color: #f87171;
 }
 
+/* Floating Settings Gear Button (Icon only, directly below Play Friend) */
+.floating-settings-icon-btn {
+    position: fixed !important;
+    top: 8px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(13, 17, 24, 0.88) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: #94a3b8 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.92rem;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    transition: all 0.2s ease;
+    z-index: 60;
+}
+
+.floating-settings-icon-btn:hover {
+    color: #38bdf8 !important;
+    border-color: rgba(56, 189, 248, 0.5) !important;
+    transform: scale(1.08) rotate(45deg);
+}
+
+.floating-settings-icon-btn:active {
+    transform: scale(0.95);
+}
+
+@media (min-width: 901px) {
+    .floating-settings-icon-btn {
+        display: none !important;
+    }
+}
+
 @media (max-width: 900px) {
     .mobile-hud-triggers {
         display: flex;
@@ -1290,39 +1329,6 @@ body {
         font-size: 0.76rem;
         color: #a5f3fc;
         font-weight: 700;
-    }
-
-    /* Floating Settings Gear Button (Icon only, directly below Play Friend) */
-    .floating-settings-icon-btn {
-        position: fixed;
-        top: 8px;
-        right: 12px;
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        background: rgba(13, 17, 24, 0.88);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        color: #94a3b8;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.92rem;
-        cursor: pointer;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-        transition: all 0.2s ease;
-        z-index: 60;
-    }
-
-    .floating-settings-icon-btn:hover {
-        color: #38bdf8;
-        border-color: rgba(56, 189, 248, 0.5);
-        transform: scale(1.08) rotate(45deg);
-    }
-
-    .floating-settings-icon-btn:active {
-        transform: scale(0.95);
     }
 
     .mobile-hide {
