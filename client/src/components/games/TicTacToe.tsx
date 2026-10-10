@@ -39,16 +39,17 @@ class TicAudio {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
-    const now = this.ctx.currentTime;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
     [440, 554, 659, 880].forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now + idx * 0.08);
       gain.gain.setValueAtTime(0.25, now + idx * 0.08);
       gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.5);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(ctx.destination);
       osc.start(now + idx * 0.08);
       osc.stop(now + idx * 0.08 + 0.5);
     });
