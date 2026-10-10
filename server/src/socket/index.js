@@ -489,6 +489,99 @@ const setupSocket = (io) => {
       }
     });
 
+    // Direct Friend Game Challenge / Invite Handlers
+    socket.on('game:invite', (data) => {
+      const targetUserId = data?.targetUserId;
+      if (!targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('game:invite:received', {
+        senderId: userId,
+        senderName: data.senderName || 'Your Friend',
+        senderAvatar: data.senderAvatar,
+        game: data.game || 'chess',
+        sessionCode: data.sessionCode,
+      });
+    });
+
+    socket.on('game:invite:accept', (data) => {
+      const targetUserId = data?.targetUserId;
+      if (!targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('game:invite:accepted', {
+        acceptedBy: userId,
+        game: data.game || 'chess',
+        sessionCode: data.sessionCode,
+      });
+    });
+
+    socket.on('game:invite:decline', (data) => {
+      const targetUserId = data?.targetUserId;
+      if (!targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('game:invite:declined', {
+        declinedBy: userId,
+        game: data.game || 'chess',
+      });
+    });
+
+    // Real-Time Chess Match Events
+    socket.on('chess:join', ({ sessionCode, role, playerName }) => {
+      if (!sessionCode) return;
+      socket.join(`chess:${sessionCode}`);
+      socket.to(`chess:${sessionCode}`).emit('chess:opponent_joined', {
+        role,
+        playerName,
+        userId,
+      });
+    });
+
+    socket.on('chess:move', ({ sessionCode, move, fen }) => {
+      if (!sessionCode) return;
+      socket.to(`chess:${sessionCode}`).emit('chess:move', {
+        move,
+        fen,
+        senderId: userId,
+      });
+    });
+
+    socket.on('chess:chat', ({ sessionCode, text, senderName }) => {
+      if (!sessionCode) return;
+      socket.to(`chess:${sessionCode}`).emit('chess:chat', {
+        text,
+        senderName,
+        senderId: userId,
+        timestamp: Date.now(),
+      });
+    });
+
+    socket.on('chess:emoji', ({ sessionCode, emoji }) => {
+      if (!sessionCode) return;
+      socket.to(`chess:${sessionCode}`).emit('chess:emoji', {
+        emoji,
+        senderId: userId,
+      });
+    });
+
+    socket.on('chess:rematch', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.to(`chess:${sessionCode}`).emit('chess:rematch', {
+        senderId: userId,
+      });
+    });
+
+    socket.on('chess:resign', ({ sessionCode, role }) => {
+      if (!sessionCode) return;
+      socket.to(`chess:${sessionCode}`).emit('chess:resign', {
+        senderId: userId,
+        role,
+      });
+    });
+
+    socket.on('chess:leave', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.leave(`chess:${sessionCode}`);
+      socket.to(`chess:${sessionCode}`).emit('chess:opponent_left', {
+        senderId: userId,
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${userId}`);
       onlineUsers.delete(userId.toString());

@@ -21,14 +21,16 @@ class ChessApp {
 
         // Animation state
         this.animatingPieces = [];
+        this.sessionCode = null;
 
         this.initThree();
         this.initBoard();
         this.initMultiplayer();
+        this.setupPostMessageBridge();
         this.initEvents();
         this.setupNewGame();
 
-        // Check for URL invite link: e.g. #room=ZEN-XYZ
+        // Check for URL invite link / query params
         this.checkUrlForRoom();
 
         // Animation loop
@@ -234,7 +236,123 @@ class ChessApp {
         });
     }
 
+    setupPostMessageBridge() {
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (!data || typeof data !== 'object') return;
+
+            switch (data.type) {
+                case 'CHESS_INIT':
+                    if (data.mode === 'online') {
+                        this.setOnlineSession(data);
+                    } else if (data.mode === 'ai') {
+                        this.setGameMode('ai');
+                        if (data.difficulty) {
+                            const select = document.getElementById('select-difficulty');
+                            if (select) select.value = data.difficulty;
+                        }
+                    }
+                    break;
+                case 'CHESS_REMOTE_MOVE':
+                    if (data.move) {
+                        this.executeMove(data.move, false);
+                    }
+                    break;
+                case 'CHESS_CHAT':
+                    if (data.text) {
+                        this.appendChatMessage(data.text, 'them');
+                        window.soundSystem.playMessage();
+                    }
+                    break;
+                case 'CHESS_EMOJI':
+                    if (data.emoji) {
+                        this.showFloatingReaction(data.emoji);
+                        window.soundSystem.playMessage();
+                    }
+                    break;
+                case 'CHESS_REMATCH':
+                    this.showStatusNotification('Opponent requested a rematch! Restarting game...');
+                    this.setupNewGame();
+                    break;
+                case 'CHESS_OPPONENT_RESIGNED':
+                    this.showGameOverModal('Opponent Resigned', 'Congratulations! Your opponent has resigned.');
+                    break;
+                case 'CHESS_OPPONENT_LEFT':
+                    this.showStatusNotification('Opponent disconnected or left match.');
+                    break;
+                case 'CHESS_SET_AI_DIFFICULTY':
+                    const select = document.getElementById('select-difficulty');
+                    if (select && data.difficulty) select.value = data.difficulty;
+                    break;
+            }
+        });
+    }
+
+    setOnlineSession({ sessionCode, role, opponentName, myName }) {
+        this.gameMode = 'online';
+        this.sessionCode = sessionCode || 'ZEN-ROOM';
+        this.playerColor = role === 'b' ? 'b' : 'w';
+
+        ['ai', 'online', 'local'].forEach(m => {
+            const el = document.getElementById(`btn-mode-${m}`);
+            if (el) el.classList.toggle('active', m === 'online');
+        });
+
+        const aiWrapper = document.getElementById('ai-difficulty-wrapper');
+        if (aiWrapper) aiWrapper.style.display = 'none';
+
+        const whiteName = this.playerColor === 'w' ? (myName || 'You') : (opponentName || 'Opponent');
+        const whiteTag = this.playerColor === 'w' ? 'You (White ⚪)' : `${opponentName || 'Opponent'} (White ⚪)`;
+        const blackName = this.playerColor === 'b' ? (myName || 'You') : (opponentName || 'Opponent');
+        const blackTag = this.playerColor === 'b' ? 'You (Black ⚫)' : `${opponentName || 'Opponent'} (Black ⚫)`;
+
+        const nw = document.getElementById('name-white');
+        const tw = document.getElementById('tag-white');
+        const nb = document.getElementById('name-black');
+        const tb = document.getElementById('tag-black');
+        if (nw) nw.textContent = whiteName;
+        if (tw) tw.textContent = whiteTag;
+        if (nb) nb.textContent = blackName;
+        if (tb) tb.textContent = blackTag;
+
+        this.setupNewGame();
+        this.resetCamera();
+        this.showStatusNotification(`Online match active with ${opponentName || 'friend'}!`);
+    }
+
     checkUrlForRoom() {
+        // 1. Search Query Parameters (e.g. ?mode=online&code=XYZ&role=b&opponent=Friend&name=Me)
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const mode = params.get('mode');
+            const role = params.get('role');
+            const code = params.get('code');
+            const opponent = params.get('opponent');
+            const name = params.get('name');
+            const diff = params.get('diff');
+
+            if (diff) {
+                const diffSelect = document.getElementById('select-difficulty');
+                if (diffSelect) diffSelect.value = diff;
+            }
+
+            if (mode === 'online' && code) {
+                this.setOnlineSession({
+                    sessionCode: code,
+                    role: role || 'w',
+                    opponentName: opponent || 'Opponent',
+                    myName: name || 'Player'
+                });
+                return;
+            } else if (mode === 'ai') {
+                this.setGameMode('ai');
+                return;
+            }
+        } catch (e) {
+            console.error('Error parsing url params:', e);
+        }
+
+        // 2. Hash room parameter fallback
         const hash = window.location.hash;
         if (hash && hash.startsWith('#room=')) {
             const roomCode = hash.replace('#room=', '').trim();
@@ -287,13 +405,23 @@ class ChessApp {
         ['ai', 'online', 'local'].forEach(mode => {
             const btn = document.getElementById(`btn-mode-${mode}`);
             if (btn) {
-                btn.addEventListener('click', () => this.setGameMode(mode));
+                btn.addEventListener('click', () => {
+                    if (mode === 'online' && window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'CHESS_REQUEST_INVITE' }, '*');
+                    } else {
+                        this.setGameMode(mode);
+                    }
+                });
             }
         });
 
         // Navigation Actions
         document.getElementById('btn-open-invite').addEventListener('click', () => {
-            this.openInviteModal();
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'CHESS_REQUEST_INVITE' }, '*');
+            } else {
+                this.openInviteModal();
+            }
         });
 
         document.getElementById('btn-close-invite').addEventListener('click', () => {
@@ -416,8 +544,15 @@ class ChessApp {
             const text = input.value.trim();
             if (text) {
                 this.appendChatMessage(text, 'me');
-                if (this.mp.connected) {
+                if (this.mp && this.mp.connected) {
                     this.mp.sendChat(text, 'Player');
+                }
+                if (this.gameMode === 'online' && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'CHESS_LOCAL_CHAT',
+                        sessionCode: this.sessionCode,
+                        text: text
+                    }, '*');
                 }
                 input.value = '';
             }
@@ -428,8 +563,15 @@ class ChessApp {
             btn.addEventListener('click', () => {
                 const emoji = btn.getAttribute('data-emoji');
                 this.showFloatingReaction(emoji);
-                if (this.mp.connected) {
+                if (this.mp && this.mp.connected) {
                     this.mp.sendEmoji(emoji);
+                }
+                if (this.gameMode === 'online' && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'CHESS_LOCAL_EMOJI',
+                        sessionCode: this.sessionCode,
+                        emoji: emoji
+                    }, '*');
                 }
             });
         });
@@ -457,6 +599,12 @@ class ChessApp {
         document.getElementById('btn-gameover-rematch').addEventListener('click', () => {
             document.getElementById('modal-gameover').classList.remove('open');
             this.setupNewGame();
+            if (this.gameMode === 'online' && window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'CHESS_LOCAL_REMATCH',
+                    sessionCode: this.sessionCode
+                }, '*');
+            }
         });
         document.getElementById('btn-close-gameover').addEventListener('click', () => {
             document.getElementById('modal-gameover').classList.remove('open');
@@ -554,8 +702,18 @@ class ChessApp {
         if (!move) return;
 
         // Broadcast move in online match
-        if (this.gameMode === 'online' && this.mp.connected) {
-            this.mp.sendMove(moveObj);
+        if (this.gameMode === 'online') {
+            if (this.mp && this.mp.connected) {
+                this.mp.sendMove(moveObj);
+            }
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'CHESS_LOCAL_MOVE',
+                    sessionCode: this.sessionCode,
+                    move: moveObj,
+                    fen: this.chess.fen()
+                }, '*');
+            }
         }
 
         this.animateAndApplyMove(move);
