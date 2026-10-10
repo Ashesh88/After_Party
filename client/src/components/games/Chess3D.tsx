@@ -82,7 +82,7 @@ export default function Chess3D({ onBack }: Chess3DProps) {
   useEffect(() => {
     if (sessionData?.sessionCode) {
       const code = sessionData.sessionCode;
-      const role = sessionData.role || 'b';
+      const role = (sessionData.role as 'w' | 'b') || 'b';
       const opp = sessionData.opponentName || 'Friend';
       const oppId = sessionData.opponentId || null;
 
