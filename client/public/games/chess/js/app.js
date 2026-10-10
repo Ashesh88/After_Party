@@ -416,17 +416,23 @@ class ChessApp {
         });
 
         // Navigation Actions
-        document.getElementById('btn-open-invite').addEventListener('click', () => {
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage({ type: 'CHESS_REQUEST_INVITE' }, '*');
-            } else {
-                this.openInviteModal();
-            }
-        });
+        const btnOpenInvite = document.getElementById('btn-open-invite');
+        if (btnOpenInvite) {
+            btnOpenInvite.addEventListener('click', () => {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'CHESS_REQUEST_INVITE' }, '*');
+                } else {
+                    this.openInviteModal();
+                }
+            });
+        }
 
-        document.getElementById('btn-close-invite').addEventListener('click', () => {
-            document.getElementById('modal-invite').classList.remove('open');
-        });
+        const btnCloseInvite = document.getElementById('btn-close-invite');
+        if (btnCloseInvite) {
+            btnCloseInvite.addEventListener('click', () => {
+                document.getElementById('modal-invite')?.classList.remove('open');
+            });
+        }
 
         document.getElementById('btn-copy-link').addEventListener('click', () => {
             const code = document.getElementById('display-room-code').textContent;
@@ -481,11 +487,16 @@ class ChessApp {
         }
         
         // Audio Toggle
-        document.getElementById('btn-mute').addEventListener('click', (e) => {
-            window.soundSystem.muted = !window.soundSystem.muted;
-            const icon = e.currentTarget.querySelector('i');
-            icon.className = window.soundSystem.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
-        });
+        const btnMute = document.getElementById('btn-mute');
+        if (btnMute) {
+            btnMute.addEventListener('click', (e) => {
+                window.soundSystem.muted = !window.soundSystem.muted;
+                const icon = e.currentTarget.querySelector('i');
+                if (icon) {
+                    icon.className = window.soundSystem.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+                }
+            });
+        }
 
         // Time Control Change
         document.getElementById('select-time').addEventListener('change', (e) => {
