@@ -252,7 +252,7 @@ export default function RoomInviteNotification() {
                     <p className="text-[11px] text-slate-300">
                       Challenged you to a live match of{' '}
                       <strong className="text-pink-300">
-                        {currentGameInvite.game === 'ludo' ? 'Classic 3D Ludo' : 'Zen 3D Chess'}
+                        {currentGameInvite.game === 'ludo' ? 'Classic Ludo' : 'Zen 3D Chess'}
                       </strong>
                       !
                     </p>

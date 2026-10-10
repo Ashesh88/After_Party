@@ -47,7 +47,7 @@ const games = [
   },
   { 
     id: 'ludo', 
-    name: 'Classic 3D Ludo', 
+    name: 'Classic Ludo', 
     desc: 'Luxury 3D pawns, Dice & Crown',
     icon: Dices, 
     color: 'from-pink-500 to-purple-600', 

@@ -7,6 +7,7 @@ const ticTacToe = require('../games/ticTacToe');
 
 const onlineUsers = new Set();
 const activeLocations = new Map(); // roomId -> Map(userId -> locationPayload)
+const ludoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 
 const setupSocket = (io) => {
   io.use((socket, next) => {
@@ -583,13 +584,58 @@ const setupSocket = (io) => {
     });
 
     // Real-Time Ludo Match Events
-    socket.on('ludo:join', ({ sessionCode, role, playerName }) => {
+    socket.on('ludo:join', ({ sessionCode, role, playerName, targetCount }) => {
       if (!sessionCode) return;
       socket.join(`ludo:${sessionCode}`);
-      socket.to(`ludo:${sessionCode}`).emit('ludo:opponent_joined', {
-        role,
-        playerName,
+
+      let room = ludoRooms.get(sessionCode);
+      if (!room) {
+        room = { hostId: userId, players: [], targetCount: targetCount || 2 };
+        ludoRooms.set(sessionCode, room);
+      }
+
+      // Assign role
+      let assignedRole = role;
+      if (!assignedRole) {
+        const roleOrder = ['red', 'green', 'yellow', 'blue'];
+        const usedRoles = room.players.map(p => p.role);
+        assignedRole = roleOrder.find(r => !usedRoles.includes(r)) || 'yellow';
+      }
+
+      const existingIdx = room.players.findIndex(p => p.userId?.toString() === userId?.toString());
+      const playerObj = {
         userId,
+        playerName: playerName || 'Player',
+        role: assignedRole,
+        socketId: socket.id,
+      };
+
+      if (existingIdx >= 0) {
+        room.players[existingIdx] = playerObj;
+      } else {
+        room.players.push(playerObj);
+      }
+
+      socket.emit('ludo:joined_ack', {
+        sessionCode,
+        role: assignedRole,
+        players: room.players,
+      });
+
+      socket.to(`ludo:${sessionCode}`).emit('ludo:opponent_joined', {
+        role: assignedRole,
+        playerName: playerObj.playerName,
+        userId,
+        players: room.players,
+      });
+    });
+
+    socket.on('ludo:start_game', ({ sessionCode, activePlayerIds, playerNames }) => {
+      if (!sessionCode) return;
+      io.in(`ludo:${sessionCode}`).emit('ludo:game_started', {
+        sessionCode,
+        activePlayerIds,
+        playerNames,
       });
     });
 
@@ -622,8 +668,16 @@ const setupSocket = (io) => {
     socket.on('ludo:leave', ({ sessionCode }) => {
       if (!sessionCode) return;
       socket.leave(`ludo:${sessionCode}`);
+      const room = ludoRooms.get(sessionCode);
+      if (room) {
+        room.players = room.players.filter(p => p.userId?.toString() !== userId?.toString());
+        if (room.players.length === 0) {
+          ludoRooms.delete(sessionCode);
+        }
+      }
       socket.to(`ludo:${sessionCode}`).emit('ludo:opponent_left', {
         senderId: userId,
+        players: room ? room.players : [],
       });
     });
 

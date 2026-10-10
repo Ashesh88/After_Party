@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Classic 3D Ludo Deluxe</title>
+    <title>Classic Ludo</title>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -14,38 +14,12 @@
 
     <!-- UI Overlay HUD Layer -->
     <div class="ui-layer">
-        <!-- Compact Top Control Dock -->
+        <!-- Sleek Floating Status & Players Dock -->
         <div class="top-dock-panel interactive">
-            <div class="top-controls-row">
-                <!-- Mode Toggle: 2P, 4P, AI -->
-                <div class="mode-toggle">
-                    <button class="mode-btn active" id="btn-mode-2p" title="2-Player (Red vs Yellow)">2P</button>
-                    <button class="mode-btn" id="btn-mode-4p" title="4-Player (All Colors)">4P</button>
-                    <button class="mode-btn" id="btn-mode-ai" title="Play with Computer Bot">vs AI</button>
-                </div>
-
-                <!-- Token Count: 2 vs 4 Pawns -->
-                <select id="select-tokens" class="mode-btn" style="background: rgba(255,255,255,0.06); outline: none;">
-                    <option value="4" selected>4 Pawns</option>
-                    <option value="2">2 Pawns</option>
-                </select>
-
-                <!-- Audio Toggle -->
-                <button class="btn-icon" id="btn-mute" title="Toggle Sound">
-                    <i class="fa-solid fa-volume-high"></i>
-                </button>
-
-                <!-- Restart Match -->
-                <button class="btn-icon" id="btn-restart" title="New Game">
-                    <i class="fa-solid fa-rotate-right"></i>
-                </button>
-            </div>
-
-            <!-- Compact Status & Players in top dock -->
             <div class="top-status-row">
                 <span class="status-pill" id="status-banner">Red Player 🔴 rolls first!</span>
                 <div class="players-bar" id="players-bar">
-                    <!-- Dynamically populated by JS for Red, Green, Yellow, Blue -->
+                    <!-- Dynamically populated by JS for active players -->
                 </div>
             </div>
         </div>

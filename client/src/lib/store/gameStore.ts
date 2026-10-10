@@ -7,6 +7,8 @@ export interface GameSessionData {
   role?: string;
   opponentName?: string;
   opponentId?: string;
+  playerCount?: number;
+  players?: any[];
 }
 
 interface GameState {

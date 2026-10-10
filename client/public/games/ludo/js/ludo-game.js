@@ -1,4 +1,4 @@
-// Authentic Classic 3D Ludo - Complete Game Engine
+// Authentic Classic Ludo - Complete Game Engine
 // Matching the iconic Red, Green, Yellow, Blue board with 3D pawns, 3D dice, and AI
 
 class ClassicLudo3D {
@@ -9,37 +9,40 @@ class ClassicLudo3D {
         const params = new URLSearchParams(window.location.search);
         const urlMode = params.get('mode');
         this.sessionCode = params.get('code') || null;
-        this.myRole = params.get('role') || 'red'; // 'red' (Host) or 'yellow' (Guest)
+        this.myRole = params.get('role') || 'red'; // 'red', 'green', 'yellow', 'blue'
         this.isMatchStarted = params.get('started') === '1' || urlMode !== 'online';
 
         const rawP1 = params.get('name') || params.get('p1') || 'You';
         const rawP2 = params.get('opponent') || params.get('p2') || 'Friend';
+        const rawP3 = params.get('p3') || 'Player 3';
+        const rawP4 = params.get('p4') || 'Player 4';
+
+        const countParam = parseInt(params.get('players') || params.get('count'), 10) || (urlMode === '4p' ? 4 : 2);
 
         if (urlMode === 'online') {
             this.gameMode = 'online';
-            if (this.myRole === 'red') {
-                this.p1Name = `${rawP1} (You)`;
-                this.p2Name = rawP2;
+            if (countParam === 4) {
+                this.activePlayerIds = ['red', 'green', 'yellow', 'blue'];
+            } else if (countParam === 3) {
+                this.activePlayerIds = ['red', 'green', 'yellow'];
             } else {
-                this.p1Name = rawP2;
-                this.p2Name = `${rawP1} (You)`;
+                this.activePlayerIds = ['red', 'yellow'];
             }
-        } else if (urlMode === '4p' || urlMode === 'friends') {
-            this.gameMode = '4p';
-            this.p1Name = rawP1;
-            this.p2Name = rawP2;
+        } else if (urlMode === '4p' || countParam === 4) {
+            this.gameMode = (urlMode === 'ai') ? 'ai' : '4p';
+            this.activePlayerIds = ['red', 'green', 'yellow', 'blue'];
+        } else if (countParam === 3) {
+            this.gameMode = (urlMode === 'ai') ? 'ai' : '3p';
+            this.activePlayerIds = ['red', 'green', 'yellow'];
         } else if (urlMode === 'ai') {
             this.gameMode = 'ai';
-            this.p1Name = rawP1;
-            this.p2Name = 'Computer Bot';
+            this.activePlayerIds = ['red', 'yellow'];
         } else {
             this.gameMode = '2p';
-            this.p1Name = rawP1;
-            this.p2Name = rawP2;
+            this.activePlayerIds = ['red', 'yellow'];
         }
 
-        this.tokenCount = 4; // 2 or 4 tokens per player
-        this.activePlayerIds = (this.gameMode === '4p') ? ['red', 'green', 'yellow', 'blue'] : ['red', 'yellow'];
+        this.tokenCount = 4; // 4 tokens per player
         this.currentTurnIdx = 0;
         this.diceRolled = null;
         this.hasRolled = false;
@@ -51,7 +54,7 @@ class ClassicLudo3D {
         this.playerConfigs = {
             red: {
                 id: 'red',
-                name: `${this.p1Name} 🔴`,
+                name: (this.myRole === 'red' && this.gameMode === 'online') ? `${rawP1} (You) 🔴` : `${rawP1} 🔴`,
                 colorHex: 0xb91c1c, // Deep Crimson
                 startOffset: 0,
                 homeColKey: 'red',
@@ -61,7 +64,7 @@ class ClassicLudo3D {
             },
             green: {
                 id: 'green',
-                name: 'Green Player 🟢',
+                name: (this.gameMode === 'ai') ? 'Bot 1 🤖' : ((this.myRole === 'green') ? `${rawP1} (You) 🟢` : `${rawP2} 🟢`),
                 colorHex: 0x15803d, // Deep Emerald
                 startOffset: 13,
                 homeColKey: 'green',
@@ -71,7 +74,7 @@ class ClassicLudo3D {
             },
             yellow: {
                 id: 'yellow',
-                name: (this.gameMode === 'ai') ? 'Computer Bot 🤖' : `${this.p2Name} 🟡`,
+                name: (this.gameMode === 'ai') ? (this.activePlayerIds.length > 2 ? 'Bot 2 🤖' : 'Computer Bot 🤖') : ((this.myRole === 'yellow') ? `${rawP1} (You) 🟡` : (this.activePlayerIds.length === 2 ? `${rawP2} 🟡` : `${rawP3} 🟡`)),
                 colorHex: 0xb45309, // Deep Amber Gold
                 startOffset: 26,
                 homeColKey: 'yellow',
@@ -81,7 +84,7 @@ class ClassicLudo3D {
             },
             blue: {
                 id: 'blue',
-                name: 'Blue Player 🔵',
+                name: (this.gameMode === 'ai') ? 'Bot 3 🤖' : ((this.myRole === 'blue') ? `${rawP1} (You) 🔵` : `${rawP4} 🔵`),
                 colorHex: 0x1d4ed8, // Deep Royal Blue
                 startOffset: 39,
                 homeColKey: 'blue',
@@ -98,13 +101,6 @@ class ClassicLudo3D {
         this.initEntities();
         this.initEvents();
         this.updateUI();
-
-        if (this.gameMode === 'online') {
-            const modeToggle = document.querySelector('.mode-toggle');
-            if (modeToggle) modeToggle.style.display = 'none';
-            const selectTokens = document.getElementById('select-tokens');
-            if (selectTokens) selectTokens.style.display = 'none';
-        }
 
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
@@ -287,29 +283,29 @@ class ClassicLudo3D {
         });
 
         // Token Count Selector (2 vs 4 pawns)
-        document.getElementById('select-tokens').addEventListener('change', (e) => {
+        document.getElementById('select-tokens')?.addEventListener('change', (e) => {
             this.tokenCount = parseInt(e.target.value, 10);
             this.resetGame();
         });
 
         // Audio Mute
-        document.getElementById('btn-mute').addEventListener('click', (e) => {
+        document.getElementById('btn-mute')?.addEventListener('click', (e) => {
             if (window.ludoAudio) {
                 window.ludoAudio.muted = !window.ludoAudio.muted;
                 const icon = e.currentTarget.querySelector('i');
-                icon.className = window.ludoAudio.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+                if (icon) icon.className = window.ludoAudio.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
             }
         });
 
         // New Game / Reset
-        document.getElementById('btn-restart').addEventListener('click', () => {
+        document.getElementById('btn-restart')?.addEventListener('click', () => {
             if (this.gameMode === 'online' && window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'LUDO_LOCAL_RESTART', sessionCode: this.sessionCode }, '*');
             }
             this.resetGame();
         });
-        document.getElementById('btn-play-again').addEventListener('click', () => {
-            document.getElementById('modal-victory').classList.remove('open');
+        document.getElementById('btn-play-again')?.addEventListener('click', () => {
+            document.getElementById('modal-victory')?.classList.remove('open');
             if (this.gameMode === 'online' && window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'LUDO_LOCAL_RESTART', sessionCode: this.sessionCode }, '*');
             }
@@ -341,12 +337,44 @@ class ClassicLudo3D {
 
             if (e.data.type === 'LUDO_START_MATCH') {
                 this.isMatchStarted = true;
-                this.updateUI();
+                if (e.data.activePlayerIds && Array.isArray(e.data.activePlayerIds) && e.data.activePlayerIds.length > 0) {
+                    this.activePlayerIds = e.data.activePlayerIds;
+                }
+                if (e.data.myRole) {
+                    this.myRole = e.data.myRole;
+                }
+                if (e.data.playerNames && typeof e.data.playerNames === 'object') {
+                    Object.entries(e.data.playerNames).forEach(([role, name]) => {
+                        if (this.playerConfigs[role]) {
+                            this.playerConfigs[role].name = name;
+                        }
+                    });
+                }
+                this.resetGame();
                 const firstPId = this.activePlayerIds[0];
                 const isMyTurn = (firstPId === this.myRole);
                 const btnRoll = document.getElementById('btn-roll-dice');
                 if (btnRoll) btnRoll.disabled = !isMyTurn;
                 this.showStatus(isMyTurn ? 'Match Started! Your turn to roll 🎲' : `Match Started! ${this.playerConfigs[firstPId].name}'s turn to roll 🎲`);
+            }
+
+            if (e.data.type === 'SET_AI_PLAYERS') {
+                const count = parseInt(e.data.count, 10) || 2;
+                this.gameMode = 'ai';
+                if (count === 3) {
+                    this.activePlayerIds = ['red', 'green', 'yellow'];
+                    this.playerConfigs.green.name = 'Bot 1 🟢';
+                    this.playerConfigs.yellow.name = 'Bot 2 🟡';
+                } else if (count === 4) {
+                    this.activePlayerIds = ['red', 'green', 'yellow', 'blue'];
+                    this.playerConfigs.green.name = 'Bot 1 🟢';
+                    this.playerConfigs.yellow.name = 'Bot 2 🟡';
+                    this.playerConfigs.blue.name = 'Bot 3 🔵';
+                } else {
+                    this.activePlayerIds = ['red', 'yellow'];
+                    this.playerConfigs.yellow.name = 'Bot 🟡';
+                }
+                this.resetGame();
             }
 
             if (e.data.type === 'LUDO_REMATCH') {
@@ -479,11 +507,11 @@ class ClassicLudo3D {
 
         this.highlightTokens(currentPId, legalIndices);
 
-        // AI Move Logic
-        if (this.gameMode === 'ai' && currentPId === 'yellow') {
+        // AI Move Logic (any bot color)
+        if (this.gameMode === 'ai' && currentPId !== 'red') {
             setTimeout(() => {
                 const bestToken = this.chooseAiToken(legalIndices, val);
-                this.executeTokenMove('yellow', bestToken);
+                this.executeTokenMove(currentPId, bestToken);
             }, 600);
         } else if (this.gameMode === 'online') {
             if (currentPId === this.myRole) {
@@ -698,9 +726,9 @@ class ClassicLudo3D {
             return;
         }
 
-        // AI trigger
+        // AI trigger for any non-human bot
         const activePId = this.activePlayerIds[this.currentTurnIdx];
-        if (this.gameMode === 'ai' && activePId === 'yellow' && !this.winner) {
+        if (this.gameMode === 'ai' && activePId !== 'red' && !this.winner) {
             setTimeout(() => {
                 this.handleRollClick();
             }, 750);
@@ -708,20 +736,21 @@ class ClassicLudo3D {
     }
 
     chooseAiToken(legalIndices, roll) {
+        const pId = this.activePlayerIds[this.currentTurnIdx];
         // AI move selection priority
         // 1. Move to Crown 56
         for (const idx of legalIndices) {
-            if (this.playerConfigs.yellow.tokens[idx] + roll === 56) return idx;
+            if (this.playerConfigs[pId].tokens[idx] + roll === 56) return idx;
         }
 
         // 2. Capture opponent
         for (const idx of legalIndices) {
-            const step = this.playerConfigs.yellow.tokens[idx];
+            const step = this.playerConfigs[pId].tokens[idx];
             if (step >= 0 && step <= 50) {
-                const targetTrack = this.getTrackIndex('yellow', step + roll);
+                const targetTrack = this.getTrackIndex(pId, step + roll);
                 if (!this.board.safeIndices.includes(targetTrack)) {
                     for (const oppId of this.activePlayerIds) {
-                        if (oppId === 'yellow') return;
+                        if (oppId === pId) continue;
                         for (let o = 0; o < this.tokenCount; o++) {
                             const oppStep = this.playerConfigs[oppId].tokens[o];
                             if (this.getTrackIndex(oppId, oppStep) === targetTrack) {
@@ -735,7 +764,7 @@ class ClassicLudo3D {
 
         // 3. Open pawn from yard on 6
         if (roll === 6) {
-            const yardToken = legalIndices.find(idx => this.playerConfigs.yellow.tokens[idx] === -1);
+            const yardToken = legalIndices.find(idx => this.playerConfigs[pId].tokens[idx] === -1);
             if (yardToken !== undefined) return yardToken;
         }
 
