@@ -10,7 +10,9 @@ import PoolGame from '../../../components/games/PoolGame';
 import TurboRacer from '../../../components/games/TurboRacer';
 import CardsGame from '../../../components/games/CardsGame';
 import BowlingGame from '../../../components/games/BowlingGame';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Disc } from 'lucide-react';
+import CarromGame from '../../../components/games/CarromGame';
+import UnoGame from '../../../components/games/UnoGame';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Disc, Target, Layers } from 'lucide-react';
 
 const games = [
   { 
@@ -74,6 +76,26 @@ const games = [
     thumb: '/videos/racer-thumb.jpg'
   },
   { 
+    id: 'carrom', 
+    name: 'Royal 3D Carrom', 
+    desc: 'Wooden board, striker & multiplayer physics',
+    icon: Target, 
+    color: 'from-amber-400 via-rose-500 to-amber-600', 
+    tag: '3D LIVE',
+    video: '/videos/carrom-preview.mp4',
+    thumb: '/videos/carrom-thumb.jpg'
+  },
+  { 
+    id: 'uno', 
+    name: '3D UNO Party', 
+    desc: 'Wild cards, reverse & fast-paced battle',
+    icon: Layers, 
+    color: 'from-red-500 via-amber-500 to-yellow-400', 
+    tag: '3D LIVE',
+    video: '/videos/uno-preview.mp4',
+    thumb: '/videos/uno-thumb.jpg'
+  },
+  { 
     id: 'tictactoe', 
     name: 'Tic-Tac-Toe', 
     desc: 'Quick 3-in-a-row showdown',
@@ -116,6 +138,8 @@ export default function GamesPage() {
   if (activeGame === 'bowling') return <BowlingGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'cards') return <CardsGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'racer') return <TurboRacer onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'carrom') return <CarromGame onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'uno') return <UnoGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tictactoe') return <TicTacToe onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tod') return <TruthOrDare onBack={() => setActiveGame(null)} />;
   if (activeGame === 'quiz') return <Quiz onBack={() => setActiveGame(null)} />;
