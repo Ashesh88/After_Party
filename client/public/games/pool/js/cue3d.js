@@ -142,7 +142,9 @@ class PoolCue3D {
         const startZ = this.stickGroup.position.z;
         const targetZ = 0.02; // Tip touches ball
         const startTime = performance.now();
-        const duration = 120; // 120ms snap
+        const duration = 90; // 90ms quick snap
+
+        let hitCalled = false;
 
         const animateStrike = (time) => {
             const elapsed = time - startTime;
@@ -151,10 +153,8 @@ class PoolCue3D {
             // Ease in power thrust
             this.stickGroup.position.z = THREE.MathUtils.lerp(startZ, targetZ, progress * progress);
 
-            if (progress < 1.0) {
-                requestAnimationFrame(animateStrike);
-            } else {
-                // Ball struck! Trigger physics
+            if (progress >= 1.0 && !hitCalled) {
+                hitCalled = true;
                 if (onHitCallback) onHitCallback();
 
                 // Recoil & fade out cue during shot
@@ -162,7 +162,9 @@ class PoolCue3D {
                     this.visible = false;
                     this.isStriking = false;
                     this.stickGroup.position.z = 0.25;
-                }, 80);
+                }, 50);
+            } else if (progress < 1.0) {
+                requestAnimationFrame(animateStrike);
             }
         };
 

@@ -205,7 +205,7 @@ body, html {
 /* Bottom Controls HUD */
 .bottom-hud {
     position: fixed;
-    bottom: max(20px, env(safe-area-inset-bottom, 20px));
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
     left: 0;
     right: 0;
     display: flex;
@@ -213,19 +213,51 @@ body, html {
     align-items: center;
     gap: 8px;
     z-index: 20;
-    max-width: 420px;
+    max-width: 500px;
     margin: 0 auto;
-    padding: 0 16px;
+    padding: 0 12px;
+}
+
+.bottom-hud-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.btn-aim-step {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-aim-step:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.05);
+}
+
+.btn-aim-step:active {
+    transform: scale(0.92);
 }
 
 .power-control-panel {
-    width: 100%;
+    flex: 1;
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    padding: 6px 14px;
+    border-radius: 14px;
+    padding: 5px 12px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
@@ -283,17 +315,18 @@ body, html {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #ffffff;
     border: none;
-    padding: 11px 40px;
-    font-size: 0.95rem;
+    padding: 10px 22px;
+    font-size: 0.88rem;
     font-weight: 900;
     letter-spacing: 1px;
-    border-radius: 28px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
 }
 
 .btn-shoot-main:hover:not(:disabled) {

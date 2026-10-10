@@ -178,10 +178,33 @@ class PoolGameApp {
         }
 
         if (btnShoot) {
-            btnShoot.addEventListener('click', () => {
+            btnShoot.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.takeShot();
+            });
+            btnShoot.addEventListener('touchend', (e) => {
+                e.preventDefault();
                 this.takeShot();
             });
         }
+
+        // Aim fine-tune buttons
+        document.getElementById('btn-aim-left')?.addEventListener('click', () => {
+            this.aimAngle -= 0.05;
+            this.updateAiming();
+        });
+        document.getElementById('btn-aim-right')?.addEventListener('click', () => {
+            this.aimAngle += 0.05;
+            this.updateAiming();
+        });
+
+        // Desktop Spacebar to shoot
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                this.takeShot();
+            }
+        });
 
         // View Mode Toggles
         document.getElementById('btn-view-orbit')?.addEventListener('click', () => this.setCameraView('orbit'));
@@ -281,7 +304,7 @@ class PoolGameApp {
 
         this.cue.update(
             new THREE.Vector3(cueBall.x, this.ballFactory.radius, cueBall.z),
-            this.aimAngle + Math.PI / 2, // Convert polar to Three.js orientation
+            -this.aimAngle - Math.PI / 2, // Aligned Three.js rotation angle
             this.power
         );
         this.cue.setGhostTarget(closestDist);
@@ -297,20 +320,22 @@ class PoolGameApp {
         if (!cueBall || cueBall.inPocket) return;
 
         this.isShotActive = true;
+        this.shotFrameDelay = 30; // Wait 30 frames before checking if stationary
         this.pocketedThisShot = [];
         this.cueBallScratch = false;
         document.getElementById('btn-shoot')?.setAttribute('disabled', 'true');
 
-        this.cue.strike(() => {
-            // Apply shot impulse to cue ball
-            const speed = 4.0 + this.power * 10.5;
-            cueBall.vx = Math.cos(this.aimAngle) * speed;
-            cueBall.vz = Math.sin(this.aimAngle) * speed;
+        // Apply shot impulse immediately so cue ball launches
+        const speed = 4.5 + this.power * 11.5;
+        cueBall.vx = Math.cos(this.aimAngle) * speed;
+        cueBall.vz = Math.sin(this.aimAngle) * speed;
 
-            if (window.poolAudio) {
-                window.poolAudio.playCueHit(this.power);
-            }
-        });
+        if (window.poolAudio) {
+            window.poolAudio.playCueHit(this.power);
+        }
+
+        // Trigger cue strike snap
+        this.cue.strike();
     }
 
     animate() {
@@ -351,8 +376,12 @@ class PoolGameApp {
         }
 
         // 3. Check when all balls come to a complete stop
-        if (this.isShotActive && this.physics.areAllBallsStationary(this.ballsData)) {
-            this.onShotComplete();
+        if (this.isShotActive) {
+            if (this.shotFrameDelay > 0) {
+                this.shotFrameDelay--;
+            } else if (this.physics.areAllBallsStationary(this.ballsData)) {
+                this.onShotComplete();
+            }
         }
 
         this.controls.update();
