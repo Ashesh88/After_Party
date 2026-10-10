@@ -8,12 +8,21 @@ import Chess3D from '../../../components/games/Chess3D';
 import LudoGame from '../../../components/games/LudoGame';
 import PoolGame from '../../../components/games/PoolGame';
 import TurboRacer from '../../../components/games/TurboRacer';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap } from 'lucide-react';
+import CardsGame from '../../../components/games/CardsGame';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade } from 'lucide-react';
 
 const games = [
   { 
+    id: 'cards', 
+    name: 'Royal 3D Cards', 
+    desc: 'Luxury Blackjack, 3D dealing & chips',
+    icon: Spade, 
+    color: 'from-emerald-400 via-teal-500 to-amber-500', 
+    tag: '3D LIVE' 
+  },
+  { 
     id: 'racer', 
-    name: 'Couples Turbo 3D Racer', 
+    name: 'Turbo 3D Racer', 
     desc: 'Luxury supercars, 2-Player duel & Nitro',
     icon: Zap, 
     color: 'from-cyan-400 via-pink-500 to-purple-600', 
@@ -29,7 +38,7 @@ const games = [
   },
   { 
     id: 'ludo', 
-    name: 'Couples 3D Ludo', 
+    name: 'Classic 3D Ludo', 
     desc: 'Luxury 3D pawns, Dice & Crown',
     icon: Dices, 
     color: 'from-pink-500 to-purple-600', 
@@ -37,8 +46,8 @@ const games = [
   },
   { 
     id: 'pool', 
-    name: 'Couples 3D Pool', 
-    desc: 'Luxury 8-Ball, Cue physics & AI',
+    name: 'Luxury 3D Pool', 
+    desc: '8-Ball billiards, Cue physics & AI',
     icon: CircleDot, 
     color: 'from-emerald-400 to-teal-500', 
     tag: '3D LIVE' 
@@ -61,7 +70,7 @@ const games = [
   },
   { 
     id: 'quiz', 
-    name: 'Couples Quiz', 
+    name: 'Trivia Quiz Show', 
     desc: 'How well do you know each other?',
     icon: HelpCircle, 
     color: 'from-orange-500 to-rose-500', 
@@ -80,6 +89,7 @@ const games = [
 export default function GamesPage() {
   const { activeGame, setActiveGame } = useGameStore();
 
+  if (activeGame === 'cards') return <CardsGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'racer') return <TurboRacer onBack={() => setActiveGame(null)} />;
   if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
   if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;
@@ -101,10 +111,10 @@ export default function GamesPage() {
           <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse" />
         </div>
         <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
-          <span>Couples</span>
+          <span>Game</span>
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400">Arcade</span>
         </h1>
-        <p className="text-xs text-slate-400 font-medium mt-1">Real-time turn-based games for you and your partner</p>
+        <p className="text-xs text-slate-400 font-medium mt-1">Real-time 3D games and party challenges</p>
       </header>
 
       <div className="grid grid-cols-2 gap-3.5 relative z-10">

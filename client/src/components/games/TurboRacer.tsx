@@ -71,7 +71,7 @@ export default function TurboRacer({ onBack }: { onBack: () => void }) {
 
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 mx-2">
           <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-400 to-rose-400 truncate whitespace-nowrap">
-            Couples Turbo 3D Racer 🏎️
+            Turbo 3D Racer 🏎️
           </span>
           <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
             2-Player Luxury Duel
@@ -103,7 +103,7 @@ export default function TurboRacer({ onBack }: { onBack: () => void }) {
           src={`/games/racer/index.html?p1=${encodeURIComponent(userName)}&p2=${encodeURIComponent(partnerName)}`}
           className="w-full h-full border-none bg-[#08070d]"
           allow="fullscreen; autoplay"
-          title="Couples Turbo 3D Racer"
+          title="Turbo 3D Racer"
         />
       </div>
     </div>

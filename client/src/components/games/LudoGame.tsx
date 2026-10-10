@@ -32,7 +32,7 @@ export default function LudoGame({ onBack }: { onBack: () => void }) {
 
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 mx-2">
           <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400 truncate whitespace-nowrap">
-            Couples 3D Ludo 🎲
+            Classic 3D Ludo 🎲
           </span>
           <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 shrink-0">
             3D Studio
@@ -63,7 +63,7 @@ export default function LudoGame({ onBack }: { onBack: () => void }) {
           src="/games/ludo/index.html"
           className="w-full h-full border-none bg-[#0a0c10]"
           allow="fullscreen; autoplay"
-          title="Couples 3D Ludo Deluxe"
+          title="Classic 3D Ludo Deluxe"
         />
       </div>
     </div>

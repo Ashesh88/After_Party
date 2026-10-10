@@ -32,7 +32,7 @@ export default function PoolGame({ onBack }: { onBack: () => void }) {
 
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 mx-2">
           <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 truncate whitespace-nowrap">
-            Couples 3D Pool 🎱
+            Luxury 3D Pool 🎱
           </span>
           <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
             3D Studio
@@ -63,7 +63,7 @@ export default function PoolGame({ onBack }: { onBack: () => void }) {
           src="/games/pool/index.html"
           className="w-full h-full border-none bg-[#0a0c10]"
           allow="fullscreen; autoplay"
-          title="Couples 3D Pool Deluxe"
+          title="Luxury 3D Pool Deluxe"
         />
       </div>
     </div>

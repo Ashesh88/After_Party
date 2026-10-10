@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Royal 3D Cards Studio</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Three.js 3D WebGL Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay HUD Layer -->
+    <div class="ui-layer">
+        <!-- Top Dock Header -->
+        <header class="top-dock-panel interactive">
+            <div class="top-row">
+                <!-- Mode Toggle: 2-Player Duel vs Royal Dealer -->
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn-mode-dealer">
+                        <i class="fa-solid fa-crown"></i>
+                        <span>vs Royal Dealer</span>
+                    </button>
+                    <button class="mode-btn" id="btn-mode-2p">
+                        <i class="fa-solid fa-users"></i>
+                        <span>2-Player Duel</span>
+                    </button>
+                </div>
+
+                <!-- Bankroll & Utilities -->
+                <div class="top-right-group">
+                    <div class="bankroll-pill">
+                        <i class="fa-solid fa-coins text-amber-400"></i>
+                        <span id="bankroll-val">$1,000</span>
+                    </div>
+
+                    <button class="btn-icon" id="btn-mute" title="Toggle Sound">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <button class="btn-icon" id="btn-new-round" title="New Game">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hand Scores & Status Banner -->
+            <div class="status-dock">
+                <!-- Dealer / Opponent Score -->
+                <div class="score-badge dealer-score" id="dealer-score-badge">
+                    <span class="score-label" id="dealer-label">Dealer</span>
+                    <span class="score-value" id="dealer-score-val">0</span>
+                </div>
+
+                <!-- Match Center Announcer -->
+                <div class="match-announcer" id="match-announcer">
+                    Place your bet & tap Deal Cards!
+                </div>
+
+                <!-- Player Score -->
+                <div class="score-badge player-score" id="player-score-badge">
+                    <span class="score-label" id="player-label">You</span>
+                    <span class="score-value" id="player-score-val">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Current Bet Display -->
+        <div class="bet-indicator interactive" id="bet-indicator">
+            <span class="bet-label">CURRENT BET</span>
+            <span class="bet-val" id="current-bet-val">$25</span>
+        </div>
+
+        <!-- Bottom Actions Dock -->
+        <footer class="bottom-dock interactive">
+            <!-- Chip Selector Tray -->
+            <div class="chips-tray" id="chips-tray">
+                <button class="chip-btn chip-10" data-value="10">$10</button>
+                <button class="chip-btn chip-25 active" data-value="25">$25</button>
+                <button class="chip-btn chip-50" data-value="50">$50</button>
+                <button class="chip-btn chip-100" data-value="100">$100</button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="actions-row">
+                <button class="btn-action btn-deal" id="btn-deal">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Deal Cards</span>
+                </button>
+
+                <button class="btn-action btn-hit hidden" id="btn-hit">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Hit (+Card)</span>
+                </button>
+
+                <button class="btn-action btn-stand hidden" id="btn-stand">
+                    <i class="fa-solid fa-hand"></i>
+                    <span>Stand</span>
+                </button>
+
+                <button class="btn-action btn-double hidden" id="btn-double">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Double</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Victory / Round Result Celebration Modal -->
+    <div class="modal-overlay" id="modal-result">
+        <div class="result-card interactive">
+            <div class="result-icon" id="result-icon">👑</div>
+            <h2 class="result-title" id="result-title">Blackjack! 21 🔥</h2>
+            <p class="result-subtitle" id="result-subtitle">You won +$50 Chips!</p>
+            <button class="btn-play-again" id="btn-next-hand">
+                <i class="fa-solid fa-play"></i>
+                <span>Next Hand</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bundled Three.js Library -->
+    <script src="js/lib/three.min.js"></script>
+    <script src="audio.js"></script>
+    <script src="js/cards-game.js"></script>
+</body>
+</html>
