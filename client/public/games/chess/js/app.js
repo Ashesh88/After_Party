@@ -22,6 +22,7 @@ class ChessApp {
         // Animation state
         this.animatingPieces = [];
         this.sessionCode = null;
+        this.isMatchStarted = true;
 
         this.initThree();
         this.initBoard();
@@ -151,7 +152,12 @@ class ChessApp {
         // Reset Timers
         this.timers = { w: this.timeControl, b: this.timeControl };
         this.updateTimerDisplay();
-        this.startTimer();
+
+        if (this.gameMode === 'online' && !this.isMatchStarted) {
+            this.stopTimer();
+        } else {
+            this.startTimer();
+        }
 
         // Update UI
         this.updateUI();
@@ -289,14 +295,21 @@ class ChessApp {
                         window.soundSystem.muted = typeof data.muted === 'boolean' ? data.muted : !window.soundSystem.muted;
                     }
                     break;
+                case 'CHESS_START_MATCH':
+                    this.isMatchStarted = true;
+                    this.startTimer();
+                    this.updateUI();
+                    this.showStatusNotification('Match Started! White to move ⚔️');
+                    break;
             }
         });
     }
 
-    setOnlineSession({ sessionCode, role, opponentName, myName }) {
+    setOnlineSession({ sessionCode, role, opponentName, myName, started }) {
         this.gameMode = 'online';
         this.sessionCode = sessionCode || 'ZEN-ROOM';
         this.playerColor = role === 'b' ? 'b' : 'w';
+        this.isMatchStarted = typeof started === 'boolean' ? started : (role === 'b');
 
         ['ai', 'online', 'local'].forEach(m => {
             const el = document.getElementById(`btn-mode-${m}`);
@@ -322,7 +335,11 @@ class ChessApp {
 
         this.setupNewGame();
         this.resetCamera();
-        this.showStatusNotification(`Online match active with ${opponentName || 'friend'}!`);
+        if (this.isMatchStarted) {
+            this.showStatusNotification(`Online match active with ${opponentName || 'friend'}!`);
+        } else {
+            this.showStatusNotification(`Waiting for ${opponentName || 'friend'} to accept challenge... ⏳`);
+        }
     }
 
     checkUrlForRoom() {
@@ -342,11 +359,14 @@ class ChessApp {
             }
 
             if (mode === 'online' && code) {
+                const startedParam = params.get('started');
+                const isStarted = startedParam === '1' ? true : (startedParam === '0' ? false : (role === 'b'));
                 this.setOnlineSession({
                     sessionCode: code,
                     role: role || 'w',
                     opponentName: opponent || 'Opponent',
-                    myName: name || 'Player'
+                    myName: name || 'Player',
+                    started: isStarted
                 });
                 return;
             } else if (mode === 'ai') {
@@ -670,6 +690,12 @@ class ChessApp {
         if (this.animatingPieces.length > 0) return; // Wait during move anim
         if (this.chess.game_over()) return;
 
+        // In Online mode, restrict moving if match has not started yet
+        if (this.gameMode === 'online' && !this.isMatchStarted) {
+            this.showStatusNotification('Waiting for friend to accept challenge... ⏳');
+            return;
+        }
+
         // In AI mode, restrict moving when it's AI's turn
         if (this.gameMode === 'ai' && this.chess.turn() !== this.playerColor) return;
         // In Online mode, restrict moving when not your turn or color
@@ -982,11 +1008,17 @@ class ChessApp {
     // UI Updates
     updateUI() {
         const turn = this.chess.turn();
-        const turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
-        document.getElementById('status-text').textContent = turnText;
+        let turnText = turn === 'w' ? "White's Turn" : "Black's Turn";
+        if (this.gameMode === 'online' && !this.isMatchStarted) {
+            turnText = "Waiting for friend to accept... ⏳";
+        }
+        const statusTextEl = document.getElementById('status-text');
+        if (statusTextEl) statusTextEl.textContent = turnText;
         
-        document.getElementById('card-white').classList.toggle('active-turn', turn === 'w');
-        document.getElementById('card-black').classList.toggle('active-turn', turn === 'b');
+        const cardW = document.getElementById('card-white');
+        const cardB = document.getElementById('card-black');
+        if (cardW) cardW.classList.toggle('active-turn', this.isMatchStarted && turn === 'w');
+        if (cardB) cardB.classList.toggle('active-turn', this.isMatchStarted && turn === 'b');
     }
 
     updateHistoryUI() {

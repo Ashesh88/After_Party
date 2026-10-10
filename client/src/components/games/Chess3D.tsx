@@ -167,6 +167,7 @@ export default function Chess3D({ onBack }: Chess3DProps) {
       if (data.sessionCode === sessionCode) {
         setIsWaitingForFriend(false);
         setIsOpponentConnected(true);
+        iframeRef.current?.contentWindow?.postMessage({ type: 'CHESS_START_MATCH' }, '*');
         toast.success(`${opponentName || 'Friend'} accepted your challenge! ⚔️`, {
           icon: '♟️',
         });
@@ -185,6 +186,7 @@ export default function Chess3D({ onBack }: Chess3DProps) {
     const handleOpponentJoined = (data: { playerName: string; role: string }) => {
       setIsWaitingForFriend(false);
       setIsOpponentConnected(true);
+      iframeRef.current?.contentWindow?.postMessage({ type: 'CHESS_START_MATCH' }, '*');
       toast.success(`${data.playerName || 'Opponent'} joined the match! Match is live! ♟️`);
     };
 
@@ -400,7 +402,7 @@ export default function Chess3D({ onBack }: Chess3DProps) {
       });
     }
 
-    const url = `/games/chess/index.html?mode=online&code=${encodeURIComponent(generatedCode)}&role=w&opponent=${encodeURIComponent(friend.displayName)}&name=${encodeURIComponent(myName)}`;
+    const url = `/games/chess/index.html?mode=online&code=${encodeURIComponent(generatedCode)}&role=w&opponent=${encodeURIComponent(friend.displayName)}&name=${encodeURIComponent(myName)}&started=0`;
     setIframeSrc(url);
     if (iframeRef.current) {
       iframeRef.current.src = url;
