@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { useSocketStore } from '../lib/store/socketStore';
+import { useAuthStore } from '../lib/store/authStore';
 import { useCallStore } from '../lib/store/callStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -70,23 +71,33 @@ export default function CallOverlay() {
     if (!socket) return;
 
     const handleIncoming = (data: any) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (data?.callerId && currentUserId && data.callerId.toString() === currentUserId.toString()) return;
       setIncomingCall(data);
     };
 
-    const handleSignal = ({ signal }: any) => {
+    const handleSignal = ({ signal, senderId }: any) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (senderId && currentUserId && senderId.toString() === currentUserId.toString()) return;
       useCallStore.getState().handleIncomingSignal(signal);
     };
 
     const handleAccepted = (data?: any) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (data?.receiverId && currentUserId && data.receiverId.toString() === currentUserId.toString()) return;
       useCallStore.getState().handleCallAccepted(socket, data);
     };
 
-    const handleRejected = () => {
+    const handleRejected = (data?: any) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (data?.receiverId && currentUserId && data.receiverId.toString() === currentUserId.toString()) return;
       toast('Partner was unable to answer', { icon: '📞' });
       useCallStore.getState().endCall(null);
     };
 
-    const handleHangup = () => {
+    const handleHangup = (data?: any) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (data?.senderId && currentUserId && data.senderId.toString() === currentUserId.toString()) return;
       toast('Call ended', { icon: '📞' });
       useCallStore.getState().endCall(null);
     };

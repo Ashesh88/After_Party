@@ -239,7 +239,7 @@ const setupSocket = (io) => {
       }
     });
 
-    // WebRTC Call Signaling (Supports both direct user targeting & room broadcast)
+    // WebRTC Call Signaling (Prioritize direct user channel, fallback to room broadcast)
     socket.on('webrtc:call-user', ({ callType, callerName, callerAvatar, targetUserId }) => {
       const payload = {
         callerId: userId,
@@ -247,71 +247,77 @@ const setupSocket = (io) => {
         callerAvatar,
         callType: callType || 'video',
       };
-      if (targetUserId) {
+      if (targetUserId && targetUserId.toString() !== userId.toString()) {
         io.to(`user:${targetUserId}`).emit('webrtc:incoming-call', payload);
-      }
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('webrtc:incoming-call', payload);
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('webrtc:incoming-call', payload);
+        }
       }
     });
 
     socket.on('webrtc:accept-call', (data) => {
       const callerId = data?.callerId;
       const payload = { receiverId: userId };
-      if (callerId) {
+      if (callerId && callerId.toString() !== userId.toString()) {
         io.to(`user:${callerId}`).emit('webrtc:call-accepted', payload);
-      }
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('webrtc:call-accepted', payload);
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('webrtc:call-accepted', payload);
+        }
       }
     });
 
     socket.on('webrtc:reject-call', (data) => {
       const callerId = data?.callerId;
       const payload = { receiverId: userId };
-      if (callerId) {
+      if (callerId && callerId.toString() !== userId.toString()) {
         io.to(`user:${callerId}`).emit('webrtc:call-rejected', payload);
-      }
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('webrtc:call-rejected', payload);
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('webrtc:call-rejected', payload);
+        }
       }
     });
 
     socket.on('webrtc:signal', ({ signal, targetUserId }) => {
       const payload = { signal, senderId: userId };
-      if (targetUserId) {
+      if (targetUserId && targetUserId.toString() !== userId.toString()) {
         io.to(`user:${targetUserId}`).emit('webrtc:signal', payload);
-      }
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('webrtc:signal', payload);
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('webrtc:signal', payload);
+        }
       }
     });
 
     socket.on('webrtc:hangup', (data) => {
       const targetUserId = data?.targetUserId;
       const payload = { senderId: userId };
-      if (targetUserId) {
+      if (targetUserId && targetUserId.toString() !== userId.toString()) {
         io.to(`user:${targetUserId}`).emit('webrtc:hangup', payload);
-      }
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('webrtc:hangup', payload);
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('webrtc:hangup', payload);
+        }
       }
     });
 
     socket.on('webrtc:end', (data) => {
       const targetUserId = data?.targetUserId;
       const payload = { senderId: userId };
-      if (targetUserId) {
+      if (targetUserId && targetUserId.toString() !== userId.toString()) {
         io.to(`user:${targetUserId}`).emit('webrtc:hangup', payload);
-      }
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('webrtc:hangup', payload);
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('webrtc:hangup', payload);
+        }
       }
     });
 

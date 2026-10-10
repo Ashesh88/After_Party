@@ -51,6 +51,7 @@ const ICE_SERVERS = [
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun4.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
 ];
 
 let pendingSignals: any[] = [];
@@ -149,6 +150,13 @@ export const useCallStore = create<CallState>((set, get) => ({
   },
 
   handleCallAccepted: (socket, data?: any) => {
+    const { callStatus, peer: existingPeer } = get();
+    // Guard against multiple invocations
+    if (callStatus === 'connected' && existingPeer && !existingPeer.destroyed) {
+      console.log('Call already in progress, ignoring duplicate accept');
+      return;
+    }
+
     // Partner accepted our call! Stop outgoing ringtone and transition caller to connected state
     soundService.playConnectTone();
     const { localStream, partnerInfo, incomingCaller } = get();
@@ -163,6 +171,10 @@ export const useCallStore = create<CallState>((set, get) => ({
     const targetUserId = partnerInfo?._id || incomingCaller?.callerId || data?.receiverId;
 
     try {
+      if (existingPeer) {
+        try { existingPeer.destroy(); } catch {}
+      }
+
       // Caller initiates the WebRTC offer peer
       const peer = new Peer({
         initiator: true,
@@ -176,15 +188,22 @@ export const useCallStore = create<CallState>((set, get) => ({
       });
 
       peer.on('stream', (remoteStream) => {
+        console.log('Caller received remote stream');
         set({ remoteStream });
       });
 
       peer.on('error', (err) => {
-        console.error('Peer error on caller side:', err);
+        console.warn('Caller peer error/warning:', err);
+        if (peer.destroyed && get().peer === peer) {
+          get().endCall(socket);
+        }
       });
 
       peer.on('close', () => {
-        get().endCall(socket);
+        console.log('Caller peer closed');
+        if (get().peer === peer && get().callStatus === 'connected') {
+          get().endCall(socket);
+        }
       });
 
       // Drain any signals that arrived early
@@ -193,7 +212,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         try {
           peer.signal(sig);
         } catch (e) {
-          console.error('Error draining signal on caller:', e);
+          console.warn('Ignored redundant signal on caller:', e);
         }
       }
 
@@ -204,12 +223,20 @@ export const useCallStore = create<CallState>((set, get) => ({
   },
 
   acceptCall: async (socket) => {
-    const { incomingCaller } = get();
+    const { incomingCaller, callStatus, peer: existingPeer } = get();
     if (!socket || !incomingCaller) return;
+    if (callStatus === 'connected' && existingPeer && !existingPeer.destroyed) {
+      console.log('Call already in progress, ignoring duplicate acceptCall');
+      return;
+    }
 
     soundService.playConnectTone();
 
     try {
+      if (existingPeer) {
+        try { existingPeer.destroy(); } catch {}
+      }
+
       const isVideo = incomingCaller.callType === 'video';
       const stream = await navigator.mediaDevices.getUserMedia({
         video: isVideo,
@@ -227,8 +254,10 @@ export const useCallStore = create<CallState>((set, get) => ({
         isVideoOff: false,
       });
 
+      const callerId = incomingCaller.callerId;
+
       // Tell caller we accepted (include callerId directly)
-      socket.emit('webrtc:accept-call', { callerId: incomingCaller.callerId });
+      socket.emit('webrtc:accept-call', { callerId });
 
       // Receiver creates non-initiator peer
       const peer = new Peer({
@@ -239,19 +268,26 @@ export const useCallStore = create<CallState>((set, get) => ({
       });
 
       peer.on('signal', (signal) => {
-        socket.emit('webrtc:signal', { signal, targetUserId: incomingCaller.callerId });
+        socket.emit('webrtc:signal', { signal, targetUserId: callerId });
       });
 
       peer.on('stream', (remoteStream) => {
+        console.log('Receiver received remote stream');
         set({ remoteStream });
       });
 
       peer.on('error', (err) => {
-        console.error('Peer error on receiver side:', err);
+        console.warn('Receiver peer error/warning:', err);
+        if (peer.destroyed && get().peer === peer) {
+          get().endCall(socket);
+        }
       });
 
       peer.on('close', () => {
-        get().endCall(socket);
+        console.log('Receiver peer closed');
+        if (get().peer === peer && get().callStatus === 'connected') {
+          get().endCall(socket);
+        }
       });
 
       // Drain any signals that arrived early
@@ -260,7 +296,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         try {
           peer.signal(sig);
         } catch (e) {
-          console.error('Error draining signal on receiver:', e);
+          console.warn('Ignored redundant signal on receiver:', e);
         }
       }
 
@@ -278,10 +314,13 @@ export const useCallStore = create<CallState>((set, get) => ({
       try {
         peer.signal(signal);
       } catch (e) {
-        console.error('Error passing signal to peer:', e);
+        console.warn('Ignored duplicate or invalid WebRTC signal:', e);
       }
     } else {
-      pendingSignals.push(signal);
+      const sigStr = JSON.stringify(signal);
+      if (!pendingSignals.some(s => JSON.stringify(s) === sigStr)) {
+        pendingSignals.push(signal);
+      }
     }
   },
 
