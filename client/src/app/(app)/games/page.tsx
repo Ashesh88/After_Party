@@ -14,30 +14,6 @@ import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spa
 
 const games = [
   { 
-    id: 'bowling', 
-    name: 'Cosmic 3D Bowling', 
-    desc: '10-pin hardwood alley, strikes & cosmic pins',
-    icon: Disc, 
-    color: 'from-purple-500 via-pink-500 to-amber-400', 
-    tag: '3D LIVE' 
-  },
-  { 
-    id: 'cards', 
-    name: 'Royal 3D Cards', 
-    desc: 'Luxury Blackjack, 3D dealing & chips',
-    icon: Spade, 
-    color: 'from-emerald-400 via-teal-500 to-amber-500', 
-    tag: '3D LIVE' 
-  },
-  { 
-    id: 'racer', 
-    name: 'Turbo 3D Racer', 
-    desc: 'Luxury supercars, 2-Player duel & Nitro',
-    icon: Zap, 
-    color: 'from-cyan-400 via-pink-500 to-purple-600', 
-    tag: '3D RACING' 
-  },
-  { 
     id: 'chess', 
     name: 'Zen 3D Chess', 
     desc: 'Luxury 3D pieces, AI & Video Call',
@@ -46,6 +22,16 @@ const games = [
     tag: '3D LIVE',
     video: '/videos/chess-preview.mp4',
     thumb: '/videos/chess-thumb.jpg'
+  },
+  { 
+    id: 'pool', 
+    name: 'Luxury 3D Pool', 
+    desc: '8-Ball billiards, Cue physics & AI',
+    icon: CircleDot, 
+    color: 'from-emerald-400 to-teal-500', 
+    tag: '3D LIVE',
+    video: '/videos/pool-preview.mp4',
+    thumb: '/videos/pool-thumb.jpg'
   },
   { 
     id: 'ludo', 
@@ -58,14 +44,34 @@ const games = [
     thumb: '/videos/ludo-thumb.jpg'
   },
   { 
-    id: 'pool', 
-    name: 'Luxury 3D Pool', 
-    desc: '8-Ball billiards, Cue physics & AI',
-    icon: CircleDot, 
-    color: 'from-emerald-400 to-teal-500', 
+    id: 'bowling', 
+    name: 'Cosmic 3D Bowling', 
+    desc: '10-pin hardwood alley, strikes & cosmic pins',
+    icon: Disc, 
+    color: 'from-purple-500 via-pink-500 to-amber-400', 
     tag: '3D LIVE',
-    video: '/videos/pool-preview.mp4',
-    thumb: '/videos/pool-thumb.jpg'
+    video: '/videos/bowling-preview.mp4',
+    thumb: '/videos/bowling-thumb.jpg'
+  },
+  { 
+    id: 'cards', 
+    name: 'Royal 3D Cards', 
+    desc: 'Luxury Blackjack, 3D dealing & chips',
+    icon: Spade, 
+    color: 'from-emerald-400 via-teal-500 to-amber-500', 
+    tag: '3D LIVE',
+    video: '/videos/cards-preview.mp4',
+    thumb: '/videos/cards-thumb.jpg'
+  },
+  { 
+    id: 'racer', 
+    name: 'Turbo 3D Racer', 
+    desc: 'Luxury supercars, 2-Player duel & Nitro',
+    icon: Zap, 
+    color: 'from-cyan-400 via-pink-500 to-purple-600', 
+    tag: '3D RACING',
+    video: '/videos/racer-preview.mp4',
+    thumb: '/videos/racer-thumb.jpg'
   },
   { 
     id: 'tictactoe', 
@@ -104,12 +110,12 @@ const games = [
 export default function GamesPage() {
   const { activeGame, setActiveGame } = useGameStore();
 
+  if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'pool') return <PoolGame onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'bowling') return <BowlingGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'cards') return <CardsGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'racer') return <TurboRacer onBack={() => setActiveGame(null)} />;
-  if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
-  if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;
-  if (activeGame === 'pool') return <PoolGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tictactoe') return <TicTacToe onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tod') return <TruthOrDare onBack={() => setActiveGame(null)} />;
   if (activeGame === 'quiz') return <Quiz onBack={() => setActiveGame(null)} />;
@@ -139,7 +145,7 @@ export default function GamesPage() {
           const videoSrc = (game as any).video;
           const thumbSrc = (game as any).thumb;
 
-          // For video games (Chess, Ludo, Pool): Full section video, zero padding, edge-to-edge, floating Play now in bottom-right corner
+          // For video games: Full section video, zero padding, edge-to-edge, floating Play now in bottom-left corner without background
           if (videoSrc) {
             return (
               <button
@@ -158,9 +164,9 @@ export default function GamesPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity pointer-events-none" />
 
-                {/* Floating "Play now →" button in left-bottom corner, minimized, clean glass without pink background */}
-                <div className="absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/60 hover:bg-black/80 text-white text-[9px] sm:text-[10px] font-bold shadow-md backdrop-blur-md border border-white/20 group-hover:scale-105 transition-all">
-                  <span className="text-white/90">Play now</span>
+                {/* Floating "Play now →" in bottom-left corner: purely simple text and arrow, no background box */}
+                <div className="absolute bottom-1.5 left-2.5 sm:bottom-2 sm:left-3 flex items-center gap-1 text-white text-[10px] sm:text-[11px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] group-hover:translate-x-1 transition-transform pointer-events-none">
+                  <span className="text-white/95">Play now</span>
                   <span className="text-pink-400 font-extrabold">→</span>
                 </div>
               </button>
