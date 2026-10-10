@@ -770,7 +770,7 @@ class ChessApp {
 
             const legalMoves = this.chess.moves({ square: square, verbose: true });
             this.validMoves = legalMoves;
-            this.board.highlightMoves(legalMoves.map(m => m.to));
+            this.board.highlightMoves(legalMoves);
         } else {
             this.selectedSquare = null;
             this.validMoves = [];
@@ -1076,14 +1076,68 @@ class ChessApp {
     }
 
     updateCapturedUI() {
-        const pieceIcons = {
+        const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+        const sortOrder = { q: 5, r: 4, b: 3, n: 2, p: 1 };
+
+        // White has captured Black's pieces (displayed as black piece icons)
+        const blackPieceIcons = {
+            p: '♟', n: '♞', b: '♝', r: '♜', q: '♛'
+        };
+
+        // Black has captured White's pieces (displayed as white piece icons)
+        const whitePieceIcons = {
             p: '♙', n: '♘', b: '♗', r: '♖', q: '♕'
         };
 
+        const sortedWhite = [...this.capturedPieces.w].sort((a, b) => (sortOrder[b] || 0) - (sortOrder[a] || 0));
+        const sortedBlack = [...this.capturedPieces.b].sort((a, b) => (sortOrder[b] || 0) - (sortOrder[a] || 0));
+
+        const whiteScore = this.capturedPieces.w.reduce((sum, p) => sum + (PIECE_VALUES[p] || 0), 0);
+        const blackScore = this.capturedPieces.b.reduce((sum, p) => sum + (PIECE_VALUES[p] || 0), 0);
+        const whiteAdv = whiteScore - blackScore;
+        const blackAdv = blackScore - whiteScore;
+
+        const whitePiecesStr = sortedWhite.map(p => blackPieceIcons[p] || p).join(' ') || '-';
+        const blackPiecesStr = sortedBlack.map(p => whitePieceIcons[p] || p).join(' ') || '-';
+
+        // 1. Update Left Sidebar Dedicated Captured Box
         const wBox = document.getElementById('captured-white');
         const bBox = document.getElementById('captured-black');
-        if (wBox) wBox.innerHTML = this.capturedPieces.w.map(p => pieceIcons[p] || '').join(' ');
-        if (bBox) bBox.innerHTML = this.capturedPieces.b.map(p => pieceIcons[p] || '').join(' ');
+        if (wBox) wBox.textContent = whitePiecesStr;
+        if (bBox) bBox.textContent = blackPiecesStr;
+
+        const wPill = document.getElementById('score-pill-white');
+        const bPill = document.getElementById('score-pill-black');
+        if (wPill) wPill.textContent = whiteAdv > 0 ? `+${whiteAdv}` : '';
+        if (bPill) bPill.textContent = blackAdv > 0 ? `+${blackAdv}` : '';
+
+        // 2. Update Inside Player Cards
+        const cardCapW = document.getElementById('card-cap-white-icons');
+        const cardCapB = document.getElementById('card-cap-black-icons');
+        if (cardCapW) cardCapW.textContent = whitePiecesStr;
+        if (cardCapB) cardCapB.textContent = blackPiecesStr;
+
+        const cardAdvW = document.getElementById('card-adv-white');
+        const cardAdvB = document.getElementById('card-adv-black');
+        if (cardAdvW) cardAdvW.textContent = whiteAdv > 0 ? `+${whiteAdv}` : '';
+        if (cardAdvB) cardAdvB.textContent = blackAdv > 0 ? `+${blackAdv}` : '';
+
+        // 3. Update Always-Visible On-Screen HUD Bar
+        const hudCapW = document.getElementById('hud-cap-white-icons');
+        const hudCapB = document.getElementById('hud-cap-black-icons');
+        if (hudCapW) hudCapW.textContent = whitePiecesStr;
+        if (hudCapB) hudCapB.textContent = blackPiecesStr;
+
+        const hudScoreW = document.getElementById('hud-cap-white-score');
+        const hudScoreB = document.getElementById('hud-cap-black-score');
+        if (hudScoreW) {
+            hudScoreW.textContent = whiteAdv > 0 ? `+${whiteAdv}` : '';
+            hudScoreW.style.display = whiteAdv > 0 ? 'inline-block' : 'none';
+        }
+        if (hudScoreB) {
+            hudScoreB.textContent = blackAdv > 0 ? `+${blackAdv}` : '';
+            hudScoreB.style.display = blackAdv > 0 ? 'inline-block' : 'none';
+        }
     }
 
     appendChatMessage(text, type) {

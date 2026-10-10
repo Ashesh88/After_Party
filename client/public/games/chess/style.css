@@ -428,6 +428,44 @@ body {
     text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
+/* Card & Tray Captured Pieces Styles */
+.player-captured-tray {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.captured-row-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.captured-icons {
+    font-size: 0.92rem;
+    letter-spacing: 2px;
+    color: #f1f5f9;
+    flex: 1;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.captured-icons::-webkit-scrollbar {
+    display: none;
+}
+
+.material-advantage {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #10b981;
+}
+
 /* Compact Captured Pieces Tray */
 .captured-box {
     background: rgba(255, 255, 255, 0.02);
@@ -438,13 +476,48 @@ body {
     padding: 8px 10px;
 }
 
+.captured-player-row {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.captured-player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3px;
+}
+
+.captured-player-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.material-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #34d399;
+}
+
 .captured-list {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     min-height: 18px;
-    font-size: 14px;
-    color: var(--text-secondary);
+    font-size: 15px;
+    letter-spacing: 2px;
+}
+
+.captured-black-pieces {
+    color: #94a3b8;
+}
+
+.captured-white-pieces {
+    color: #f8fafc;
 }
 
 /* Right Sidebar - Compact Live Video Call */
@@ -1018,6 +1091,22 @@ body {
     transform: scale(1.1);
 }
 
+/* Top Dock Wrapper - Holds Status Banner & Captured HUD Bar */
+.top-dock-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    margin-bottom: 6px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.top-dock-wrapper > * {
+    pointer-events: auto;
+}
+
 /* Status Banner - Centered below top nav in top-dock-wrapper */
 .status-banner {
     background: rgba(10, 12, 16, 0.75);
@@ -1043,6 +1132,57 @@ body {
     border-radius: 50%;
     background: var(--accent-emerald);
     box-shadow: 0 0 8px var(--accent-emerald);
+}
+
+/* Always-Visible On-Screen Captured Pieces HUD Bar */
+.hud-captured-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(10, 14, 22, 0.80);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    padding: 3px 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    font-size: 0.75rem;
+    color: #e2e8f0;
+    z-index: 15;
+}
+
+.hud-cap-side {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hud-cap-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.hud-cap-pieces {
+    font-size: 0.88rem;
+    letter-spacing: 2px;
+    color: #f1f5f9;
+}
+
+.hud-cap-divider {
+    color: rgba(255, 255, 255, 0.2);
+    font-weight: 300;
+    font-size: 0.7rem;
+}
+
+.hud-cap-score {
+    font-size: 0.7rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
 }
 
 /* Mobile Floating Quick-Access Symbols & Drawer Support */

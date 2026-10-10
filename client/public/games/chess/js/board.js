@@ -98,6 +98,14 @@ class ChessBoard3D {
             transparent: true,
             opacity: 0.70
         });
+
+        // Vibrant Crimson Capture Ring Marker (Wraps around enemy pieces)
+        this.captureMat = new THREE.MeshBasicMaterial({
+            color: 0xf43f5e,
+            transparent: true,
+            opacity: 0.90,
+            side: THREE.DoubleSide
+        });
     }
 
     createBoard() {
@@ -228,16 +236,64 @@ class ChessBoard3D {
     }
 
     highlightMoves(moves) {
-        moves.forEach(sq => {
+        moves.forEach(m => {
+            // Support both string square e.g. 'e4' and move object e.g. { to: 'e4', captured: 'n' }
+            const isObj = typeof m === 'object' && m !== null;
+            const sq = isObj ? m.to : m;
+            const isCapture = isObj ? (Boolean(m.captured) || (m.flags && (m.flags.includes('c') || m.flags.includes('e')))) : false;
+
             const pos = this.getSquarePos(sq);
             if (!pos) return;
 
-            const geo = new THREE.CylinderGeometry(0.24, 0.24, 0.02, 28);
-            const mesh = new THREE.Mesh(geo, this.validMoveMat);
-            mesh.position.set(pos.x, pos.y + 0.02, pos.z);
-            mesh.userData = { isMoveTarget: true, targetSquare: sq };
-            this.scene.add(mesh);
-            this.highlights.push(mesh);
+            if (isCapture) {
+                // 1. Prominent Outer Capture Ring - Encircles the enemy piece base cleanly (radius 0.36 to 0.49)
+                const ringGeo = new THREE.RingGeometry(0.36, 0.49, 36);
+                ringGeo.rotateX(-Math.PI / 2);
+                const ringMesh = new THREE.Mesh(ringGeo, this.captureMat);
+                ringMesh.position.set(pos.x, pos.y + 0.02, pos.z);
+                ringMesh.userData = { isMoveTarget: true, targetSquare: sq, isCapture: true };
+                this.scene.add(ringMesh);
+                this.highlights.push(ringMesh);
+
+                // 2. High-visibility Square Tile Border Frame (45 deg rotated ring)
+                const frameGeo = new THREE.RingGeometry(0.46, 0.50, 4);
+                frameGeo.rotateX(-Math.PI / 2);
+                frameGeo.rotateY(Math.PI / 4);
+                const frameMat = new THREE.MeshBasicMaterial({
+                    color: 0xff3366,
+                    transparent: true,
+                    opacity: 0.85,
+                    side: THREE.DoubleSide
+                });
+                const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+                frameMesh.position.set(pos.x, pos.y + 0.022, pos.z);
+                frameMesh.userData = { isMoveTarget: true, targetSquare: sq, isCapture: true };
+                this.scene.add(frameMesh);
+                this.highlights.push(frameMesh);
+
+                // 3. Subtle translucent floor wash under the enemy piece
+                const floorGeo = new THREE.PlaneGeometry(0.96, 0.96);
+                floorGeo.rotateX(-Math.PI / 2);
+                const floorMat = new THREE.MeshBasicMaterial({
+                    color: 0xff0044,
+                    transparent: true,
+                    opacity: 0.22,
+                    side: THREE.DoubleSide
+                });
+                const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+                floorMesh.position.set(pos.x, pos.y + 0.012, pos.z);
+                floorMesh.userData = { isMoveTarget: true, targetSquare: sq, isCapture: true };
+                this.scene.add(floorMesh);
+                this.highlights.push(floorMesh);
+            } else {
+                // Regular Move: Clean, centered emerald-green cylinder dot
+                const geo = new THREE.CylinderGeometry(0.18, 0.18, 0.015, 28);
+                const mesh = new THREE.Mesh(geo, this.validMoveMat);
+                mesh.position.set(pos.x, pos.y + 0.015, pos.z);
+                mesh.userData = { isMoveTarget: true, targetSquare: sq, isCapture: false };
+                this.scene.add(mesh);
+                this.highlights.push(mesh);
+            }
         });
     }
 
