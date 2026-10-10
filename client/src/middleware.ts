@@ -2,16 +2,23 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Allow static game assets or any static file with an extension to bypass middleware
+  if (pathname.startsWith('/games/') && pathname.includes('.')) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get('token')?.value;
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register');
-  const isAppPage = request.nextUrl.pathname.startsWith('/dashboard') || 
-                    request.nextUrl.pathname.startsWith('/chat') || 
-                    request.nextUrl.pathname.startsWith('/watch') || 
-                    request.nextUrl.pathname.startsWith('/map') || 
-                    request.nextUrl.pathname.startsWith('/games') ||
-                    request.nextUrl.pathname.startsWith('/room') ||
-                    request.nextUrl.pathname.startsWith('/goals') ||
-                    request.nextUrl.pathname.startsWith('/reminders');
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isAppPage = pathname.startsWith('/dashboard') || 
+                    pathname.startsWith('/chat') || 
+                    pathname.startsWith('/watch') || 
+                    pathname.startsWith('/map') || 
+                    pathname === '/games' ||
+                    pathname.startsWith('/room') || 
+                    pathname.startsWith('/goals') || 
+                    pathname.startsWith('/reminders');
 
   if (!token && isAppPage) {
     return NextResponse.redirect(new URL('/login', request.url));
@@ -25,5 +32,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };
