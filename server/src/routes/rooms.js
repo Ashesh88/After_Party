@@ -7,24 +7,58 @@ const router = express.Router();
 
 router.use(auth);
 
+// Helper to clean up membership when leaving or switching rooms
+async function leaveCurrentRoom(user, io) {
+  if (!user.roomId) return;
+  const oldRoomId = user.roomId;
+  try {
+    const oldRoom = await Room.findById(oldRoomId);
+    if (oldRoom) {
+      oldRoom.members = oldRoom.members.filter(id => id.toString() !== user._id.toString());
+      if (oldRoom.members.length === 0) {
+        await Room.findByIdAndDelete(oldRoomId);
+      } else {
+        await oldRoom.save();
+        if (io) {
+          io.to(`room:${oldRoomId}`).emit('room:member-left', {
+            userId: user._id.toString(),
+            displayName: user.displayName,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error leaving old room:', err);
+  }
+  user.roomId = null;
+  await user.save();
+}
+
 // POST /api/rooms/create
 router.post('/create', async (req, res, next) => {
   try {
     const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const io = req.app.get('io');
+
+    // If user is already in a room, smoothly leave the old one first
     if (user.roomId) {
-      return res.status(400).json({ message: 'User is already in a room' });
+      await leaveCurrentRoom(user, io);
     }
 
     const room = new Room({
       members: [user._id],
     });
-    
     await room.save();
-    
+
     user.roomId = room._id;
     await user.save();
 
-    // Re-issue a token might be better here, but we'll return the room
+    await room.populate('members', 'displayName email avatar friendId');
+
     res.status(201).json({ room });
   } catch (error) {
     next(error);
@@ -35,33 +69,53 @@ router.post('/create', async (req, res, next) => {
 router.post('/join', async (req, res, next) => {
   try {
     const { inviteCode } = req.body;
-    if (!inviteCode) {
+    if (!inviteCode || !inviteCode.trim()) {
       return res.status(400).json({ message: 'Invite code is required' });
     }
 
+    const targetRoom = await Room.findOne({ inviteCode: inviteCode.trim().toUpperCase() });
+    if (!targetRoom) {
+      return res.status(404).json({ message: 'Room not found with code: ' + inviteCode.trim().toUpperCase() });
+    }
+
     const user = await User.findById(req.user.userId);
-    if (user.roomId) {
-      return res.status(400).json({ message: 'User is already in a room' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    const room = await Room.findOne({ inviteCode: inviteCode.toUpperCase() });
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+    const io = req.app.get('io');
+
+    // If already in another room, leave that room smoothly
+    if (user.roomId && user.roomId.toString() !== targetRoom._id.toString()) {
+      await leaveCurrentRoom(user, io);
     }
 
-    if (room.isFull) {
-      return res.status(400).json({ message: 'Room is already full' });
+    // Add user to target room if not already a member
+    const alreadyMember = targetRoom.members.some(m => m.toString() === user._id.toString());
+    if (!alreadyMember) {
+      targetRoom.members.push(user._id);
+      await targetRoom.save();
     }
 
-    if (!room.members.includes(user._id)) {
-      room.members.push(user._id);
-      await room.save();
-    }
-
-    user.roomId = room._id;
+    user.roomId = targetRoom._id;
     await user.save();
 
-    res.json({ room });
+    await targetRoom.populate('members', 'displayName email avatar friendId');
+
+    // Notify room members in real-time
+    if (io) {
+      io.to(`room:${targetRoom._id}`).emit('room:member-joined', {
+        user: {
+          _id: user._id.toString(),
+          displayName: user.displayName,
+          avatar: user.avatar,
+          friendId: user.friendId,
+        },
+        room: targetRoom,
+      });
+    }
+
+    res.json({ room: targetRoom });
   } catch (error) {
     next(error);
   }
@@ -70,13 +124,25 @@ router.post('/join', async (req, res, next) => {
 // GET /api/rooms/mine
 router.get('/mine', async (req, res, next) => {
   try {
-    if (!req.user.roomId) {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
       return res.status(404).json({ message: 'User is not in a room' });
     }
 
-    const room = await Room.findById(req.user.roomId).populate('members', 'displayName email avatar');
+    const room = await Room.findById(user.roomId).populate('members', 'displayName email avatar friendId');
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      // Clean up orphaned roomId
+      user.roomId = null;
+      await user.save();
+      return res.status(404).json({ message: 'Room no longer exists' });
+    }
+
+    // Ensure current user is in members array
+    const isInMembers = room.members.some(m => m._id.toString() === user._id.toString());
+    if (!isInMembers) {
+      room.members.push(user._id);
+      await room.save();
+      await room.populate('members', 'displayName email avatar friendId');
     }
 
     res.json({ room });
@@ -88,25 +154,13 @@ router.get('/mine', async (req, res, next) => {
 // DELETE /api/rooms/leave
 router.delete('/leave', async (req, res, next) => {
   try {
-    if (!req.user.roomId) {
-      return res.status(400).json({ message: 'User is not in a room' });
-    }
-
     const user = await User.findById(req.user.userId);
-    const roomId = user.roomId;
-    
-    user.roomId = null;
-    await user.save();
-
-    const room = await Room.findById(roomId);
-    if (room) {
-      room.members = room.members.filter(id => id.toString() !== user._id.toString());
-      if (room.members.length === 0) {
-        await Room.findByIdAndDelete(roomId);
-      } else {
-        await room.save();
-      }
+    if (!user || !user.roomId) {
+      return res.json({ message: 'Not currently in any room' });
     }
+
+    const io = req.app.get('io');
+    await leaveCurrentRoom(user, io);
 
     res.json({ message: 'Left room successfully' });
   } catch (error) {

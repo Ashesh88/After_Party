@@ -64,7 +64,7 @@ roomSchema.statics.generateInviteCode = function () {
 };
 
 roomSchema.virtual('isFull').get(function () {
-  return this.members.length >= 2;
+  return this.members.length >= 50;
 });
 
 // Pre-validate to ensure invite code exists

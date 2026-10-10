@@ -28,6 +28,18 @@ const userSchema = new mongoose.Schema(
       ref: 'Room',
       default: null,
     },
+    friendId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     pushSubscription: {
       type: Object,
       default: null,
@@ -35,6 +47,17 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userSchema.statics.generateFriendId = function () {
+  return Math.floor(10000000 + Math.random() * 90000000).toString();
+};
+
+userSchema.pre('validate', function (next) {
+  if (!this.friendId) {
+    this.friendId = Math.floor(10000000 + Math.random() * 90000000).toString();
+  }
+  next();
+});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('passwordHash')) return next();

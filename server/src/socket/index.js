@@ -5,6 +5,8 @@ const User = require('../models/User');
 const Room = require('../models/Room');
 const ticTacToe = require('../games/ticTacToe');
 
+const onlineUsers = new Set();
+
 const setupSocket = (io) => {
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
@@ -21,8 +23,39 @@ const setupSocket = (io) => {
   });
 
   io.on('connection', async (socket) => {
-    console.log(`User connected: ${socket.user.userId}`);
     const userId = socket.user.userId;
+    console.log(`User connected: ${userId}`);
+
+    // Join personal user channel for direct friend invitations and calls
+    socket.join(`user:${userId}`);
+    onlineUsers.add(userId.toString());
+    io.emit('presence:online', { userId });
+
+    // Room switch / join live handler
+    socket.on('room:switch', (data) => {
+      const newRoomId = data?.roomId;
+      for (const r of socket.rooms) {
+        if (r.startsWith('room:')) {
+          socket.leave(r);
+        }
+      }
+      if (newRoomId) {
+        const newChannel = `room:${newRoomId}`;
+        socket.join(newChannel);
+        socket.to(newChannel).emit('presence:online', { userId });
+      }
+    });
+
+    // Query online status for friends list
+    socket.on('presence:query', (targetUserIds, callback) => {
+      if (typeof callback === 'function') {
+        const statusMap = {};
+        (targetUserIds || []).forEach(id => {
+          statusMap[id] = onlineUsers.has(id.toString());
+        });
+        callback(statusMap);
+      }
+    });
 
     // Fetch user from DB to always get the latest roomId
     let roomId = socket.user.roomId;
@@ -278,7 +311,9 @@ const setupSocket = (io) => {
     }
 
     socket.on('disconnect', () => {
-      console.log(`User disconnected: ${socket.user.userId}`);
+      console.log(`User disconnected: ${userId}`);
+      onlineUsers.delete(userId.toString());
+      io.emit('presence:offline', { userId });
       if (roomId) {
         socket.to(`room:${roomId}`).emit('presence:offline', { userId });
       }

@@ -12,7 +12,7 @@ interface AuthState {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   fetchMe: () => Promise<void>;
-  setRoom: (room: Room) => void;
+  setRoom: (room: Room | null) => void;
   updateAvatar: (avatarUrl: string) => Promise<void>;
 }
 

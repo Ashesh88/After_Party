@@ -6,6 +6,7 @@ import { useAuthStore } from '../../lib/store/authStore';
 
 import CallOverlay from '../../components/CallOverlay';
 import MoodThemeModal from '../../components/MoodThemeModal';
+import RoomInviteNotification from '../../components/RoomInviteNotification';
 import { useMoodStore } from '../../lib/store/moodStore';
 import { useGameStore } from '../../lib/store/gameStore';
 
@@ -45,6 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <BottomNav />
       <CallOverlay />
       <MoodThemeModal />
+      <RoomInviteNotification />
     </div>
   );
 }

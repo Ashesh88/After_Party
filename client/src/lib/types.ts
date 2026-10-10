@@ -3,6 +3,19 @@ export interface User {
   email: string;
   displayName: string;
   avatar?: string;
+  friendId?: string;
+  roomId?: string | null;
+  friends?: (User | string)[];
+}
+
+export interface Friend {
+  _id: string;
+  displayName: string;
+  email: string;
+  avatar?: string;
+  friendId?: string;
+  roomId?: string | null;
+  isOnline?: boolean;
 }
 
 export type MoodType = 'love' | 'horny' | 'angry' | 'just_friends';

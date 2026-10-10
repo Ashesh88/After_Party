@@ -118,4 +118,31 @@ router.patch('/profile', auth, async (req, res, next) => {
   }
 });
 
+// GET /api/auth/me
+router.get('/me', auth, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId).populate('friends', 'displayName email avatar friendId roomId');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let room = null;
+    if (user.roomId) {
+      const Room = require('../models/Room');
+      room = await Room.findById(user.roomId).populate('members', 'displayName email avatar friendId');
+      if (!room) {
+        user.roomId = null;
+        await user.save();
+      }
+    }
+
+    res.json({
+      user: user.toSafeObject(),
+      room,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

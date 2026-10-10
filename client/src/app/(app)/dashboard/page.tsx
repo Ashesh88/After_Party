@@ -11,9 +11,10 @@ import {
   LogOut, Edit3, Sparkles, Clapperboard, Gamepad2, 
   Target, MapPin, CalendarHeart, User, ArrowRight,
   KeyRound, Copy, Check, Users, RefreshCw,
-  Flame, Heart, AlertCircle, Palette
+  Flame, Heart, AlertCircle, Palette, ShieldCheck, UserPlus
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
+import FriendsModal from '../../../components/FriendsModal';
 
 const CUTE_AVATARS = [
   { id: 'cat', emoji: '🐱', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Angel&backgroundColor=ffb6c1', name: 'Pink Bot' },
@@ -30,16 +31,19 @@ export default function DashboardPage() {
   const router = useRouter();
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [room, setRoom] = useState<any>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedMyId, setCopiedMyId] = useState(false);
   const [inviteInput, setInviteInput] = useState('');
   const [roomLoading, setRoomLoading] = useState(false);
 
-  const user = useAuthStore((state: { user: { displayName?: string; avatar?: string } | null }) => state.user);
+  const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: { logout: () => void }) => state.logout);
   const updateAvatar = useAuthStore((state: any) => state.updateAvatar);
   const setAuthRoom = useAuthStore((state: any) => state.setRoom);
+  const socket = useSocketStore((state: any) => state.socket);
   const partnerOnline = useSocketStore((state: { partnerOnline: boolean }) => state.partnerOnline);
   const { moodTheme, openModal: openMoodModal } = useMoodStore();
   const currentMoodConfig = MOOD_CONFIG[moodTheme.current] || MOOD_CONFIG.love;
@@ -51,6 +55,7 @@ export default function DashboardPage() {
       setAuthRoom(res.data.room);
     } catch {
       setRoom(null);
+      setAuthRoom(null);
     }
   };
 
@@ -58,12 +63,54 @@ export default function DashboardPage() {
     fetchRoom();
   }, []);
 
+  // Listen for room changes from invitations or member join/leave
+  useEffect(() => {
+    const handleRoomChanged = (e: any) => {
+      if (e.detail) {
+        setRoom(e.detail);
+        setAuthRoom(e.detail);
+      } else {
+        fetchRoom();
+      }
+    };
+    window.addEventListener('room:changed', handleRoomChanged);
+    return () => window.removeEventListener('room:changed', handleRoomChanged);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleMemberJoined = (data: any) => {
+      fetchRoom();
+      toast(`${data.user?.displayName || 'Friend'} joined the room! 🎮`, { icon: '👋' });
+    };
+    const handleMemberLeft = (data: any) => {
+      fetchRoom();
+      toast(`${data.displayName || 'A member'} left the room.`, { icon: '👋' });
+    };
+
+    socket.on('room:member-joined', handleMemberJoined);
+    socket.on('room:member-left', handleMemberLeft);
+
+    return () => {
+      socket.off('room:member-joined', handleMemberJoined);
+      socket.off('room:member-left', handleMemberLeft);
+    };
+  }, [socket]);
+
   const handleCopyCode = () => {
     if (!room?.inviteCode) return;
     navigator.clipboard.writeText(room.inviteCode);
     setCopiedCode(true);
-    toast.success('Room code copied! Send to partner 💕');
+    toast.success('Room code copied! Share with friends 🎮');
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleCopyMyId = () => {
+    if (!user?.friendId) return;
+    navigator.clipboard.writeText(user.friendId);
+    setCopiedMyId(true);
+    toast.success('Your Player ID copied! Share with friends 🎮');
+    setTimeout(() => setCopiedMyId(false), 2000);
   };
 
   const handleCreateNewRoom = async () => {
@@ -72,7 +119,10 @@ export default function DashboardPage() {
       const res = await api.post('/rooms/create');
       setRoom(res.data.room);
       setAuthRoom(res.data.room);
-      toast.success('New room created! Share the code with your partner ✨');
+      if (socket) {
+        socket.emit('room:switch', { roomId: res.data.room._id });
+      }
+      toast.success('New room created! Share the code with your friends 🎮');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create room');
     } finally {
@@ -88,7 +138,10 @@ export default function DashboardPage() {
       const res = await api.post('/rooms/join', { inviteCode: inviteInput.trim().toUpperCase() });
       setRoom(res.data.room);
       setAuthRoom(res.data.room);
-      toast.success('Connected with partner! Welcome to your space 💕');
+      if (socket) {
+        socket.emit('room:switch', { roomId: res.data.room._id });
+      }
+      toast.success('Joined party! Welcome to the room 🎮');
       setInviteInput('');
       setShowRoomModal(false);
     } catch (err: any) {
@@ -105,6 +158,9 @@ export default function DashboardPage() {
       await api.delete('/rooms/leave');
       setRoom(null);
       setAuthRoom(null);
+      if (socket) {
+        socket.emit('room:switch', { roomId: null });
+      }
       toast.success('Left room successfully');
       setShowRoomModal(false);
     } catch (err: any) {
@@ -153,14 +209,31 @@ export default function DashboardPage() {
             {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400">{user?.displayName}</span>
           </h1>
           
-          <div className="flex items-center gap-2 mt-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${partnerOnline ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : 'bg-slate-600'}`} />
-            <span className="text-xs font-medium text-slate-300">
-              {partnerMember ? (partnerOnline ? `${partnerMember.displayName} online` : `${partnerMember.displayName} offline`) : 'Waiting for partner'}
-            </span>
+          {/* Unique PUBG-style Player ID Pill & Friends Button */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleCopyMyId}
+              title="Click to copy your Unique Player ID"
+              className="px-2.5 py-1 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/35 text-cyan-300 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
+            >
+              <ShieldCheck size={12} className="text-cyan-400" />
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans">ID:</span>
+              <span className="tracking-wider">{user?.friendId || '...'}</span>
+              {copiedMyId ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-slate-400" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowFriendsModal(true)}
+              className="px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/30 text-slate-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            >
+              <Users size={12} className="text-cyan-400" />
+              <span>Friends 👥</span>
+            </button>
           </div>
 
-          {/* Quick Room Code Pill */}
+          {/* Quick Room Code & Party Members Pill */}
           <div className="mt-2.5 flex items-center gap-2 flex-wrap">
             {room?.inviteCode ? (
               <button
@@ -169,8 +242,11 @@ export default function DashboardPage() {
                 className="px-3 py-1 rounded-full bg-white/[0.05] hover:bg-pink-500/15 border border-white/10 hover:border-pink-500/30 text-xs font-medium text-slate-200 transition-all flex items-center gap-2 cursor-pointer group active:scale-95"
               >
                 <KeyRound size={12} className="text-pink-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] text-slate-400 uppercase font-semibold">Code:</span>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold">Room:</span>
                 <span className="font-mono font-bold text-pink-300 tracking-wider">{room.inviteCode}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-300 font-bold">
+                  {room.members?.length || 1} in Party
+                </span>
                 {copiedCode ? (
                   <Check size={12} className="text-emerald-400" />
                 ) : (
@@ -183,7 +259,7 @@ export default function DashboardPage() {
                 className="px-3 py-1 rounded-full bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-xs font-bold text-pink-300 flex items-center gap-1.5 cursor-pointer shadow-lg animate-pulse"
               >
                 <KeyRound size={12} />
-                <span>Pair Partner (Room Code) 💕</span>
+                <span>Create / Join Party Room 🎮</span>
               </button>
             )}
 
@@ -191,38 +267,46 @@ export default function DashboardPage() {
               onClick={() => setShowRoomModal(true)}
               className="text-[11px] font-bold text-pink-400 hover:text-pink-300 underline underline-offset-2 transition-colors cursor-pointer"
             >
-              {room?.inviteCode ? 'Pair Settings' : 'Setup'}
+              {room?.inviteCode ? 'Party Settings' : 'Setup'}
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFriendsModal(true)}
+            title="Friends List & Add Friend"
+            className="w-10 h-10 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+          >
+            <Users size={16} className="group-hover:scale-110 transition-transform" />
+          </button>
+
           <button
             onClick={openMoodModal}
             title={`Mood Theme: ${currentMoodConfig.label} (Set by ${moodTheme.updatedByName || 'Partner'})`}
-            className="w-11 h-11 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border flex items-center justify-center transition-all cursor-pointer shadow-sm group"
             style={{
               borderColor: `${currentMoodConfig.primaryColor}50`,
               backgroundColor: `${currentMoodConfig.primaryColor}15`,
             }}
           >
-            <Palette size={17} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 transition-transform" />
+            <Palette size={16} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 transition-transform" />
           </button>
 
           <button
             onClick={() => setShowRoomModal(true)}
             title="Room & Pairing Code"
-            className="w-11 h-11 rounded-2xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-slate-300 hover:text-pink-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-slate-300 hover:text-pink-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
           >
-            <KeyRound size={17} className="group-hover:scale-110 transition-transform text-pink-400" />
+            <KeyRound size={16} className="group-hover:scale-110 transition-transform text-pink-400" />
           </button>
 
           <button
             onClick={handleLogout}
             title="Log out"
-            className="w-11 h-11 rounded-2xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-300 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-300 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
           >
-            <LogOut size={17} className="group-hover:scale-110 transition-transform text-slate-400 group-hover:text-rose-300" />
+            <LogOut size={16} className="group-hover:scale-110 transition-transform text-slate-400 group-hover:text-rose-300" />
           </button>
 
           <button 
@@ -487,8 +571,8 @@ export default function DashboardPage() {
                     <KeyRound size={20} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-base text-white">Couple Pairing Code</h3>
-                    <p className="text-xs text-slate-400">Invite or link your partner</p>
+                    <h3 className="font-bold text-base text-white">Party Room & Code</h3>
+                    <p className="text-xs text-slate-400">Supports 8-9+ friends with the same code</p>
                   </div>
                 </div>
                 <button
@@ -503,13 +587,13 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="p-5 rounded-2xl bg-gradient-to-tr from-pink-500/10 via-purple-500/10 to-transparent border border-pink-500/20 text-center">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      Your Secret Room Code
+                      Your Party Room Code
                     </span>
                     <div className="text-3xl sm:text-4xl font-mono font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400 my-2 select-all">
                       {room.inviteCode}
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Share this code with your partner to connect your private space!
+                      Share this code with friends — all of you can join the same room!
                     </p>
                   </div>
 
@@ -518,25 +602,53 @@ export default function DashboardPage() {
                     className="w-full py-3 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
                     {copiedCode ? <Check size={15} /> : <Copy size={15} />}
-                    <span>{copiedCode ? 'Copied to Clipboard! 💕' : 'Copy Room Code to Clipboard'}</span>
+                    <span>{copiedCode ? 'Copied Room Code! 🎮' : 'Copy Room Code to Clipboard'}</span>
                   </button>
 
-                  {/* Partner Status */}
-                  <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users size={16} className="text-pink-400" />
-                      <span className="text-xs text-slate-300 font-medium">Partner:</span>
+                  {/* All Party Members in Room (Supports multiple friends) */}
+                  <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users size={16} className="text-pink-400" />
+                        <span className="text-xs text-slate-300 font-bold">Party Members ({room?.members?.length || 1}):</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRoomModal(false);
+                          setShowFriendsModal(true);
+                        }}
+                        className="text-[10px] text-cyan-300 font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 transition-all cursor-pointer"
+                      >
+                        + Invite Friends
+                      </button>
                     </div>
-                    <span className="text-xs font-bold text-pink-300">
-                      {partnerMember ? `Connected (${partnerMember.displayName})` : 'Waiting to join...'}
-                    </span>
+
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1">
+                      {(room?.members || []).map((m: any) => {
+                        const isMe = m._id === (user as any)?._id;
+                        return (
+                          <span
+                            key={m._id}
+                            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 ${
+                              isMe
+                                ? 'bg-pink-500/20 border-pink-500/40 text-pink-200'
+                                : 'bg-white/[0.05] border-white/10 text-slate-200'
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                            <span className="truncate max-w-[120px]">{m.displayName}{isMe ? ' (You)' : ''}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Join different room expandable */}
                   <div className="pt-2 border-t border-white/10 space-y-3">
                     <form onSubmit={handleJoinByCode} className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Switch / Join Partner's Room Code:
+                        Switch / Join Another Room Code:
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -569,7 +681,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-slate-300 text-center leading-relaxed">
-                    You haven't paired yet. You can create a new room to get a code for your partner, or enter their code below!
+                    You're not in any room right now. Create a new room to host your friends or enter their code below!
                   </p>
 
                   <button
@@ -577,7 +689,7 @@ export default function DashboardPage() {
                     disabled={roomLoading}
                     className="w-full py-3.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
-                    <span>✨ Create New Room Code</span>
+                    <span>✨ Create New Party Room</span>
                   </button>
 
                   <div className="relative flex items-center justify-center my-3">
@@ -590,7 +702,7 @@ export default function DashboardPage() {
                   <form onSubmit={handleJoinByCode} className="space-y-3">
                     <div>
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 text-center">
-                        Have Partner's Code?
+                        Have Room Code?
                       </label>
                       <input
                         type="text"
@@ -607,7 +719,7 @@ export default function DashboardPage() {
                       disabled={roomLoading || inviteInput.length < 8}
                       className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white transition-all disabled:opacity-40 cursor-pointer shadow-lg"
                     >
-                      {roomLoading ? 'Connecting...' : 'Connect to Partner 🗝️'}
+                      {roomLoading ? 'Connecting...' : 'Join Party Room 🎮'}
                     </button>
                   </form>
                 </div>
@@ -616,6 +728,13 @@ export default function DashboardPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Friends Modal */}
+      <FriendsModal
+        isOpen={showFriendsModal}
+        onClose={() => setShowFriendsModal(false)}
+        currentRoomCode={room?.inviteCode}
+      />
     </div>
   );
 }
