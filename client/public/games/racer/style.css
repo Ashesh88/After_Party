@@ -1,4 +1,4 @@
-/* 3D Turbo Racer - Cyberpunk Luxury HUD Stylesheet */
+/* Luxury 2-Player Head-to-Head Racer Stylesheet */
 * {
     margin: 0;
     padding: 0;
@@ -25,7 +25,6 @@ html, body {
     z-index: 1;
 }
 
-/* UI Overlay Layer */
 .ui-layer {
     position: absolute;
     inset: 0;
@@ -79,6 +78,9 @@ html, body {
     border-radius: 9999px;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     white-space: nowrap;
 }
 
@@ -87,9 +89,9 @@ html, body {
 }
 
 .mode-btn.active {
-    background: linear-gradient(135deg, #ec4899, #f43f5e);
+    background: linear-gradient(135deg, #06b6d4, #ec4899);
     color: #ffffff;
-    box-shadow: 0 2px 10px rgba(236, 72, 153, 0.4);
+    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.4);
 }
 
 .util-actions {
@@ -131,7 +133,7 @@ html, body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border-radius: 9999px;
     font-size: 11px;
     font-weight: 800;
@@ -139,23 +141,21 @@ html, body {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.pos-pill {
+.leader-pill {
     background: rgba(236, 72, 153, 0.18);
     border-color: rgba(236, 72, 153, 0.4);
     color: #f472b6;
 }
 
-.pos-num {
-    font-size: 15px;
-    font-weight: 900;
+.leader-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ec4899;
+    box-shadow: 0 0 8px #ec4899;
 }
 
-.pos-tot {
-    font-size: 10px;
-    opacity: 0.8;
-}
-
-.lap-pill {
+.dist-pill {
     background: rgba(6, 182, 212, 0.16);
     border-color: rgba(6, 182, 212, 0.35);
     color: #22d3ee;
@@ -167,248 +167,311 @@ html, body {
     color: #f8fafc;
 }
 
-.rival-pill {
-    background: rgba(168, 85, 247, 0.16);
-    border-color: rgba(168, 85, 247, 0.35);
-    color: #c084fc;
-}
-
-.rival-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #c084fc;
-    box-shadow: 0 0 6px #c084fc;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-/* Speedometer & Nitro Cluster */
-.speed-cluster {
+/* Starting Lights Gantry */
+.start-gantry-container {
     position: absolute;
-    bottom: 110px;
-    left: 16px;
-    background: rgba(10, 10, 20, 0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 10px 16px;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 30;
+    transition: opacity 0.5s ease;
 }
 
-.speedo-box {
+.start-gantry-container.hidden {
+    opacity: 0;
+}
+
+.gantry-box {
+    background: #11111a;
+    border: 2px solid #334155;
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.gantry-light {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #232332;
+    border: 1px solid #333348;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gantry-light.red {
+    background: #ef4444;
+    box-shadow: 0 0 14px #ef4444, inset 0 0 4px #fee2e2;
+}
+
+.gantry-light.green {
+    background: #10b981;
+    box-shadow: 0 0 16px #10b981, inset 0 0 4px #d1fae5;
+}
+
+.gantry-text {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+/* Racers HUD: Dual Cards for P1 & P2 */
+.racers-hud {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    pointer-events: none;
+}
+
+.racer-card {
+    background: rgba(11, 11, 22, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 20px;
+    padding: 12px 16px;
+    width: 210px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+    pointer-events: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.p1-card {
+    border-color: rgba(236, 72, 153, 0.35);
+}
+
+.p2-card {
+    border-color: rgba(6, 182, 212, 0.35);
+}
+
+.racer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.racer-tag {
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.p1-tag {
+    background: #ec4899;
+    color: #ffffff;
+}
+
+.p2-tag {
+    background: #06b6d4;
+    color: #ffffff;
+}
+
+.racer-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ffffff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100px;
+}
+
+.racer-pos {
+    font-size: 11px;
+    font-weight: 900;
+    padding: 2px 7px;
+    border-radius: 9999px;
+}
+
+.p1-pos {
+    background: rgba(236, 72, 153, 0.2);
+    color: #f472b6;
+}
+
+.p2-pos {
+    background: rgba(6, 182, 212, 0.2);
+    color: #38bdf8;
+}
+
+.speed-row {
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: 4px;
+    margin-bottom: 6px;
 }
 
-.speed-val {
-    font-size: 32px;
+.speed-number {
+    font-size: 30px;
     font-weight: 900;
     font-family: monospace;
     color: #ffffff;
     line-height: 1;
-    text-shadow: 0 0 16px rgba(236, 72, 153, 0.6);
+}
+
+.p1-card .speed-number {
+    text-shadow: 0 0 14px rgba(236, 72, 153, 0.6);
+}
+
+.p2-card .speed-number {
+    text-shadow: 0 0 14px rgba(6, 182, 212, 0.6);
 }
 
 .speed-unit {
     font-size: 10px;
     font-weight: 800;
-    letter-spacing: 1px;
     color: #94a3b8;
-}
-
-.nitro-box {
-    width: 140px;
-}
-
-.nitro-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 9px;
-    font-weight: 800;
     letter-spacing: 0.5px;
-    color: #38bdf8;
-    margin-bottom: 3px;
 }
 
-.nitro-track {
-    width: 100%;
+.nitro-gauge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.nitro-bar {
+    flex: 1;
     height: 6px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 9999px;
     overflow: hidden;
 }
 
-.nitro-fill {
+.nitro-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #06b6d4, #ec4899);
     border-radius: 9999px;
-    box-shadow: 0 0 8px #ec4899;
     transition: width 0.1s linear;
 }
 
-/* Desktop Hint */
-.desktop-hint {
-    position: absolute;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 9999px;
-    padding: 6px 16px;
-    font-size: 10px;
-    font-weight: 600;
-    color: #cbd5e1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    pointer-events: none;
+.p1-nitro {
+    background: linear-gradient(90deg, #ec4899, #f43f5e);
+    box-shadow: 0 0 8px #ec4899;
 }
 
-/* Mobile Touch Controls */
-.touch-controls {
+.p2-nitro {
+    background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    box-shadow: 0 0 8px #06b6d4;
+}
+
+.nitro-lbl {
+    font-size: 9px;
+    font-weight: 800;
+    color: #cbd5e1;
+}
+
+.controls-hint {
+    font-size: 9px;
+    font-weight: 600;
+    color: #94a3b8;
+    display: flex;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Touch Controls on Mobile */
+.touch-overlay {
     position: absolute;
-    bottom: 16px;
+    bottom: 120px;
     left: 0;
     right: 0;
     padding: 0 16px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    pointer-events: none;
 }
 
-.touch-steer-cluster, .touch-action-cluster {
+.touch-group {
     display: flex;
     gap: 10px;
-    align-items: center;
+    pointer-events: auto;
 }
 
 .btn-touch {
     border: none;
     outline: none;
     cursor: pointer;
-    border-radius: 22px;
+    border-radius: 20px;
     font-weight: 800;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 3px;
-    transition: transform 0.1s ease, filter 0.1s ease;
+    transition: transform 0.1s ease;
     touch-action: manipulation;
 }
 
 .btn-touch:active {
     transform: scale(0.92);
-    filter: brightness(1.2);
 }
 
 .btn-steer {
-    width: 58px;
-    height: 58px;
-    background: rgba(255, 255, 255, 0.1);
+    width: 54px;
+    height: 54px;
+    background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #ffffff;
-    font-size: 20px;
+    font-size: 18px;
     backdrop-filter: blur(10px);
 }
 
 .btn-gas {
-    width: 62px;
-    height: 62px;
+    width: 58px;
+    height: 58px;
     background: linear-gradient(135deg, #10b981, #059669);
     border: 1px solid rgba(16, 185, 129, 0.4);
     color: #ffffff;
-    font-size: 11px;
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
-}
-
-.btn-brake {
-    width: 56px;
-    height: 56px;
-    background: rgba(239, 68, 68, 0.25);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    color: #fca5a5;
     font-size: 10px;
-    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
 }
 
 .btn-nitro {
-    width: 60px;
-    height: 60px;
+    width: 54px;
+    height: 54px;
     background: linear-gradient(135deg, #ec4899, #8b5cf6);
-    border: 1px solid rgba(236, 72, 153, 0.5);
+    border: 1px solid rgba(236, 72, 153, 0.4);
     color: #ffffff;
     font-size: 10px;
-    box-shadow: 0 4px 18px rgba(236, 72, 153, 0.45);
+    box-shadow: 0 4px 14px rgba(236, 72, 153, 0.4);
 }
 
-/* Hide touch on large desktops unless touched */
-@media (min-width: 900px) {
-    .touch-controls {
+@media (min-width: 800px) {
+    .touch-overlay {
         display: none;
-    }
-    .speed-cluster {
-        bottom: 24px;
     }
 }
 
-@media (max-width: 899px) {
-    .desktop-hint {
-        display: none;
-    }
-    .speed-cluster {
-        bottom: 96px;
-        left: 12px;
+@media (max-width: 799px) {
+    .racer-card {
+        width: 155px;
         padding: 8px 12px;
     }
-    .speed-val {
-        font-size: 26px;
+    .speed-number {
+        font-size: 22px;
     }
-    .nitro-box {
-        width: 100px;
+    .controls-hint {
+        display: none;
     }
-}
-
-/* Countdown Overlay */
-.countdown-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.countdown-overlay.show {
-    opacity: 1;
-}
-
-.countdown-num {
-    font-size: 96px;
-    font-weight: 900;
-    color: #ffffff;
-    text-shadow: 0 0 30px #ec4899, 0 0 60px #8b5cf6;
-    animation: zoomCountdown 0.8s ease-out infinite;
-}
-
-@keyframes zoomCountdown {
-    0% { transform: scale(0.5); opacity: 0; }
-    50% { transform: scale(1.1); opacity: 1; }
-    100% { transform: scale(1.3); opacity: 0; }
+    .touch-overlay {
+        bottom: 96px;
+    }
 }
 
 /* Victory Celebration Modal */
@@ -416,8 +479,8 @@ html, body {
     position: absolute;
     inset: 0;
     z-index: 100;
-    background: rgba(0, 0, 0, 0.82);
-    backdrop-filter: blur(14px);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(16px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -433,14 +496,14 @@ html, body {
 }
 
 .victory-card {
-    background: rgba(18, 18, 32, 0.95);
+    background: rgba(18, 18, 32, 0.96);
     border: 1px solid rgba(236, 72, 153, 0.35);
     border-radius: 28px;
     padding: 30px 24px;
-    max-width: 360px;
+    max-width: 380px;
     width: 100%;
     text-align: center;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(236, 72, 153, 0.25);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 40px rgba(236, 72, 153, 0.25);
     animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -451,7 +514,7 @@ html, body {
 
 .victory-trophy {
     font-size: 54px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.6));
 }
 
@@ -469,11 +532,56 @@ html, body {
     margin-bottom: 20px;
 }
 
+.victory-results-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 12px;
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.res-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.winner-row {
+    background: rgba(236, 72, 153, 0.15);
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    color: #ffffff;
+}
+
+.runner-row {
+    background: rgba(255, 255, 255, 0.02);
+    color: #94a3b8;
+}
+
+.res-badge {
+    font-size: 12px;
+}
+
+.res-name {
+    font-weight: 900;
+}
+
+.res-time {
+    font-family: monospace;
+    font-size: 12px;
+}
+
 .victory-stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    margin-bottom: 24px;
+    margin-bottom: 22px;
 }
 
 .vstat-item {
@@ -502,7 +610,7 @@ html, body {
     width: 100%;
     padding: 14px;
     border-radius: 20px;
-    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    background: linear-gradient(135deg, #06b6d4, #ec4899);
     border: none;
     color: #ffffff;
     font-size: 14px;
@@ -512,7 +620,7 @@ html, body {
     justify-content: center;
     gap: 8px;
     cursor: pointer;
-    box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
+    box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
     transition: transform 0.2s ease;
 }
 
