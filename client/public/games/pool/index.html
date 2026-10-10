@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Couples 3D Pool Deluxe</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 3D WebGL Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-layer">
+        <!-- Compact Top Control Dock -->
+        <div class="top-dock-panel interactive">
+            <div class="top-controls-row">
+                <!-- Game Mode -->
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="btn-mode-2p" title="Couples 2-Player (Him vs Her)">2P</button>
+                    <button class="toggle-btn" id="btn-mode-ai" title="Play with Smart AI Bot">vs AI</button>
+                </div>
+
+                <!-- Camera View Preset -->
+                <div class="toggle-group">
+                    <button class="toggle-btn active view-btn" id="btn-view-orbit" title="3D Orbit View">
+                        <i class="fa-solid fa-cube"></i> 3D
+                    </button>
+                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top-Down Overhead View">
+                        <i class="fa-solid fa-table"></i> Top
+                    </button>
+                    <button class="toggle-btn view-btn" id="btn-view-cue" title="Aim View behind Cue Stick">
+                        <i class="fa-solid fa-crosshairs"></i> Aim
+                    </button>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn-icon" id="btn-mute" title="Toggle Sound">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <button class="btn-icon" id="btn-restart" title="New Rack">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Banner & Mini Player Badges -->
+            <div class="top-status-row">
+                <span class="status-pill" id="status-banner">New Rack! Player 1 breaks the balls 🎱</span>
+                <div class="players-bar">
+                    <div class="player-hud-card p1 active-turn" id="card-p1">
+                        <span class="player-name" id="name-p1">Player 1 💖</span>
+                        <span class="ball-badge" id="badge-p1">ANY</span>
+                    </div>
+                    <div class="player-hud-card p2" id="card-p2">
+                        <span class="player-name" id="name-p2">Player 2 💙</span>
+                        <span class="ball-badge" id="badge-p2">ANY</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls HUD (Shot Power & Strike Action) -->
+        <footer class="bottom-hud interactive">
+            <div class="power-control-panel">
+                <div class="power-header">
+                    <span><i class="fa-solid fa-bolt"></i> Shot Power</span>
+                    <span class="power-pct" id="power-value-label">50%</span>
+                </div>
+                <div class="power-slider-wrapper">
+                    <input type="range" id="slider-power" min="0.1" max="1.0" step="0.01" value="0.5" class="power-range">
+                </div>
+            </div>
+
+            <button class="btn-shoot-main" id="btn-shoot">
+                <i class="fa-solid fa-circle-dot"></i>
+                <span>SHOOT</span>
+            </button>
+        </footer>
+    </div>
+
+    <!-- Victory Celebration Modal -->
+    <div class="modal-overlay" id="modal-victory">
+        <div class="victory-card interactive">
+            <div class="victory-icon">🎱👑</div>
+            <h2 class="victory-title" id="victory-title">Victory! 🏆</h2>
+            <p class="victory-desc" id="victory-desc">Masterful 8-Ball shot! Congratulations on winning the game!</p>
+            <button class="btn-victory-replay" id="btn-play-again">
+                <i class="fa-solid fa-play"></i> Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Bundled Libraries -->
+    <script src="js/lib/three.min.js"></script>
+    <script src="js/lib/OrbitControls.js"></script>
+    <script src="audio.js"></script>
+
+    <!-- 3D Pool Modules -->
+    <script src="js/table3d.js"></script>
+    <script src="js/balls3d.js"></script>
+    <script src="js/cue3d.js"></script>
+    <script src="js/pool-physics.js"></script>
+    <script src="js/pool-game.js"></script>
+</body>
+</html>

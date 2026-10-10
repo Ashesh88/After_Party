@@ -6,7 +6,8 @@ import Quiz from '../../../components/games/Quiz';
 import WouldYouRather from '../../../components/games/WouldYouRather';
 import Chess3D from '../../../components/games/Chess3D';
 import LudoGame from '../../../components/games/LudoGame';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, Gamepad2 } from 'lucide-react';
+import PoolGame from '../../../components/games/PoolGame';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, Gamepad2, CircleDot } from 'lucide-react';
 
 const games = [
   { 
@@ -23,6 +24,14 @@ const games = [
     desc: 'Luxury 3D pawns, Dice & Crown',
     icon: Dices, 
     color: 'from-pink-500 to-purple-600', 
+    tag: '3D LIVE' 
+  },
+  { 
+    id: 'pool', 
+    name: 'Couples 3D Pool', 
+    desc: 'Luxury 8-Ball, Cue physics & AI',
+    icon: CircleDot, 
+    color: 'from-emerald-400 to-teal-500', 
     tag: '3D LIVE' 
   },
   { 
@@ -64,6 +73,7 @@ export default function GamesPage() {
 
   if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
   if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'pool') return <PoolGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tictactoe') return <TicTacToe onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tod') return <TruthOrDare onBack={() => setActiveGame(null)} />;
   if (activeGame === 'quiz') return <Quiz onBack={() => setActiveGame(null)} />;
