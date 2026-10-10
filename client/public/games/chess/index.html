@@ -38,6 +38,21 @@
             </div>
         </div>
 
+        <!-- Mobile Floating Quick-Access Symbols (Profiles & Video Call) -->
+        <div class="mobile-hud-triggers interactive">
+            <button class="mobile-hud-btn mobile-hud-btn-left" id="btn-mobile-profiles" title="Player Profiles & Clock">
+                <i class="fa-solid fa-user-clock"></i>
+                <span id="mobile-clock-badge" class="mobile-hud-timer">10:00</span>
+            </button>
+            <button class="mobile-hud-btn mobile-hud-btn-right" id="btn-mobile-video" title="Video Call & Settings">
+                <i class="fa-solid fa-video"></i>
+                <span class="mobile-hud-label">Call</span>
+            </button>
+        </div>
+
+        <!-- Mobile Drawer Backdrop Overlay -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
         <!-- Main Workspace (Left & Right Glass Sidebars) -->
         <main class="workspace">
             
@@ -48,8 +63,11 @@
                     <button class="btn-danger btn-compact" id="btn-new-game" title="Start New Game">
                         <i class="fa-solid fa-play"></i> New Game
                     </button>
-                    <button class="btn-minimize" id="btn-toggle-left-sidebar" title="Minimize / Expand Panel">
+                    <button class="btn-minimize mobile-hide" id="btn-toggle-left-sidebar" title="Minimize / Expand Panel">
                         <i class="fa-solid fa-chevron-left" id="icon-toggle-left"></i>
+                    </button>
+                    <button class="btn-close-drawer mobile-only" id="btn-close-left-sidebar" title="Close Panel">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
 
@@ -100,9 +118,14 @@
             <aside class="glass-panel interactive sidebar-right" id="sidebar-right">
                 <div class="sidebar-top-row" style="justify-content: space-between;">
                     <span class="panel-title" style="margin: 0;"><i class="fa-solid fa-video"></i> Video & Call</span>
-                    <button class="btn-minimize" id="btn-toggle-right-sidebar" title="Minimize / Expand Panel">
-                        <i class="fa-solid fa-chevron-right" id="icon-toggle-right"></i>
-                    </button>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button class="btn-minimize mobile-hide" id="btn-toggle-right-sidebar" title="Minimize / Expand Panel">
+                            <i class="fa-solid fa-chevron-right" id="icon-toggle-right"></i>
+                        </button>
+                        <button class="btn-close-drawer mobile-only" id="btn-close-right-sidebar" title="Close Panel">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Collapsible content -->

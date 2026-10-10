@@ -1045,9 +1045,182 @@ body {
     box-shadow: 0 0 8px var(--accent-emerald);
 }
 
+/* Mobile Floating Quick-Access Symbols & Drawer Support */
+.mobile-hud-triggers {
+    display: none;
+}
+
+.mobile-only {
+    display: none !important;
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+.btn-close-drawer {
+    display: none;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-close-drawer:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #f87171;
+}
+
 @media (max-width: 900px) {
-    .glass-panel {
+    .mobile-hud-triggers {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        position: fixed;
+        top: 50px;
+        left: 0;
+        right: 0;
+        padding: 0 12px;
+        pointer-events: none;
+        z-index: 50;
+    }
+
+    .mobile-hud-btn {
+        pointer-events: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: rgba(13, 17, 24, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        color: #f1f5f9;
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+        transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .mobile-hud-btn:active {
+        transform: scale(0.96);
+        background: rgba(30, 41, 59, 0.95);
+    }
+
+    .mobile-hud-btn-left i {
+        color: #38bdf8;
+    }
+
+    .mobile-hud-btn-right i {
+        color: #f43f5e;
+    }
+
+    .mobile-hud-timer {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.76rem;
+        color: #a5f3fc;
+        font-weight: 700;
+    }
+
+    .mobile-hud-label {
+        font-size: 0.76rem;
+        color: #fda4af;
+        font-weight: 600;
+    }
+
+    .mobile-hide {
         display: none !important;
+    }
+
+    .mobile-only {
+        display: inline-flex !important;
+    }
+
+    /* Sidebars as Off-Canvas Drawers on Mobile */
+    .sidebar-left,
+    .sidebar-right {
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        z-index: 100 !important;
+        background: rgba(11, 15, 23, 0.96) !important;
+        backdrop-filter: blur(24px) !important;
+        -webkit-backdrop-filter: blur(24px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8) !important;
+        padding: 16px 14px !important;
+        border-radius: 0 !important;
+        overflow-y: auto !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        pointer-events: auto !important;
+    }
+
+    .sidebar-left {
+        left: 0 !important;
+        width: min(85vw, 310px) !important;
+        min-width: 0 !important;
+        transform: translateX(-105%) !important;
+    }
+
+    .sidebar-left.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    .sidebar-right {
+        right: 0 !important;
+        width: min(88vw, 330px) !important;
+        min-width: 0 !important;
+        transform: translateX(105%) !important;
+    }
+
+    .sidebar-right.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    /* If minimized on desktop, ensure full drawer content shows when opened on mobile */
+    .sidebar-left.is-minimized,
+    .sidebar-right.is-minimized {
+        width: min(85vw, 310px) !important;
+        padding: 16px 14px !important;
+    }
+
+    .sidebar-left.is-minimized .sidebar-collapsible,
+    .sidebar-right.is-minimized .sidebar-collapsible {
+        display: flex !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* Dimmed Backdrop */
+    .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 95;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+
+    .sidebar-backdrop.active {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 
@@ -1061,49 +1234,12 @@ body {
         gap: 6px;
     }
 
-    .top-nav {
-        padding: 6px 10px;
-        border-radius: 12px;
-    }
-
-    .brand {
-        display: none !important; /* Hide duplicate title on mobile to save space */
-    }
-
-    .nav-tabs {
-        gap: 4px;
-        padding: 2px;
-    }
-
-    .nav-btn {
-        padding: 5px 8px;
-        font-size: 0.75rem;
-    }
-
-    .nav-actions {
-        gap: 6px;
-    }
-
-    .nav-actions .btn-primary {
-        padding: 5px 10px;
-        font-size: 0.78rem;
-    }
-
-    .nav-actions .btn-primary .action-label {
-        display: none;
-    }
-
-    .nav-actions .btn-icon {
-        width: 32px;
-        height: 32px;
-    }
-
     .status-banner {
         padding: 4px 12px;
         font-size: 0.75rem;
     }
 
-    /* Floating Chat on Mobile - Docked at bottom without blurring/covering chessboard */
+    /* Floating Chat on Mobile - Borderless & Non-Intrusive */
     .floating-corner-chat {
         bottom: 12px;
         left: 12px;
@@ -1111,14 +1247,15 @@ body {
         width: auto;
         max-width: 340px;
         margin: 0 auto;
-        background: rgba(10, 12, 16, 0.78);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border-radius: 14px;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: none !important;
+        box-shadow: none !important;
     }
 
     .air-chat-messages {
         min-height: 0;
-        max-height: 60px;
+        max-height: 70px;
     }
 }

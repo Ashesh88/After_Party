@@ -510,6 +510,49 @@ class ChessApp {
                 }
             });
         }
+
+        // Mobile Drawer Toggles & Backdrop Handlers
+        const btnMobileProfiles = document.getElementById('btn-mobile-profiles');
+        const btnMobileVideo = document.getElementById('btn-mobile-video');
+        const btnCloseLeft = document.getElementById('btn-close-left-sidebar');
+        const btnCloseRight = document.getElementById('btn-close-right-sidebar');
+        const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+        const sidebarLeft = document.getElementById('sidebar-left');
+        const sidebarRight = document.getElementById('sidebar-right');
+
+        const closeAllMobileDrawers = () => {
+            if (sidebarLeft) sidebarLeft.classList.remove('mobile-open');
+            if (sidebarRight) sidebarRight.classList.remove('mobile-open');
+            if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+        };
+
+        if (btnMobileProfiles) {
+            btnMobileProfiles.addEventListener('click', () => {
+                if (sidebarRight) sidebarRight.classList.remove('mobile-open');
+                const isOpen = sidebarLeft?.classList.toggle('mobile-open');
+                if (sidebarBackdrop) sidebarBackdrop.classList.toggle('active', !!isOpen);
+            });
+        }
+
+        if (btnMobileVideo) {
+            btnMobileVideo.addEventListener('click', () => {
+                if (sidebarLeft) sidebarLeft.classList.remove('mobile-open');
+                const isOpen = sidebarRight?.classList.toggle('mobile-open');
+                if (sidebarBackdrop) sidebarBackdrop.classList.toggle('active', !!isOpen);
+            });
+        }
+
+        if (btnCloseLeft) {
+            btnCloseLeft.addEventListener('click', closeAllMobileDrawers);
+        }
+
+        if (btnCloseRight) {
+            btnCloseRight.addEventListener('click', closeAllMobileDrawers);
+        }
+
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', closeAllMobileDrawers);
+        }
         
         // Audio Toggle
         const btnMute = document.getElementById('btn-mute');
@@ -996,12 +1039,19 @@ class ChessApp {
 
         const wEl = document.getElementById('timer-white');
         const bEl = document.getElementById('timer-black');
+        const mobileBadge = document.getElementById('mobile-clock-badge');
+
         if (this.timeControl === 0) {
-            wEl.textContent = '∞';
-            bEl.textContent = '∞';
+            if (wEl) wEl.textContent = '∞';
+            if (bEl) bEl.textContent = '∞';
+            if (mobileBadge) mobileBadge.textContent = '∞';
         } else {
-            wEl.textContent = fmt(this.timers.w);
-            bEl.textContent = fmt(this.timers.b);
+            if (wEl) wEl.textContent = fmt(this.timers.w);
+            if (bEl) bEl.textContent = fmt(this.timers.b);
+            if (mobileBadge) {
+                const currentTurn = this.chess.turn();
+                mobileBadge.textContent = fmt(this.timers[currentTurn]);
+            }
         }
     }
 
