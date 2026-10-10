@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Couples Turbo 3D Racer</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 3D Three.js WebGL Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay HUD Layer -->
+    <div class="ui-layer">
+        <!-- Top Control Dock -->
+        <header class="top-dock-panel interactive">
+            <div class="top-row">
+                <!-- Connected Mode Selector -->
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn-mode-couple" title="Couples 1v1 Head-to-Head">
+                        <span>💑 Couple 1v1</span>
+                    </button>
+                    <button class="mode-btn" id="btn-mode-friends" title="Friends Grand Prix 4 Racers">
+                        <span>👥 Friends 4P</span>
+                    </button>
+                    <button class="mode-btn" id="btn-mode-ai" title="Solo vs Smart AI Bots">
+                        <span>🤖 vs AI</span>
+                    </button>
+                </div>
+
+                <!-- Utilities: Cam, Sound, Restart -->
+                <div class="util-actions">
+                    <button class="btn-icon" id="btn-cam" title="Toggle Camera View">
+                        <i class="fa-solid fa-video"></i>
+                    </button>
+                    <button class="btn-icon" id="btn-mute" title="Toggle Sound">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <button class="btn-icon" id="btn-restart" title="Restart Race">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Race Progress Bar & Rival Info -->
+            <div class="race-status-bar">
+                <div class="status-pill pos-pill" id="pos-display">
+                    <span class="pos-num" id="pos-val">1</span><span class="pos-tot" id="pos-tot">/2</span>
+                </div>
+                <div class="status-pill lap-pill" id="lap-display">
+                    <span id="lap-text">Lap 1/3</span>
+                </div>
+                <div class="status-pill time-pill" id="time-display">00:00.0</div>
+                <div class="status-pill rival-pill" id="rival-display">
+                    <span class="rival-dot"></span>
+                    <span id="rival-text">Partner: +0m</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Speedometer & Nitro Gauges (Bottom Left / Bottom Right) -->
+        <div class="speed-cluster interactive">
+            <div class="speedo-box">
+                <div class="speed-val" id="speed-val">0</div>
+                <div class="speed-unit">KM / H</div>
+            </div>
+            
+            <div class="nitro-box">
+                <div class="nitro-label">
+                    <span>NITRO BOOST</span>
+                    <span id="nitro-pct">100%</span>
+                </div>
+                <div class="nitro-track">
+                    <div class="nitro-fill" id="nitro-fill" style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Controls Hint Banner -->
+        <div class="desktop-hint">
+            <span>[A] [D] / [←] [→] Steer</span>
+            <span>•</span>
+            <span>[SPACE] Nitro</span>
+            <span>•</span>
+            <span>[W] / [↑] Gas</span>
+            <span>•</span>
+            <span>[S] / [↓] Brake</span>
+        </div>
+
+        <!-- Mobile On-Screen Touch Controls -->
+        <div class="touch-controls interactive">
+            <!-- Left Side: Steering -->
+            <div class="touch-steer-cluster">
+                <button class="btn-touch btn-steer" id="touch-left">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button class="btn-touch btn-steer" id="touch-right">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Right Side: Gas, Brake, Nitro -->
+            <div class="touch-action-cluster">
+                <button class="btn-touch btn-brake" id="touch-brake">
+                    <i class="fa-solid fa-hand"></i>
+                    <span>BRAKE</span>
+                </button>
+                <button class="btn-touch btn-nitro" id="touch-nitro">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>NITRO</span>
+                </button>
+                <button class="btn-touch btn-gas active-gas" id="touch-gas">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>GAS</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Countdown Overlay (3, 2, 1, GO!) -->
+    <div class="countdown-overlay" id="countdown-overlay">
+        <div class="countdown-num" id="countdown-num">3</div>
+    </div>
+
+    <!-- Victory & Finish Celebration Modal -->
+    <div class="modal-overlay" id="modal-victory">
+        <div class="victory-card interactive">
+            <div class="victory-trophy">🏆</div>
+            <h2 class="victory-title" id="victory-title">Victory! 🏁</h2>
+            <p class="victory-subtitle" id="victory-subtitle">Couples Highway Champion</p>
+            
+            <div class="victory-stats-grid">
+                <div class="vstat-item">
+                    <span class="vstat-lbl">Final Time</span>
+                    <span class="vstat-val" id="vstat-time">01:24.8</span>
+                </div>
+                <div class="vstat-item">
+                    <span class="vstat-lbl">Top Speed</span>
+                    <span class="vstat-val" id="vstat-speed">248 KM/H</span>
+                </div>
+                <div class="vstat-item">
+                    <span class="vstat-lbl">Finished In</span>
+                    <span class="vstat-val" id="vstat-pos">1st Place 🥇</span>
+                </div>
+            </div>
+
+            <button class="btn-race-again" id="btn-race-again">
+                <i class="fa-solid fa-play"></i>
+                <span>Race Again</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bundled Three.js Library -->
+    <script src="js/lib/three.min.js"></script>
+    <script src="audio.js"></script>
+    <script src="js/racer-game.js"></script>
+</body>
+</html>

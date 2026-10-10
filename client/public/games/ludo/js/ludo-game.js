@@ -4,9 +4,19 @@
 class ClassicLudo3D {
     constructor() {
         this.container = document.getElementById('canvas-container');
-        this.gameMode = '2p'; // '2p' (Red vs Yellow) | '4p' (Red, Green, Yellow, Blue) | 'ai' (vs Computer)
+        
+        // Parse URL params for mode and names
+        const params = new URLSearchParams(window.location.search);
+        const urlMode = params.get('mode');
+        if (urlMode === '4p' || urlMode === 'friends') this.gameMode = '4p';
+        else if (urlMode === 'ai') this.gameMode = 'ai';
+        else this.gameMode = '2p';
+
+        this.p1Name = params.get('p1') || 'You';
+        this.p2Name = params.get('p2') || 'Partner';
+
         this.tokenCount = 4; // 2 or 4 tokens per player
-        this.activePlayerIds = ['red', 'yellow']; // Default 2P head-to-head
+        this.activePlayerIds = this.gameMode === '4p' ? ['red', 'green', 'yellow', 'blue'] : ['red', 'yellow'];
         this.currentTurnIdx = 0;
         this.diceRolled = null;
         this.hasRolled = false;
@@ -18,7 +28,7 @@ class ClassicLudo3D {
         this.playerConfigs = {
             red: {
                 id: 'red',
-                name: 'Red Player 🔴',
+                name: `${this.p1Name} 🔴`,
                 colorHex: 0xb91c1c, // Deep Crimson
                 startOffset: 0,
                 homeColKey: 'red',
@@ -38,7 +48,7 @@ class ClassicLudo3D {
             },
             yellow: {
                 id: 'yellow',
-                name: 'Yellow Player 🟡',
+                name: (this.gameMode === 'ai') ? 'Computer Bot 🤖' : `${this.p2Name} 🟡`,
                 colorHex: 0xb45309, // Deep Amber Gold
                 startOffset: 26,
                 homeColKey: 'yellow',
@@ -269,6 +279,25 @@ class ClassicLudo3D {
             document.getElementById('modal-victory').classList.remove('open');
             this.resetGame();
         });
+
+        // Listen for postMessage from parent React component
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'SET_MODE') {
+                const modeMap = { couple: '2p', friends: '4p', ai: 'ai', '2p': '2p', '4p': '4p' };
+                if (modeMap[e.data.mode]) this.setGameMode(modeMap[e.data.mode]);
+            }
+            if (e.data && e.data.type === 'SET_NAMES') {
+                if (e.data.p1) {
+                    this.p1Name = e.data.p1;
+                    this.playerConfigs.red.name = `${this.p1Name} 🔴`;
+                }
+                if (e.data.p2) {
+                    this.p2Name = e.data.p2;
+                    if (this.gameMode !== 'ai') this.playerConfigs.yellow.name = `${this.p2Name} 🟡`;
+                }
+                this.updateUI();
+            }
+        });
     }
 
     setGameMode(mode) {
@@ -280,12 +309,13 @@ class ClassicLudo3D {
 
         if (mode === '4p') {
             this.activePlayerIds = ['red', 'green', 'yellow', 'blue'];
+            this.playerConfigs.yellow.name = (this.p2Name && this.p2Name !== 'Partner') ? `${this.p2Name} 🟡` : 'Yellow Player 🟡';
         } else {
             // 2P or AI: Red vs Yellow (opposite sides)
             this.activePlayerIds = ['red', 'yellow'];
+            this.playerConfigs.yellow.name = (mode === 'ai') ? 'Computer Bot 🤖' : `${this.p2Name} 🟡`;
         }
 
-        this.playerConfigs.yellow.name = (mode === 'ai') ? 'Computer Bot 🤖' : 'Yellow Player 🟡';
         this.resetGame();
     }
 
