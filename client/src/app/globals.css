@@ -177,3 +177,36 @@ html[data-mood="just_friends"] .ambient-glow-mood-secondary {
 .btn-sexy:active {
   transform: translateY(0);
 }
+
+/* Custom Live Map Pin Radar Pulsing */
+.custom-map-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.map-radar-pulse {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 9999px;
+  animation: mapPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes mapPing {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+

@@ -6,6 +6,7 @@ const Room = require('../models/Room');
 const ticTacToe = require('../games/ticTacToe');
 
 const onlineUsers = new Set();
+const activeLocations = new Map(); // roomId -> Map(userId -> locationPayload)
 
 const setupSocket = (io) => {
   io.use((socket, next) => {
@@ -351,17 +352,57 @@ const setupSocket = (io) => {
     });
 
     // Location
-    socket.on('location:update', ({ lat, lng, timestamp }) => {
+    socket.on('location:update', (data) => {
       const currentChannel = getActiveRoomChannel();
+      const currentRoomId = getActiveRoomId();
+      if (!data || typeof data.lat !== 'number' || typeof data.lng !== 'number') return;
+
+      const locPayload = {
+        userId,
+        lat: data.lat,
+        lng: data.lng,
+        accuracy: data.accuracy || null,
+        speed: data.speed || null,
+        heading: data.heading || null,
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      };
+
+      if (currentRoomId) {
+        if (!activeLocations.has(currentRoomId)) {
+          activeLocations.set(currentRoomId, new Map());
+        }
+        activeLocations.get(currentRoomId).set(userId.toString(), locPayload);
+      }
+
       if (currentChannel) {
-        socket.to(currentChannel).emit('location:update', { userId, lat, lng, timestamp });
+        socket.to(currentChannel).emit('location:update', locPayload);
       }
     });
 
     socket.on('location:stop', () => {
       const currentChannel = getActiveRoomChannel();
+      const currentRoomId = getActiveRoomId();
+      if (currentRoomId && activeLocations.has(currentRoomId)) {
+        activeLocations.get(currentRoomId).delete(userId.toString());
+      }
       if (currentChannel) {
         socket.to(currentChannel).emit('location:stop', { userId });
+      }
+    });
+
+    socket.on('location:query', () => {
+      const currentRoomId = getActiveRoomId();
+      if (currentRoomId && activeLocations.has(currentRoomId)) {
+        const roomMap = activeLocations.get(currentRoomId);
+        roomMap.forEach((loc, memberId) => {
+          if (memberId !== userId.toString()) {
+            socket.emit('location:update', loc);
+          }
+        });
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('location:request');
       }
     });
 
@@ -453,8 +494,13 @@ const setupSocket = (io) => {
       onlineUsers.delete(userId.toString());
       io.emit('presence:offline', { userId });
       const currentChannel = getActiveRoomChannel();
+      const currentRoomId = getActiveRoomId();
+      if (currentRoomId && activeLocations.has(currentRoomId)) {
+        activeLocations.get(currentRoomId).delete(userId.toString());
+      }
       if (currentChannel) {
         socket.to(currentChannel).emit('presence:offline', { userId });
+        socket.to(currentChannel).emit('location:stop', { userId });
       }
     });
   });
