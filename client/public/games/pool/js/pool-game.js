@@ -21,18 +21,18 @@ class PoolGameApp {
         
         if (this.mode === 'online') {
             this.playerNames = {
-                p1: this.myRole === 'p1' ? `${rawP1} (You) 💖` : `${rawP2} 💖`,
-                p2: this.myRole === 'p2' ? `${rawP1} (You) 💙` : `${rawP2} 💙`
+                p1: this.myRole === 'p1' ? `${rawP1} (You)` : rawP2,
+                p2: this.myRole === 'p2' ? `${rawP1} (You)` : rawP2
             };
         } else if (this.mode === 'ai') {
             this.playerNames = {
-                p1: `${rawP1} 💖`,
-                p2: 'Smart AI Bot 🤖'
+                p1: rawP1,
+                p2: 'Smart AI Bot'
             };
         } else {
             this.playerNames = {
-                p1: `${rawP1} 💖`,
-                p2: `${rawP2} 💙`
+                p1: rawP1,
+                p2: rawP2
             };
         }
 
@@ -41,7 +41,7 @@ class PoolGameApp {
         this.isShotActive = false;
         this.cueBallScratch = false;
         this.pocketedThisShot = [];
-        this.cameraViewMode = 'cue'; // Default to authentic over-the-cue aim view
+        this.cameraViewMode = 'top'; // Default to Top-Down tactical view
 
         this.initThree();
         this.initEntities();
@@ -384,7 +384,12 @@ class PoolGameApp {
             }
 
             if (e.data.type === 'REMOTE_CHAT') {
-                this.appendChatMessage(e.data.text, 'remote', e.data.senderName);
+                const text = e.data.text;
+                if (this.isOnlyEmoji(text)) {
+                    this.showFloatingReaction(text.trim());
+                }
+                this.showChatToast(text, e.data.senderName);
+                this.appendChatMessage(text, 'remote', e.data.senderName);
             }
         });
 
@@ -408,6 +413,7 @@ class PoolGameApp {
             btn.addEventListener('click', () => {
                 const emoji = btn.getAttribute('data-emoji');
                 if (!emoji) return;
+                this.showFloatingReaction(emoji);
                 this.appendChatMessage(emoji, 'self');
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage({ type: 'GAME_CHAT', text: emoji }, '*');
@@ -436,6 +442,30 @@ class PoolGameApp {
                 floatingChat.classList.add('closed');
             });
         }
+    }
+
+    isOnlyEmoji(str) {
+        if (!str) return false;
+        return /^(\p{Extended_Pictographic}|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|\s)+$/u.test(str.trim());
+    }
+
+    showFloatingReaction(emoji) {
+        const el = document.createElement('div');
+        el.className = 'floating-reaction';
+        el.textContent = emoji;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1300);
+    }
+
+    showChatToast(text, sender = '') {
+        const toast = document.getElementById('chat-toast-bubble');
+        if (!toast) return;
+        toast.textContent = sender ? `${sender}: ${text}` : text;
+        toast.classList.add('show');
+        if (this.chatToastTimer) clearTimeout(this.chatToastTimer);
+        this.chatToastTimer = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
     }
 
     appendChatMessage(text, senderType = 'self', senderName = '') {
@@ -470,7 +500,7 @@ class PoolGameApp {
 
     setGameMode(mode) {
         this.mode = mode;
-        this.playerNames.p2 = mode === 'ai' ? 'Smart AI Bot 🤖' : 'Player 2 💙';
+        this.playerNames.p2 = mode === 'ai' ? 'Smart AI Bot' : 'Player 2';
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-mode-${mode}`)?.classList.add('active');
         this.restartGame();
@@ -836,13 +866,13 @@ class PoolGameApp {
             });
             if (sunkOwnGroup) {
                 switchTurn = false;
-                this.showStatus(`${this.playerNames[this.currentTurn]} pocketed a ball! Shoot again! 🎯`);
+                this.showStatus(`${this.playerNames[this.currentTurn]} pocketed a ball! Shoot again!`);
             }
         }
 
         if (switchTurn) {
             this.currentTurn = this.currentTurn === 'p1' ? 'p2' : 'p1';
-            this.showStatus(`${this.playerNames[this.currentTurn]}'s turn! Aim & Shoot 🎱`);
+            this.showStatus(`${this.playerNames[this.currentTurn]}'s turn! Aim & Shoot`);
         }
 
         this.cue.visible = true;
@@ -900,7 +930,11 @@ class PoolGameApp {
             this.power = 0.45 + Math.random() * 0.35;
             this.updateAiming();
 
-            setTimeout(() => this.takeShot(), 600);
+            setTimeout(() => {
+                if (!this.isShotActive && this.currentTurn === 'p2') {
+                    this.executePhysicsShot(this.power, this.aimAngle);
+                }
+            }, 600);
         }
     }
 
@@ -910,7 +944,7 @@ class PoolGameApp {
 
         const titleEl = document.getElementById('victory-title');
         const descEl = document.getElementById('victory-desc');
-        if (titleEl) titleEl.textContent = `👑 ${winnerName} Wins!`;
+        if (titleEl) titleEl.textContent = `${winnerName} Wins!`;
         if (descEl) descEl.textContent = reason || 'Masterful 8-Ball execution! Congratulations on winning the match!';
 
         document.getElementById('modal-victory')?.classList.add('open');
@@ -922,7 +956,7 @@ class PoolGameApp {
         this.isShotActive = false;
         this.cueBallScratch = false;
         this.spawnBalls();
-        this.showStatus('New Rack! Player 1 breaks the balls 🎱');
+        this.showStatus('New Rack! Player 1 breaks the balls');
         this.updateHUD();
     }
 

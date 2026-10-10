@@ -529,8 +529,53 @@ body, html {
 @media (max-width: 640px) {
     .floating-corner-chat {
         right: 8px;
-        bottom: 80px;
-        width: 190px;
+        top: 76px;
+        width: 220px;
     }
+}
+
+/* 3-Second Floating Incoming Message Toast Bubble */
+.chat-toast-bubble {
+    position: fixed;
+    top: 66px;
+    right: 14px;
+    background: rgba(15, 23, 42, 0.90);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #f8fafc;
+    padding: 7px 14px;
+    border-radius: 14px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 15px rgba(251, 191, 36, 0.25);
+    max-width: 260px;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px) scale(0.95);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.chat-toast-bubble.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+/* 1-Second Big Centered Floating Reaction Emoji */
+.floating-reaction {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 68px;
+    pointer-events: none;
+    animation: floatUpEmoji 1.3s forwards cubic-bezier(0.1, 0.9, 0.2, 1);
+    z-index: 999;
+}
+@keyframes floatUpEmoji {
+    0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+    30% { opacity: 1; transform: translate(-50%, -20px) scale(1.3); }
+    100% { opacity: 0; transform: translate(-50%, -80px) scale(1); }
 }
 

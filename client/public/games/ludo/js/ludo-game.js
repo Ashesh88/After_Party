@@ -54,7 +54,7 @@ class ClassicLudo3D {
         this.playerConfigs = {
             red: {
                 id: 'red',
-                name: (this.myRole === 'red' && this.gameMode === 'online') ? `${rawP1} (You) 🔴` : `${rawP1} 🔴`,
+                name: (this.myRole === 'red' && this.gameMode === 'online') ? `${rawP1} (You)` : rawP1,
                 colorHex: 0xb91c1c, // Deep Crimson
                 startOffset: 0,
                 homeColKey: 'red',
@@ -64,7 +64,7 @@ class ClassicLudo3D {
             },
             green: {
                 id: 'green',
-                name: (this.gameMode === 'ai') ? 'Bot 1 🤖' : ((this.myRole === 'green') ? `${rawP1} (You) 🟢` : `${rawP2} 🟢`),
+                name: (this.gameMode === 'ai') ? 'Bot 1' : ((this.myRole === 'green') ? `${rawP1} (You)` : rawP2),
                 colorHex: 0x15803d, // Deep Emerald
                 startOffset: 13,
                 homeColKey: 'green',
@@ -74,7 +74,7 @@ class ClassicLudo3D {
             },
             yellow: {
                 id: 'yellow',
-                name: (this.gameMode === 'ai') ? (this.activePlayerIds.length > 2 ? 'Bot 2 🤖' : 'Computer Bot 🤖') : ((this.myRole === 'yellow') ? `${rawP1} (You) 🟡` : (this.activePlayerIds.length === 2 ? `${rawP2} 🟡` : `${rawP3} 🟡`)),
+                name: (this.gameMode === 'ai') ? (this.activePlayerIds.length > 2 ? 'Bot 2' : 'Computer Bot') : ((this.myRole === 'yellow') ? `${rawP1} (You)` : (this.activePlayerIds.length === 2 ? rawP2 : rawP3)),
                 colorHex: 0xb45309, // Deep Amber Gold
                 startOffset: 26,
                 homeColKey: 'yellow',
@@ -84,7 +84,7 @@ class ClassicLudo3D {
             },
             blue: {
                 id: 'blue',
-                name: (this.gameMode === 'ai') ? 'Bot 3 🤖' : ((this.myRole === 'blue') ? `${rawP1} (You) 🔵` : `${rawP4} 🔵`),
+                name: (this.gameMode === 'ai') ? 'Bot 3' : ((this.myRole === 'blue') ? `${rawP1} (You)` : rawP4),
                 colorHex: 0x1d4ed8, // Deep Royal Blue
                 startOffset: 39,
                 homeColKey: 'blue',
@@ -394,6 +394,10 @@ class ClassicLudo3D {
 
             if (e.data.type === 'REMOTE_CHAT') {
                 this.appendChatMessage(e.data.text, 'remote', e.data.senderName);
+                this.showChatToast(e.data.text, e.data.senderName);
+                if (this.isOnlyEmoji(e.data.text)) {
+                    this.showFloatingReaction(e.data.text);
+                }
             }
 
             if (e.data.type === 'SET_MODE') {
@@ -403,11 +407,11 @@ class ClassicLudo3D {
             if (e.data.type === 'SET_NAMES') {
                 if (e.data.p1) {
                     this.p1Name = e.data.p1;
-                    this.playerConfigs.red.name = `${this.p1Name} 🔴`;
+                    this.playerConfigs.red.name = this.p1Name;
                 }
                 if (e.data.p2) {
                     this.p2Name = e.data.p2;
-                    if (this.gameMode !== 'ai') this.playerConfigs.yellow.name = `${this.p2Name} 🟡`;
+                    if (this.gameMode !== 'ai') this.playerConfigs.yellow.name = this.p2Name;
                 }
                 this.updateUI();
             }
@@ -423,6 +427,9 @@ class ClassicLudo3D {
                 if (!text) return;
                 chatInput.value = '';
                 this.appendChatMessage(text, 'self');
+                if (this.isOnlyEmoji(text)) {
+                    this.showFloatingReaction(text);
+                }
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage({ type: 'GAME_CHAT', text }, '*');
                 }
@@ -434,6 +441,7 @@ class ClassicLudo3D {
                 const emoji = btn.getAttribute('data-emoji');
                 if (!emoji) return;
                 this.appendChatMessage(emoji, 'self');
+                this.showFloatingReaction(emoji);
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage({ type: 'GAME_CHAT', text: emoji }, '*');
                 }
@@ -461,6 +469,30 @@ class ClassicLudo3D {
                 floatingChat.classList.add('closed');
             });
         }
+    }
+
+    isOnlyEmoji(str) {
+        if (!str) return false;
+        return /^(\p{Extended_Pictographic}|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|\s)+$/u.test(str.trim());
+    }
+
+    showFloatingReaction(emoji) {
+        const el = document.createElement('div');
+        el.className = 'floating-reaction';
+        el.textContent = emoji;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1300);
+    }
+
+    showChatToast(text, sender = '') {
+        const toast = document.getElementById('chat-toast-bubble');
+        if (!toast) return;
+        toast.textContent = sender ? `${sender}: ${text}` : text;
+        toast.classList.add('show');
+        if (this.chatToastTimer) clearTimeout(this.chatToastTimer);
+        this.chatToastTimer = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
     }
 
     appendChatMessage(text, senderType = 'self', senderName = '') {
@@ -503,11 +535,11 @@ class ClassicLudo3D {
 
         if (mode === '4p') {
             this.activePlayerIds = ['red', 'green', 'yellow', 'blue'];
-            this.playerConfigs.yellow.name = (this.p2Name && this.p2Name !== 'Partner') ? `${this.p2Name} 🟡` : 'Yellow Player 🟡';
+            this.playerConfigs.yellow.name = (this.p2Name && this.p2Name !== 'Partner') ? this.p2Name : 'Yellow Player';
         } else {
             // 2P or AI: Red vs Yellow (opposite sides)
             this.activePlayerIds = ['red', 'yellow'];
-            this.playerConfigs.yellow.name = (mode === 'ai') ? 'Computer Bot 🤖' : `${this.p2Name} 🟡`;
+            this.playerConfigs.yellow.name = (mode === 'ai') ? 'Computer Bot' : this.p2Name;
         }
 
         this.resetGame();
@@ -864,7 +896,7 @@ class ClassicLudo3D {
         this.isMoving = false;
         if (window.ludoAudio) window.ludoAudio.playVictory();
 
-        document.getElementById('victory-title').textContent = `${this.winner} Wins! 👑`;
+        document.getElementById('victory-title').textContent = `${this.winner} Wins!`;
         document.getElementById('modal-victory').classList.add('open');
     }
 

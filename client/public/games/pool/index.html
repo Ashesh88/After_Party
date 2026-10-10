@@ -17,12 +17,12 @@
         <!-- Sleek Top Status & Ball Tracking Dock -->
         <div class="top-dock-panel interactive">
             <div class="top-status-row">
-                <span class="status-pill" id="status-banner">New Rack! Break the balls 🎱</span>
+                <span class="status-pill" id="status-banner">New Rack! Break the balls</span>
                 <div class="view-toggle-mini">
-                    <button class="toggle-btn active view-btn" id="btn-view-cue" title="Aim View (Behind Stick)">
+                    <button class="toggle-btn view-btn" id="btn-view-cue" title="Aim View (Behind Stick)">
                         <i class="fa-solid fa-crosshairs"></i> Aim
                     </button>
-                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top-Down Tactical View">
+                    <button class="toggle-btn active view-btn" id="btn-view-top" title="Top-Down Tactical View">
                         <i class="fa-solid fa-table"></i> Top
                     </button>
                     <button class="toggle-btn view-btn" id="btn-view-orbit" title="Free 3D View">
@@ -35,33 +35,30 @@
                 </button>
             </div>
 
-            <!-- Detailed Player Cards with Potted & Remaining Ball Tracker -->
+            <!-- Compact Player Cards with Miniature Ball Tracker -->
             <div class="players-rack-row">
                 <!-- Player 1 Card -->
                 <div class="player-hud-card p1 active-turn" id="card-p1">
                     <div class="player-header-mini">
-                        <span class="player-name" id="name-p1">Player 1 💖</span>
+                        <span class="player-name" id="name-p1">Player 1</span>
                         <span class="ball-badge" id="badge-p1">OPEN TABLE</span>
                     </div>
-                    <!-- Miniature Ball Badges Row (Balls 1-7 or 9-15) -->
-                    <div class="ball-rack-pills" id="rack-p1">
-                        <!-- Populated dynamically by JS -->
-                    </div>
+                    <div class="ball-rack-pills" id="rack-p1"></div>
                 </div>
 
                 <!-- Player 2 Card -->
                 <div class="player-hud-card p2" id="card-p2">
                     <div class="player-header-mini">
-                        <span class="player-name" id="name-p2">Player 2 💙</span>
+                        <span class="player-name" id="name-p2">Player 2</span>
                         <span class="ball-badge" id="badge-p2">OPEN TABLE</span>
                     </div>
-                    <!-- Miniature Ball Badges Row (Balls 9-15 or 1-7) -->
-                    <div class="ball-rack-pills" id="rack-p2">
-                        <!-- Populated dynamically by JS -->
-                    </div>
+                    <div class="ball-rack-pills" id="rack-p2"></div>
                 </div>
             </div>
         </div>
+
+        <!-- 3-Second Floating Incoming Message Toast Bubble -->
+        <div class="chat-toast-bubble" id="chat-toast-bubble"></div>
 
         <!-- Left Side Aim Fine-Tune Wheel (Touch to rotate aim with micro precision) -->
         <div class="aim-wheel-panel interactive" id="aim-wheel-panel" title="Drag thumb up/down to rotate aim">

@@ -190,37 +190,53 @@ class ChessApp {
                 this.playerColor = myColor;
                 document.getElementById('modal-invite').classList.remove('open');
                 this.showStatusNotification(`Connected to match! You are playing ${myColor === 'w' ? 'White' : 'Black'}.`);
-                document.getElementById('call-status-label').textContent = 'Ready to Call';
+                const callStatusLabel = document.getElementById('call-status-label');
+                if (callStatusLabel) callStatusLabel.textContent = 'Ready to Call';
                 this.setupNewGame();
             },
             onLocalStream: (stream) => {
                 const localVideo = document.getElementById('local-video');
-                localVideo.srcObject = stream;
-                localVideo.classList.add('active');
+                if (localVideo) {
+                    localVideo.srcObject = stream;
+                    localVideo.classList.add('active');
+                }
             },
             onRemoteStream: (stream) => {
                 const remoteVideo = document.getElementById('remote-video');
-                remoteVideo.srcObject = stream;
-                remoteVideo.classList.add('active');
-                document.getElementById('video-placeholder').style.display = 'none';
+                if (remoteVideo) {
+                    remoteVideo.srcObject = stream;
+                    remoteVideo.classList.add('active');
+                }
+                const placeholder = document.getElementById('video-placeholder');
+                if (placeholder) placeholder.style.display = 'none';
                 const callBtn = document.getElementById('btn-start-call');
-                callBtn.classList.remove('btn-call-start');
-                callBtn.classList.add('btn-call-active');
-                callBtn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+                if (callBtn) {
+                    callBtn.classList.remove('btn-call-start');
+                    callBtn.classList.add('btn-call-active');
+                    callBtn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+                }
             },
             onCallEnded: () => {
                 const remoteVideo = document.getElementById('remote-video');
-                remoteVideo.srcObject = null;
-                remoteVideo.classList.remove('active');
+                if (remoteVideo) {
+                    remoteVideo.srcObject = null;
+                    remoteVideo.classList.remove('active');
+                }
                 const localVideo = document.getElementById('local-video');
-                localVideo.srcObject = null;
-                localVideo.classList.remove('active');
-                document.getElementById('video-placeholder').style.display = 'flex';
-                document.getElementById('call-status-label').textContent = 'Call Inactive';
+                if (localVideo) {
+                    localVideo.srcObject = null;
+                    localVideo.classList.remove('active');
+                }
+                const placeholder = document.getElementById('video-placeholder');
+                if (placeholder) placeholder.style.display = 'flex';
+                const statusLabel = document.getElementById('call-status-label');
+                if (statusLabel) statusLabel.textContent = 'Call Inactive';
                 const callBtn = document.getElementById('btn-start-call');
-                callBtn.classList.add('btn-call-start');
-                callBtn.classList.remove('btn-call-active');
-                callBtn.innerHTML = '<i class="fa-solid fa-phone"></i>';
+                if (callBtn) {
+                    callBtn.classList.add('btn-call-start');
+                    callBtn.classList.remove('btn-call-active');
+                    callBtn.innerHTML = '<i class="fa-solid fa-phone"></i>';
+                }
             },
             onRemoteMove: (move) => {
                 this.executeMove(move, false);
@@ -589,29 +605,31 @@ class ChessApp {
             });
         });
 
-        // Video Call Controls
-        document.getElementById('btn-start-call').addEventListener('click', async () => {
+        // Video Call Controls (Optional if enabled)
+        document.getElementById('btn-start-call')?.addEventListener('click', async () => {
             if (this.mp.mediaCall || this.mp.localStream) {
                 this.mp.endCall();
             } else {
                 try {
                     await this.mp.startVideoCall();
                     const callBtn = document.getElementById('btn-start-call');
-                    callBtn.classList.remove('btn-call-start');
-                    callBtn.classList.add('btn-call-active');
-                    callBtn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+                    if (callBtn) {
+                        callBtn.classList.remove('btn-call-start');
+                        callBtn.classList.add('btn-call-active');
+                        callBtn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+                    }
                 } catch (e) {
                     this.showStatusNotification('Invite & connect to a friend first, or grant camera permissions.');
                 }
             }
         });
 
-        document.getElementById('btn-toggle-cam').addEventListener('click', (e) => {
+        document.getElementById('btn-toggle-cam')?.addEventListener('click', (e) => {
             const active = this.mp.toggleCam();
             e.currentTarget.classList.toggle('muted', !active);
         });
 
-        document.getElementById('btn-toggle-mic').addEventListener('click', (e) => {
+        document.getElementById('btn-toggle-mic')?.addEventListener('click', (e) => {
             const active = this.mp.toggleMic();
             e.currentTarget.classList.toggle('muted', !active);
         });

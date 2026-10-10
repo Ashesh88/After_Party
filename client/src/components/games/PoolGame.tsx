@@ -418,10 +418,10 @@ export default function PoolGame({ onBack }: PoolGameProps) {
       {/* Top Header Bar */}
       <header className="h-14 px-3 sm:px-4 flex items-center justify-between border-b border-white/10 bg-[#0c0e14]/90 backdrop-blur-xl z-20 gap-2">
         {/* Left: Back button & Title */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             onClick={handleLeaveGame}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-emerald-400" />
             <span className="hidden sm:inline">Arcade</span>
@@ -429,13 +429,14 @@ export default function PoolGame({ onBack }: PoolGameProps) {
 
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300 truncate whitespace-nowrap">
-              Luxury 8-Ball Pool 🎱
+              <span className="sm:hidden">8-Ball Pool 🎱</span>
+              <span className="hidden sm:inline">Luxury 8-Ball Pool 🎱</span>
             </span>
           </div>
         </div>
 
         {/* Center: Sound & Mode Toggles */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="flex items-center p-0.5 rounded-xl bg-white/[0.06] border border-white/10 text-xs">
             {/* Audio Toggle button right next to Solo AI */}
             <button
@@ -452,7 +453,7 @@ export default function PoolGame({ onBack }: PoolGameProps) {
 
             <button
               onClick={handleSelectAiMode}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                 mode === 'ai'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -467,14 +468,15 @@ export default function PoolGame({ onBack }: PoolGameProps) {
                 fetchFriends();
                 setShowFriendsModal(true);
               }}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                 mode === 'online'
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs">Play Friend</span>
+              <span className="text-[11px] sm:text-xs sm:inline hidden">Play Friend</span>
+              <span className="text-[11px] sm:hidden inline">Friends</span>
             </button>
           </div>
 
