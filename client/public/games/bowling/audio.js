@@ -37,14 +37,14 @@ class BowlingAudioEngine {
 
             this.rollOsc.type = 'triangle';
             this.rollOsc.frequency.setValueAtTime(65, now);
-            this.rollOsc.frequency.linearRampToValueAtTime(110, now + 1.2);
+            this.rollOsc.frequency.linearRampToValueAtTime(115, now + 1.2);
 
             const filter = this.ctx.createBiquadFilter();
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(220, now);
 
             this.rollGain.gain.setValueAtTime(0.01, now);
-            this.rollGain.gain.linearRampToValueAtTime(0.12, now + 0.5);
+            this.rollGain.gain.linearRampToValueAtTime(0.14, now + 0.4);
 
             this.rollOsc.connect(filter);
             filter.connect(this.rollGain);
@@ -60,8 +60,10 @@ class BowlingAudioEngine {
                 this.rollGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
                 setTimeout(() => {
                     if (this.rollOsc) {
-                        this.rollOsc.stop();
-                        this.rollOsc.disconnect();
+                        try {
+                            this.rollOsc.stop();
+                            this.rollOsc.disconnect();
+                        } catch (err) {}
                         this.rollOsc = null;
                     }
                 }, 100);
@@ -98,19 +100,43 @@ class BowlingAudioEngine {
                 const f = 600 + Math.random() * 800;
                 const delay = 0.02 + i * 0.04;
                 pOsc.frequency.setValueAtTime(f, now + delay);
-                pOsc.frequency.exponentialRampToValueAtTime(200, now + delay + 0.12);
+                pOsc.frequency.exponentialRampToValueAtTime(180, now + delay + 0.12);
 
-                pGain.gain.setValueAtTime(0.18, now + delay);
+                pGain.gain.setValueAtTime(0.2, now + delay);
                 pGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.12);
 
                 pOsc.connect(pGain);
                 pGain.connect(this.ctx.destination);
                 pOsc.start(now + delay);
-                pOsc.stop(now + delay + 0.14);
+                pOsc.stop(now + delay + 0.13);
             }
         } catch (e) {}
     }
 
+    // Strike / Spare celebration fanfare
+    playStrikeFanfare() {
+        if (!this.ensureContext()) return;
+        try {
+            const now = this.ctx.currentTime;
+            const chords = [523.25, 659.25, 783.99, 1046.50]; // C Major arpeggio
+            chords.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+                gain.gain.setValueAtTime(0.22, now + idx * 0.09);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.7);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.09);
+                osc.stop(now + idx * 0.09 + 0.75);
+            });
+        } catch (e) {}
+    }
+
+    // Gutter Ball sound
     playGutter() {
         this.stopRollSound();
         if (!this.ensureContext()) return;
@@ -119,38 +145,67 @@ class BowlingAudioEngine {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(120, now);
-            osc.frequency.exponentialRampToValueAtTime(45, now + 0.4);
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.linearRampToValueAtTime(60, now + 0.5);
 
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
             osc.connect(gain);
             gain.connect(this.ctx.destination);
             osc.start(now);
-            osc.stop(now + 0.42);
+            osc.stop(now + 0.55);
         } catch (e) {}
     }
 
-    playStrikeFanfare() {
+    // Pin sweeper arm movement sound
+    playSweeper() {
         if (!this.ensureContext()) return;
         try {
             const now = this.ctx.currentTime;
-            const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5]; // C5, E5, G5, C6, E6
-            notes.forEach((freq, idx) => {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, now + idx * 0.1);
-                gain.gain.setValueAtTime(0.16, now + idx * 0.1);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.4);
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(90, now);
+            osc.frequency.linearRampToValueAtTime(120, now + 0.3);
 
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now + idx * 0.1);
-                osc.stop(now + idx * 0.1 + 0.45);
-            });
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(300, now);
+
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.35);
         } catch (e) {}
+    }
+
+    // Click blip
+    playClick() {
+        if (!this.ensureContext()) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(750, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } catch (e) {}
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.muted) this.stopRollSound();
+        return this.muted;
     }
 }
 

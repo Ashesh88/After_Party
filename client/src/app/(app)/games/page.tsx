@@ -10,8 +10,7 @@ import PoolGame from '../../../components/games/PoolGame';
 import TurboRacer from '../../../components/games/TurboRacer';
 import CardsGame from '../../../components/games/CardsGame';
 import BowlingGame from '../../../components/games/BowlingGame';
-import DartsGame from '../../../components/games/DartsGame';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Target, Disc } from 'lucide-react';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Disc } from 'lucide-react';
 
 const games = [
   { 
@@ -20,14 +19,6 @@ const games = [
     desc: '10-pin hardwood alley, strikes & cosmic pins',
     icon: Disc, 
     color: 'from-purple-500 via-pink-500 to-amber-400', 
-    tag: '3D LIVE' 
-  },
-  { 
-    id: 'darts', 
-    name: 'Pub 3D Darts', 
-    desc: 'Tournament bristle board, 301 & Bullseyes',
-    icon: Target, 
-    color: 'from-amber-400 via-orange-500 to-red-500', 
     tag: '3D LIVE' 
   },
   { 
@@ -108,7 +99,6 @@ export default function GamesPage() {
   const { activeGame, setActiveGame } = useGameStore();
 
   if (activeGame === 'bowling') return <BowlingGame onBack={() => setActiveGame(null)} />;
-  if (activeGame === 'darts') return <DartsGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'cards') return <CardsGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'racer') return <TurboRacer onBack={() => setActiveGame(null)} />;
   if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
