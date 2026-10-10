@@ -157,7 +157,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
           transition={{ duration: 0.2 }}
           className="relative w-full max-w-lg rounded-3xl glass-panel border border-cyan-500/30 p-5 sm:p-6 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col bg-[#0b0c16]/95"
         >
-          {/* Subtle Gaming / PUBG Glow */}
+          {/* Subtle Ambient Glow */}
           <div className="absolute -top-24 -right-24 w-60 h-60 rounded-full blur-3xl opacity-25 pointer-events-none bg-cyan-500" />
           <div className="absolute -bottom-24 -left-24 w-60 h-60 rounded-full blur-3xl opacity-20 pointer-events-none bg-pink-500" />
 
@@ -169,12 +169,12 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
               </div>
               <div>
                 <h2 className="text-lg font-black text-white leading-tight flex items-center gap-2">
-                  <span>Friends & Party</span>
+                  <span>Friends & Connections</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold uppercase tracking-wider border border-cyan-500/30">
-                    PUBG ID
+                    User ID
                   </span>
                 </h2>
-                <p className="text-[11px] text-slate-400">Add friends with their unique ID & invite them to your room</p>
+                <p className="text-[11px] text-slate-400">Add connections with their unique User ID & invite them to your room</p>
               </div>
             </div>
             <button
@@ -187,7 +187,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
 
           {/* Content */}
           <div className="overflow-y-auto space-y-4 py-4 pr-1 flex-1 custom-scrollbar">
-            {/* My Unique Player ID Card */}
+            {/* My Unique User ID Card */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-pink-950/40 border border-cyan-500/30 shadow-lg relative overflow-hidden">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -196,7 +196,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
                   </div>
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400">
-                      My Unique Player ID
+                      My User ID
                     </span>
                     <div className="font-mono text-xl sm:text-2xl font-black text-white tracking-widest mt-0.5">
                       {user?.friendId || 'Generating...'}
@@ -214,7 +214,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mt-2 font-medium">
-                Share this 8-digit ID with your friends so they can add you directly to their party!
+                Share this 8-digit User ID with friends to connect and invite them to your room.
               </p>
             </div>
 
@@ -222,12 +222,12 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
             <form onSubmit={handleAddFriend} className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                 <UserPlus size={14} className="text-pink-400" />
-                <span>Add Friend by Unique ID</span>
+                <span>Add Connection by User ID</span>
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Enter friend's 8-digit ID (e.g. 58291043)"
+                  placeholder="Enter 8-digit User ID (e.g. 58291043)"
                   value={friendIdInput}
                   onChange={(e) => setFriendIdInput(e.target.value)}
                   className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm font-mono focus:outline-none focus:border-cyan-400 transition-colors"

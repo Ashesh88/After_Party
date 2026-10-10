@@ -10,8 +10,9 @@ import api from '../../../lib/api';
 import { 
   LogOut, Edit3, Sparkles, Clapperboard, Gamepad2, 
   Target, MapPin, CalendarHeart, User, ArrowRight,
-  KeyRound, Copy, Check, Users, RefreshCw,
-  Flame, Heart, AlertCircle, Palette, ShieldCheck, UserPlus
+  KeyRound, Copy, Check, Users,
+  Flame, Heart, AlertCircle, Palette, ShieldCheck,
+  Calendar, Clock, Edit2, Plus, PartyPopper
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
 import FriendsModal from '../../../components/FriendsModal';
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [room, setRoom] = useState<any>(null);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -39,20 +41,41 @@ export default function DashboardPage() {
   const [inviteInput, setInviteInput] = useState('');
   const [roomLoading, setRoomLoading] = useState(false);
 
+  // Planned Event state
+  const [eventTitle, setEventTitle] = useState('Midnight Movie & Cocktails');
+  const [eventDate, setEventDate] = useState('');
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({
+    days: '00',
+    hours: '00',
+    mins: '00',
+    secs: '00',
+    isPast: false,
+    displayTarget: '',
+  });
+
   const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: { logout: () => void }) => state.logout);
   const updateAvatar = useAuthStore((state: any) => state.updateAvatar);
   const setAuthRoom = useAuthStore((state: any) => state.setRoom);
   const socket = useSocketStore((state: any) => state.socket);
-  const partnerOnline = useSocketStore((state: { partnerOnline: boolean }) => state.partnerOnline);
   const { moodTheme, openModal: openMoodModal } = useMoodStore();
   const currentMoodConfig = MOOD_CONFIG[moodTheme.current] || MOOD_CONFIG.love;
 
   const fetchRoom = async () => {
     try {
       const res = await api.get('/rooms/mine');
-      setRoom(res.data.room);
-      setAuthRoom(res.data.room);
+      const r = res.data.room;
+      setRoom(r);
+      setAuthRoom(r);
+      if (r?.plannedEvent) {
+        if (r.plannedEvent.title) setEventTitle(r.plannedEvent.title);
+        if (r.plannedEvent.targetDate) {
+          const d = new Date(r.plannedEvent.targetDate);
+          const localIso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          setEventDate(localIso);
+        }
+      }
     } catch {
       setRoom(null);
       setAuthRoom(null);
@@ -63,7 +86,7 @@ export default function DashboardPage() {
     fetchRoom();
   }, []);
 
-  // Listen for room changes from invitations or member join/leave
+  // Listen for room changes
   useEffect(() => {
     const handleRoomChanged = (e: any) => {
       if (e.detail) {
@@ -77,31 +100,101 @@ export default function DashboardPage() {
     return () => window.removeEventListener('room:changed', handleRoomChanged);
   }, []);
 
+  // Socket room listeners
   useEffect(() => {
     if (!socket) return;
     const handleMemberJoined = (data: any) => {
       fetchRoom();
-      toast(`${data.user?.displayName || 'Friend'} joined the room! 🎮`, { icon: '👋' });
+      toast(`${data.user?.displayName || 'Friend'} joined the room!`, { icon: '👋' });
     };
     const handleMemberLeft = (data: any) => {
       fetchRoom();
       toast(`${data.displayName || 'A member'} left the room.`, { icon: '👋' });
     };
+    const handleEventUpdate = (data: any) => {
+      if (data) {
+        setRoom((prev: any) => prev ? { ...prev, plannedEvent: data } : prev);
+        if (data.title) setEventTitle(data.title);
+        if (data.targetDate) {
+          const d = new Date(data.targetDate);
+          const localIso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          setEventDate(localIso);
+        }
+        toast.success(`Date event updated to "${data.title}" by partner! 🥂`);
+      }
+    };
 
     socket.on('room:member-joined', handleMemberJoined);
     socket.on('room:member-left', handleMemberLeft);
+    socket.on('room:event-update', handleEventUpdate);
 
     return () => {
       socket.off('room:member-joined', handleMemberJoined);
       socket.off('room:member-left', handleMemberLeft);
+      socket.off('room:event-update', handleEventUpdate);
     };
   }, [socket]);
+
+  // Real-time Countdown Timer Calculation
+  useEffect(() => {
+    const calculateCountdown = () => {
+      let targetTime: number;
+      if (room?.plannedEvent?.targetDate) {
+        targetTime = new Date(room.plannedEvent.targetDate).getTime();
+      } else if (eventDate) {
+        targetTime = new Date(eventDate).getTime();
+      } else {
+        // Fallback default: 4 days, 18 hours, 25 mins from initial load
+        targetTime = Date.now() + (4 * 24 + 18) * 3600000 + 25 * 60000;
+      }
+
+      const diff = targetTime - Date.now();
+      const targetObj = new Date(targetTime);
+      const displayTarget = targetObj.toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      if (diff <= 0) {
+        setTimeLeft({
+          days: '00',
+          hours: '00',
+          mins: '00',
+          secs: '00',
+          isPast: true,
+          displayTarget,
+        });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const mins = Math.floor((diff / 1000 / 60) % 60);
+      const secs = Math.floor((diff / 1000) % 60);
+
+      setTimeLeft({
+        days: days.toString().padStart(2, '0'),
+        hours: hours.toString().padStart(2, '0'),
+        mins: mins.toString().padStart(2, '0'),
+        secs: secs.toString().padStart(2, '0'),
+        isPast: false,
+        displayTarget,
+      });
+    };
+
+    calculateCountdown();
+    const interval = setInterval(calculateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [room, eventDate]);
 
   const handleCopyCode = () => {
     if (!room?.inviteCode) return;
     navigator.clipboard.writeText(room.inviteCode);
     setCopiedCode(true);
-    toast.success('Room code copied! Share with friends 🎮');
+    toast.success('Room code copied! Share with friends');
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
@@ -109,7 +202,7 @@ export default function DashboardPage() {
     if (!user?.friendId) return;
     navigator.clipboard.writeText(user.friendId);
     setCopiedMyId(true);
-    toast.success('Your Player ID copied! Share with friends 🎮');
+    toast.success('Your User ID copied!');
     setTimeout(() => setCopiedMyId(false), 2000);
   };
 
@@ -122,7 +215,7 @@ export default function DashboardPage() {
       if (socket) {
         socket.emit('room:switch', { roomId: res.data.room._id });
       }
-      toast.success('New room created! Share the code with your friends 🎮');
+      toast.success('New room created! Share the code to connect');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create room');
     } finally {
@@ -141,7 +234,7 @@ export default function DashboardPage() {
       if (socket) {
         socket.emit('room:switch', { roomId: res.data.room._id });
       }
-      toast.success('Joined party! Welcome to the room 🎮');
+      toast.success('Joined room successfully!');
       setInviteInput('');
       setShowRoomModal(false);
     } catch (err: any) {
@@ -174,156 +267,183 @@ export default function DashboardPage() {
     try {
       setUpdatingAvatar(true);
       await updateAvatar(url);
-      toast.success('Cute new avatar set! 💕');
+      toast.success('Profile avatar updated!');
       setShowAvatarModal(false);
-    } catch (err) {
+    } catch {
       toast.error('Failed to update avatar');
     } finally {
       setUpdatingAvatar(false);
     }
   };
 
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventTitle.trim()) {
+      toast.error('Please enter an event title');
+      return;
+    }
+    if (!eventDate) {
+      toast.error('Please pick a date and time');
+      return;
+    }
+
+    setSavingEvent(true);
+    try {
+      const targetDateObj = new Date(eventDate);
+      const res = await api.patch('/rooms/event', {
+        title: eventTitle.trim(),
+        targetDate: targetDateObj.toISOString(),
+      });
+      const updatedEvent = res.data.plannedEvent;
+      setRoom((prev: any) => prev ? { ...prev, plannedEvent: updatedEvent } : prev);
+      if (socket) {
+        socket.emit('room:event-update', updatedEvent);
+      }
+      toast.success('Event date & time updated!');
+      setShowEventModal(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save event');
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
+  const handlePresetEvent = (title: string, hoursAhead: number) => {
+    setEventTitle(title);
+    const target = new Date(Date.now() + hoursAhead * 3600000);
+    const localIso = new Date(target.getTime() - target.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setEventDate(localIso);
+  };
+
   const handleLogout = () => {
     logout();
-    toast.success('Logged out safely');
+    toast.success('Signed out');
     router.push('/login');
   };
 
   const greeting = "Good evening";
-  const partnerMember = room?.members?.find((m: any) => m._id !== (user as any)?._id);
 
   return (
-    <div className="relative min-h-screen p-4 sm:p-6 max-w-xl mx-auto space-y-6 pb-28">
+    <div className="relative min-h-screen p-3.5 sm:p-6 max-w-xl mx-auto space-y-5 pb-28">
       {/* Subtle ambient lighting */}
       <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple top-64 -right-28 pointer-events-none" />
 
-      {/* Header Profile */}
-      <header className="relative flex justify-between items-center p-5 rounded-3xl glass-panel z-10">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">Tonight's Space</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse" />
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
-            {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400">{user?.displayName}</span>
-          </h1>
-          
-          {/* Unique PUBG-style Player ID Pill & Friends Button */}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <button
-              type="button"
-              onClick={handleCopyMyId}
-              title="Click to copy your Unique Player ID"
-              className="px-2.5 py-1 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/35 text-cyan-300 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
+      {/* Header Profile - Modern Clean SaaS Architecture */}
+      <header className="relative p-4 sm:p-5 rounded-3xl glass-panel z-10 border border-white/10 shadow-xl space-y-3.5">
+        {/* Top Profile Row */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Avatar with edit overlay */}
+            <button 
+              onClick={() => setShowAvatarModal(true)}
+              title="Change Profile Avatar"
+              className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 p-[2px] shadow-md group hover:scale-105 transition-transform cursor-pointer shrink-0"
             >
-              <ShieldCheck size={12} className="text-cyan-400" />
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans">ID:</span>
-              <span className="tracking-wider">{user?.friendId || '...'}</span>
-              {copiedMyId ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-slate-400" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowFriendsModal(true)}
-              className="px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/30 text-slate-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-            >
-              <Users size={12} className="text-cyan-400" />
-              <span>Friends 👥</span>
-            </button>
-          </div>
-
-          {/* Quick Room Code & Party Members Pill */}
-          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-            {room?.inviteCode ? (
-              <button
-                onClick={handleCopyCode}
-                title="Click to copy room code"
-                className="px-3 py-1 rounded-full bg-white/[0.05] hover:bg-pink-500/15 border border-white/10 hover:border-pink-500/30 text-xs font-medium text-slate-200 transition-all flex items-center gap-2 cursor-pointer group active:scale-95"
-              >
-                <KeyRound size={12} className="text-pink-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] text-slate-400 uppercase font-semibold">Room:</span>
-                <span className="font-mono font-bold text-pink-300 tracking-wider">{room.inviteCode}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-300 font-bold">
-                  {room.members?.length || 1} in Party
-                </span>
-                {copiedCode ? (
-                  <Check size={12} className="text-emerald-400" />
+              <div className="w-full h-full rounded-[14px] bg-[#0c0c17] flex items-center justify-center overflow-hidden">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <Copy size={12} className="text-slate-400 group-hover:text-pink-300" />
+                  <User size={20} className="text-pink-400" />
                 )}
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowRoomModal(true)}
-                className="px-3 py-1 rounded-full bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-xs font-bold text-pink-300 flex items-center gap-1.5 cursor-pointer shadow-lg animate-pulse"
-              >
-                <KeyRound size={12} />
-                <span>Create / Join Party Room 🎮</span>
-              </button>
-            )}
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-pink-500 text-[9px] flex items-center justify-center border-2 border-[#080811] text-white">
+                <Edit3 size={9} />
+              </span>
+            </button>
+
+            {/* Greeting & Name */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Online</span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+                {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400">{user?.displayName}</span>
+              </h1>
+            </div>
+          </div>
+
+          {/* Action Icons Cluster */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={openMoodModal}
+              title={`Mood Theme: ${currentMoodConfig.label}`}
+              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+              style={{
+                borderColor: `${currentMoodConfig.primaryColor}50`,
+                backgroundColor: `${currentMoodConfig.primaryColor}15`,
+              }}
+            >
+              <Palette size={15} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 transition-transform" />
+            </button>
 
             <button
               onClick={() => setShowRoomModal(true)}
-              className="text-[11px] font-bold text-pink-400 hover:text-pink-300 underline underline-offset-2 transition-colors cursor-pointer"
+              title="Room Settings"
+              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-pink-400 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
             >
-              {room?.inviteCode ? 'Party Settings' : 'Setup'}
+              <KeyRound size={15} className="group-hover:scale-110 transition-transform" />
+            </button>
+
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+            >
+              <LogOut size={15} className="group-hover:scale-110 transition-transform" />
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Bottom Metadata & Navigation Pills */}
+        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-white/[0.06]">
+          {/* User ID Badge */}
           <button
+            type="button"
+            onClick={handleCopyMyId}
+            title="Click to copy your unique User ID"
+            className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
+          >
+            <ShieldCheck size={12} className="text-cyan-400" />
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans">User ID:</span>
+            <span>{user?.friendId || '...'}</span>
+            {copiedMyId ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-slate-400" />}
+          </button>
+
+          {/* Room Pill */}
+          {room?.inviteCode ? (
+            <button
+              onClick={handleCopyCode}
+              title="Click to copy Room Code"
+              className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-pink-500/15 border border-white/10 hover:border-pink-500/30 text-[11px] font-medium text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <KeyRound size={11} className="text-pink-400" />
+              <span className="text-[9px] text-slate-400 uppercase font-sans">Room:</span>
+              <span className="font-mono font-bold text-pink-300">{room.inviteCode}</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-300 font-bold">
+                {room.members?.length || 1}
+              </span>
+              {copiedCode ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-slate-400" />}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowRoomModal(true)}
+              className="px-2.5 py-1 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-[11px] font-bold text-pink-300 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            >
+              <KeyRound size={11} />
+              <span>Create Room</span>
+            </button>
+          )}
+
+          {/* Connections Pill */}
+          <button
+            type="button"
             onClick={() => setShowFriendsModal(true)}
-            title="Friends List & Add Friend"
-            className="w-10 h-10 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+            className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/30 text-slate-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ml-auto"
           >
-            <Users size={16} className="group-hover:scale-110 transition-transform" />
-          </button>
-
-          <button
-            onClick={openMoodModal}
-            title={`Mood Theme: ${currentMoodConfig.label} (Set by ${moodTheme.updatedByName || 'Partner'})`}
-            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border flex items-center justify-center transition-all cursor-pointer shadow-sm group"
-            style={{
-              borderColor: `${currentMoodConfig.primaryColor}50`,
-              backgroundColor: `${currentMoodConfig.primaryColor}15`,
-            }}
-          >
-            <Palette size={16} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 transition-transform" />
-          </button>
-
-          <button
-            onClick={() => setShowRoomModal(true)}
-            title="Room & Pairing Code"
-            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-slate-300 hover:text-pink-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
-          >
-            <KeyRound size={16} className="group-hover:scale-110 transition-transform text-pink-400" />
-          </button>
-
-          <button
-            onClick={handleLogout}
-            title="Log out"
-            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-300 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
-          >
-            <LogOut size={16} className="group-hover:scale-110 transition-transform text-slate-400 group-hover:text-rose-300" />
-          </button>
-
-          <button 
-            onClick={() => setShowAvatarModal(true)}
-            title="Change Avatar"
-            className="relative w-13 h-13 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 p-[2px] shadow-lg shadow-pink-500/20 group hover:scale-105 transition-transform cursor-pointer"
-          >
-            <div className="w-full h-full rounded-[14px] bg-[#0c0c17] flex items-center justify-center overflow-hidden">
-              {user?.avatar ? (
-                <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <User size={20} className="text-pink-400" />
-              )}
-            </div>
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-pink-500 text-[10px] flex items-center justify-center border-2 border-[#07070e] text-white">
-              <Edit3 size={10} />
-            </span>
+            <Users size={12} className="text-cyan-400" />
+            <span>Connections</span>
           </button>
         </div>
       </header>
@@ -331,39 +451,34 @@ export default function DashboardPage() {
       {/* Couple Mood Atmosphere Card */}
       <div 
         onClick={openMoodModal}
-        className="relative p-4 sm:p-5 rounded-3xl glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.01] active:scale-[0.99] overflow-hidden shadow-xl"
+        className="relative p-4 rounded-3xl glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.01] active:scale-[0.99] overflow-hidden shadow-xl"
         style={{
           borderColor: `${currentMoodConfig.primaryColor}35`,
           background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}12 0%, rgba(255, 255, 255, 0.02) 100%)`
         }}
       >
-        <div 
-          className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full blur-2xl pointer-events-none transition-colors duration-700 opacity-40"
-          style={{ backgroundColor: currentMoodConfig.primaryColor }}
-        />
-
         <div className="relative z-10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3">
             <div 
-              className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-lg group-hover:scale-105 transition-transform shrink-0"
+              className="w-11 h-11 rounded-2xl flex items-center justify-center border shadow-md group-hover:scale-105 transition-transform shrink-0"
               style={{
                 backgroundColor: `${currentMoodConfig.primaryColor}25`,
                 borderColor: `${currentMoodConfig.primaryColor}55`,
               }}
             >
-              {moodTheme.current === 'love' && <Heart size={22} className="text-pink-400 fill-pink-400/20" />}
-              {moodTheme.current === 'horny' && <Flame size={22} className="text-fuchsia-400 fill-fuchsia-400/20" />}
-              {moodTheme.current === 'angry' && <AlertCircle size={22} className="text-rose-400" />}
-              {moodTheme.current === 'just_friends' && <Users size={22} className="text-cyan-400" />}
+              {moodTheme.current === 'love' && <Heart size={20} className="text-pink-400 fill-pink-400/20" />}
+              {moodTheme.current === 'horny' && <Flame size={20} className="text-fuchsia-400 fill-fuchsia-400/20" />}
+              {moodTheme.current === 'angry' && <AlertCircle size={20} className="text-rose-400" />}
+              {moodTheme.current === 'just_friends' && <Users size={20} className="text-cyan-400" />}
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                  Couple Mood Theme
+                  Couple Atmosphere
                 </span>
                 <span 
-                  className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider"
+                  className="px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase tracking-wider"
                   style={{
                     backgroundColor: `${currentMoodConfig.primaryColor}20`,
                     color: currentMoodConfig.primaryColor,
@@ -374,7 +489,7 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              <div className="text-xs text-slate-300 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
+              <div className="text-[11px] text-slate-300 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
                 <span>Set by:</span>
                 <strong className="text-white font-bold">{moodTheme.updatedByName || 'Partner'}</strong>
                 <span className="text-slate-500">•</span>
@@ -389,7 +504,7 @@ export default function DashboardPage() {
               e.stopPropagation();
               openMoodModal();
             }}
-            className="px-3 sm:px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95 group-hover:shadow-lg"
+            className="px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95"
             style={{
               backgroundColor: `${currentMoodConfig.primaryColor}20`,
               borderColor: `${currentMoodConfig.primaryColor}50`,
@@ -397,114 +512,256 @@ export default function DashboardPage() {
             }}
           >
             <Palette size={13} style={{ color: currentMoodConfig.primaryColor }} />
-            <span className="hidden sm:inline">Customize</span>
-            <span>Mood</span>
+            <span>Customize</span>
           </button>
         </div>
       </div>
 
-      {/* Hero Countdown / Next Date Card */}
-      <div className="relative p-7 rounded-[32px] overflow-hidden glass-panel border-pink-500/20 group">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-pink-500/20 via-purple-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex justify-between items-start mb-6">
-          <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
-              <CalendarHeart size={13} className="text-pink-300" />
-              <span>Next Planned Date</span>
-            </span>
-            <h3 className="text-xl font-extrabold text-white mt-2">Midnight Movie & Cocktails</h3>
+      {/* Hero Countdown / Next Date Card - Fully Editable with Date & Time */}
+      <div className="relative p-5 sm:p-6 rounded-[32px] overflow-hidden glass-panel border border-pink-500/25 shadow-xl group">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+        
+        <div className="relative z-10 flex justify-between items-start gap-3 mb-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                <CalendarHeart size={12} className="text-pink-300" />
+                <span>Next Planned Date</span>
+              </span>
+              {timeLeft.displayTarget && (
+                <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                  <Clock size={11} className="text-slate-400" />
+                  <span>{timeLeft.displayTarget}</span>
+                </span>
+              )}
+            </div>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white mt-1.5 truncate">
+              {room?.plannedEvent?.title || eventTitle}
+            </h3>
           </div>
-          <Sparkles size={24} className="text-pink-400 filter drop-shadow-[0_0_8px_rgba(244,63,142,0.6)]" />
+
+          <button
+            onClick={() => setShowEventModal(true)}
+            title="Edit Date, Time & Title"
+            className="px-3 py-1.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-pink-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 shrink-0"
+          >
+            <Edit2 size={12} />
+            <span>Edit Event</span>
+          </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 pt-2 text-center">
-          {[
-            { val: '04', label: 'Days' },
-            { val: '18', label: 'Hours' },
-            { val: '25', label: 'Mins' },
-            { val: '40', label: 'Secs' },
-          ].map((item, idx) => (
-            <div key={idx} className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] backdrop-blur-md">
-              <div className="text-2xl sm:text-3xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
-                {item.val}
-              </div>
-              <div className="text-[10px] font-bold tracking-widest uppercase text-slate-400 mt-1">
-                {item.label}
-              </div>
+        {timeLeft.isPast ? (
+          <div className="py-4 px-3 rounded-2xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-pink-500/20 border border-pink-500/30 text-center animate-pulse">
+            <div className="flex items-center justify-center gap-2 text-pink-300 font-extrabold text-sm sm:text-base">
+              <PartyPopper size={18} />
+              <span>It's Date Time! Enjoy your special moment together 🥂✨</span>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-2 pt-1 text-center">
+            {[
+              { val: timeLeft.days, label: 'Days' },
+              { val: timeLeft.hours, label: 'Hours' },
+              { val: timeLeft.mins, label: 'Mins' },
+              { val: timeLeft.secs, label: 'Secs' },
+            ].map((item, idx) => (
+              <div key={idx} className="p-2.5 sm:p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+                <div className="text-xl sm:text-3xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
+                  {item.val}
+                </div>
+                <div className="text-[9px] sm:text-[10px] font-bold tracking-widest uppercase text-slate-400 mt-0.5">
+                  {item.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Widgets Grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3.5">
         <Link 
           href="/watch" 
-          className="relative p-5 rounded-3xl glass-panel hover:border-pink-500/40 transition-all duration-300 group overflow-hidden"
+          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-pink-500/40 transition-all duration-300 group overflow-hidden"
         >
-          <div className="w-12 h-12 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-4 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(244,63,142,0.2)]">
-            <Clapperboard size={24} />
+          <div className="w-11 h-11 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(244,63,142,0.2)]">
+            <Clapperboard size={22} />
           </div>
-          <h3 className="font-bold text-white text-base">Watch Together</h3>
-          <p className="text-xs text-slate-400 mt-1">Synced YouTube & Video</p>
-          <div className="mt-4 flex items-center text-xs font-semibold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform">
+          <h3 className="font-bold text-white text-sm sm:text-base">Watch Together</h3>
+          <p className="text-[11px] text-slate-400 mt-0.5">Synced YouTube & Video</p>
+          <div className="mt-3 flex items-center text-xs font-semibold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform">
             <span>Stream now</span>
-            <ArrowRight size={13} />
+            <ArrowRight size={12} />
           </div>
         </Link>
 
         <Link 
           href="/games" 
-          className="relative p-5 rounded-3xl glass-panel hover:border-purple-500/40 transition-all duration-300 group overflow-hidden"
+          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-purple-500/40 transition-all duration-300 group overflow-hidden"
         >
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(147,51,234,0.2)]">
-            <Gamepad2 size={24} />
+          <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(147,51,234,0.2)]">
+            <Gamepad2 size={22} />
           </div>
-          <h3 className="font-bold text-white text-base">Couples Arcade</h3>
-          <p className="text-xs text-slate-400 mt-1">Chess, Ludo & Quizzes</p>
-          <div className="mt-4 flex items-center text-xs font-semibold text-purple-400 gap-1 group-hover:translate-x-1 transition-transform">
+          <h3 className="font-bold text-white text-sm sm:text-base">Couples Arcade</h3>
+          <p className="text-[11px] text-slate-400 mt-0.5">Chess, Ludo & Quizzes</p>
+          <div className="mt-3 flex items-center text-xs font-semibold text-purple-400 gap-1 group-hover:translate-x-1 transition-transform">
             <span>Play now</span>
-            <ArrowRight size={13} />
+            <ArrowRight size={12} />
           </div>
         </Link>
       </div>
 
-      {/* Secondary Row: Goals & Reminders */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Secondary Row: Goals & Live Map */}
+      <div className="grid grid-cols-2 gap-3.5">
         <Link 
           href="/goals" 
-          className="p-5 rounded-3xl glass-panel hover:border-white/20 transition-all group"
+          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-white/20 transition-all group"
         >
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               <Target size={18} />
             </div>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
               70% Done
             </span>
           </div>
-          <h4 className="font-bold text-white text-sm">Shared Goals</h4>
-          <div className="w-full h-1.5 bg-white/[0.08] rounded-full mt-3 overflow-hidden">
+          <h4 className="font-bold text-white text-xs sm:text-sm">Shared Goals</h4>
+          <div className="w-full h-1.5 bg-white/[0.08] rounded-full mt-2.5 overflow-hidden">
             <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500 w-[70%]" />
           </div>
         </Link>
 
         <Link 
           href="/map" 
-          className="p-5 rounded-3xl glass-panel hover:border-white/20 transition-all group"
+          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-white/20 transition-all group"
         >
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-2.5">
             <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
               <MapPin size={18} />
             </div>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
               Live GPS
             </span>
           </div>
-          <h4 className="font-bold text-white text-sm">Real-time Map</h4>
-          <p className="text-xs text-slate-400 mt-1">Distance & Presence</p>
+          <h4 className="font-bold text-white text-xs sm:text-sm">Real-time Map</h4>
+          <p className="text-[11px] text-slate-400 mt-0.5">Distance & Presence</p>
         </Link>
       </div>
+
+      {/* Edit Planned Event Modal (Date + Time Picker) */}
+      <AnimatePresence>
+        {showEventModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 15 }}
+              className="relative w-full max-w-sm rounded-3xl glass-panel p-5 sm:p-6 shadow-2xl border border-pink-500/30 overflow-hidden bg-[#0c0d1a]/95"
+            >
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-300">
+                    <CalendarHeart size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-white">Plan Next Event 🥂</h3>
+                    <p className="text-[11px] text-slate-400">Set event title and exact date & time</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowEventModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-slate-400 hover:text-white cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEvent} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 block mb-1.5">
+                    Event Title
+                  </label>
+                  <input
+                    type="text"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    placeholder="e.g. Midnight Movie & Cocktails"
+                    className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs sm:text-sm text-white placeholder-slate-500 outline-none focus:border-pink-500/60"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 block mb-1.5">
+                    Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs sm:text-sm text-white outline-none focus:border-pink-500/60 font-mono"
+                    required
+                  />
+                </div>
+
+                {/* Quick Presets */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                    Quick Presets:
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handlePresetEvent('Movie Night 🍿', 28)}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-pink-500/20 border border-white/5 text-[10px] font-medium text-slate-300 hover:text-white transition-all text-left"
+                    >
+                      Tomorrow 8 PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePresetEvent('Candlelight Dinner 🍷', 72)}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-pink-500/20 border border-white/5 text-[10px] font-medium text-slate-300 hover:text-white transition-all text-left"
+                    >
+                      This Friday 9 PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePresetEvent('Weekend Getaway ✈️', 120)}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-pink-500/20 border border-white/5 text-[10px] font-medium text-slate-300 hover:text-white transition-all text-left"
+                    >
+                      This Saturday 7 PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePresetEvent('Sunday Brunch ☕', 144)}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-pink-500/20 border border-white/5 text-[10px] font-medium text-slate-300 hover:text-white transition-all text-left"
+                    >
+                      Sunday Brunch 11 AM
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEventModal(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingEvent}
+                    className="flex-1 py-2.5 rounded-xl btn-sexy text-xs font-bold text-white shadow-lg disabled:opacity-50"
+                  >
+                    {savingEvent ? 'Saving...' : 'Save & Sync'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Cute Avatar Selector Modal */}
       <AnimatePresence>
@@ -514,12 +771,12 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm rounded-[32px] glass-panel p-6 shadow-2xl border border-pink-500/30 overflow-hidden"
+              className="relative w-full max-w-sm rounded-[32px] glass-panel p-6 shadow-2xl border border-pink-500/30 overflow-hidden bg-[#0c0d1a]/95"
             >
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="font-bold text-lg text-white">Choose Your Cute Avatar 💕</h3>
-                  <p className="text-xs text-slate-400">Pick how your partner sees you</p>
+                  <h3 className="font-bold text-lg text-white">Choose Your Avatar</h3>
+                  <p className="text-xs text-slate-400">Select how your partner sees you</p>
                 </div>
                 <button
                   onClick={() => setShowAvatarModal(false)}
@@ -548,7 +805,7 @@ export default function DashboardPage() {
               </div>
 
               <p className="text-center text-[11px] text-slate-500 mt-2">
-                Click any cute companion to update instantly!
+                Click any companion to update instantly!
               </p>
             </motion.div>
           </div>
@@ -563,7 +820,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm rounded-[32px] glass-panel p-6 sm:p-7 shadow-2xl border border-pink-500/30 overflow-hidden"
+              className="relative w-full max-w-sm rounded-[32px] glass-panel p-6 sm:p-7 shadow-2xl border border-pink-500/30 overflow-hidden bg-[#0c0d1a]/95"
             >
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2.5">
@@ -572,7 +829,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-base text-white">Party Room & Code</h3>
-                    <p className="text-xs text-slate-400">Supports 8-9+ friends with the same code</p>
+                    <p className="text-xs text-slate-400">Connect with friends using the room code</p>
                   </div>
                 </div>
                 <button
@@ -587,7 +844,7 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="p-5 rounded-2xl bg-gradient-to-tr from-pink-500/10 via-purple-500/10 to-transparent border border-pink-500/20 text-center">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      Your Party Room Code
+                      Your Room Code
                     </span>
                     <div className="text-3xl sm:text-4xl font-mono font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400 my-2 select-all">
                       {room.inviteCode}
@@ -602,15 +859,15 @@ export default function DashboardPage() {
                     className="w-full py-3 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
                     {copiedCode ? <Check size={15} /> : <Copy size={15} />}
-                    <span>{copiedCode ? 'Copied Room Code! 🎮' : 'Copy Room Code to Clipboard'}</span>
+                    <span>{copiedCode ? 'Copied Room Code!' : 'Copy Room Code to Clipboard'}</span>
                   </button>
 
-                  {/* All Party Members in Room (Supports multiple friends) */}
+                  {/* All Party Members in Room */}
                   <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Users size={16} className="text-pink-400" />
-                        <span className="text-xs text-slate-300 font-bold">Party Members ({room?.members?.length || 1}):</span>
+                        <span className="text-xs text-slate-300 font-bold">Room Members ({room?.members?.length || 1}):</span>
                       </div>
                       <button
                         type="button"
@@ -620,7 +877,7 @@ export default function DashboardPage() {
                         }}
                         className="text-[10px] text-cyan-300 font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 transition-all cursor-pointer"
                       >
-                        + Invite Friends
+                        + Connections
                       </button>
                     </div>
 
@@ -644,7 +901,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Join different room expandable */}
+                  {/* Switch / Join different room */}
                   <div className="pt-2 border-t border-white/10 space-y-3">
                     <form onSubmit={handleJoinByCode} className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -681,7 +938,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-slate-300 text-center leading-relaxed">
-                    You're not in any room right now. Create a new room to host your friends or enter their code below!
+                    You're not in any room right now. Create a new room to host your partner or enter their code below!
                   </p>
 
                   <button
@@ -689,7 +946,7 @@ export default function DashboardPage() {
                     disabled={roomLoading}
                     className="w-full py-3.5 rounded-2xl btn-sexy text-xs font-bold text-white shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
-                    <span>✨ Create New Party Room</span>
+                    <span>✨ Create New Room</span>
                   </button>
 
                   <div className="relative flex items-center justify-center my-3">
@@ -719,7 +976,7 @@ export default function DashboardPage() {
                       disabled={roomLoading || inviteInput.length < 8}
                       className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white transition-all disabled:opacity-40 cursor-pointer shadow-lg"
                     >
-                      {roomLoading ? 'Connecting...' : 'Join Party Room 🎮'}
+                      {roomLoading ? 'Connecting...' : 'Join Room'}
                     </button>
                   </form>
                 </div>

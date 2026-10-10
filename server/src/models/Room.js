@@ -55,6 +55,28 @@ const roomSchema = new mongoose.Schema(
         },
       ],
     },
+    plannedEvent: {
+      title: {
+        type: String,
+        default: 'Midnight Movie & Cocktails',
+      },
+      targetDate: {
+        type: Date,
+        default: () => new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 18 * 60 * 60 * 1000 + 25 * 60 * 1000),
+      },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      updatedByName: {
+        type: String,
+        default: 'Partner',
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );

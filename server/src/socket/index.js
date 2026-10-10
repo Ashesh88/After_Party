@@ -239,6 +239,14 @@ const setupSocket = (io) => {
       }
     });
 
+    // Planned Event sync
+    socket.on('room:event-update', (data) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('room:event-update', data);
+      }
+    });
+
     // WebRTC Call Signaling (Prioritize direct user channel, fallback to room broadcast)
     socket.on('webrtc:call-user', ({ callType, callerName, callerAvatar, targetUserId }) => {
       const payload = {

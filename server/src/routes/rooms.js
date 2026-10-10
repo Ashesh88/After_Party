@@ -272,4 +272,49 @@ router.patch('/mood', async (req, res, next) => {
   }
 });
 
+// PATCH /api/rooms/event
+router.patch('/event', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const { title, targetDate } = req.body;
+    if (!title || !targetDate) {
+      return res.status(400).json({ message: 'Title and target date/time are required' });
+    }
+
+    const room = await Room.findById(user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    const parsedDate = new Date(targetDate);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid target date/time format' });
+    }
+
+    room.plannedEvent = {
+      title: title.trim(),
+      targetDate: parsedDate,
+      updatedBy: user._id,
+      updatedByName: user.displayName || 'Partner',
+      updatedAt: new Date(),
+    };
+
+    await room.save();
+
+    // Broadcast live event update to entire room
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`room:${room._id}`).emit('room:event-update', room.plannedEvent);
+    }
+
+    res.json({ plannedEvent: room.plannedEvent, message: 'Event updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

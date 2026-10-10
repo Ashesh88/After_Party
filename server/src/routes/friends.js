@@ -24,7 +24,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// POST /api/friends/add - Add friend by PUBG-style Unique ID
+// POST /api/friends/add - Add connection by unique User ID
 router.post('/add', async (req, res, next) => {
   try {
     const rawId = (req.body.friendId || '').toString().trim();
@@ -126,7 +126,7 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/friends/invite - Send PUBG-style Room Invite to friend
+// POST /api/friends/invite - Send room invitation to connection
 router.post('/invite', async (req, res, next) => {
   try {
     const { friendUserId } = req.body;
