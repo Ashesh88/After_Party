@@ -72,12 +72,17 @@ class PoolGameApp {
 
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-        this.controls.maxPolarAngle = Math.PI / 2.15; // Keep above table surface
-        this.controls.minDistance = 3.5;
-        this.controls.maxDistance = 18;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enableRotate = true;
+        this.controls.enableZoom = true;
+        this.controls.enablePan = true;
+        this.controls.rotateSpeed = 0.85;
+        this.controls.zoomSpeed = 1.0;
+        this.controls.maxPolarAngle = Math.PI / 2.08; // Keep above table surface
+        this.controls.minDistance = 2.5;
+        this.controls.maxDistance = 16;
         this.controls.target.set(0, 0, 0);
-        this.controls.enabled = false; // Disabled by default in cue/aim mode to prevent unwanted tumbling
+        this.controls.enabled = false; // Disabled by default in cue/top mode
 
         // Diffused Overhead Lighting (Eye-friendly, matte)
         const ambient = new THREE.AmbientLight(0xfff7ed, 0.65);
@@ -200,13 +205,18 @@ class PoolGameApp {
 
         this.renderer.domElement.addEventListener('pointerdown', (e) => {
             if (e.target.closest('.interactive')) return;
+            if (this.cameraViewMode === 'orbit') {
+                // In 3D Orbit view: OrbitControls handles rotating, dragging, and orbiting the 3D table!
+                this.controls.enabled = true;
+                return;
+            }
             isAimingOnTable = true;
-            this.controls.enabled = false; // Never tumble table while aiming
+            this.controls.enabled = false; // Never tumble table while aiming in top/cue mode
             handleFeltAim(e);
         });
 
         window.addEventListener('pointermove', (e) => {
-            if (isAimingOnTable) {
+            if (isAimingOnTable && this.cameraViewMode !== 'orbit') {
                 handleFeltAim(e);
             }
         });
@@ -214,9 +224,9 @@ class PoolGameApp {
         window.addEventListener('pointerup', () => {
             if (isAimingOnTable) {
                 isAimingOnTable = false;
-                if (this.cameraViewMode === 'orbit') {
-                    this.controls.enabled = true;
-                }
+            }
+            if (this.cameraViewMode === 'orbit') {
+                this.controls.enabled = true;
             }
         });
 
@@ -538,12 +548,14 @@ class PoolGameApp {
             this.controls.enabled = false;
             this.updateCueCamera();
         } else {
-            // Free Orbit 3D View
+            // Free Orbit 3D Perspective View
             this.controls.enabled = true;
+            this.camera.up.set(0, 1, 0);
             if (isPortrait) {
-                this.camera.position.set(0, 12.5, 8.5);
+                // Diagonal corner 3D perspective angle showing cushions, pocket depths, and rails in rich 3D
+                this.camera.position.set(-4.5, 4.4, 4.2);
             } else {
-                this.camera.position.set(0, isMob ? 10.5 : 8.8, isMob ? 7.5 : 6.8);
+                this.camera.position.set(isMob ? -4.5 : -5.0, isMob ? 3.8 : 3.4, isMob ? 4.0 : 3.6);
             }
             this.camera.lookAt(0, 0, 0);
             this.controls.target.set(0, 0, 0);
@@ -866,13 +878,13 @@ class PoolGameApp {
             });
             if (sunkOwnGroup) {
                 switchTurn = false;
-                this.showStatus(`${this.playerNames[this.currentTurn]} pocketed a ball! Shoot again!`);
+                this.showStatus(`${this.playerNames[this.currentTurn]} Sunk Ball!`);
             }
         }
 
         if (switchTurn) {
             this.currentTurn = this.currentTurn === 'p1' ? 'p2' : 'p1';
-            this.showStatus(`${this.playerNames[this.currentTurn]}'s turn! Aim & Shoot`);
+            this.showStatus(`${this.playerNames[this.currentTurn]}'s Turn`);
         }
 
         this.cue.visible = true;
