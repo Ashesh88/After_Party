@@ -33,6 +33,26 @@
         </footer>
     </div>
 
+    <!-- Floating Air-Glass Corner Chat HUD (Borderless, No Header, Clean 5-Msg Stack) -->
+    <div class="floating-corner-chat interactive" id="floating-chat">
+        <div class="air-chat-messages" id="panel-chat-messages">
+            <!-- Up to 5 live match chat messages -->
+        </div>
+        <!-- Corner Emojis Bar -->
+        <div class="air-chat-emojis">
+            <button class="emoji-btn" data-emoji="🎲">🎲</button>
+            <button class="emoji-btn" data-emoji="🔥">🔥</button>
+            <button class="emoji-btn" data-emoji="👑">👑</button>
+            <button class="emoji-btn" data-emoji="👍">👍</button>
+            <button class="emoji-btn" data-emoji="🎯">🎯</button>
+        </div>
+        <!-- Transparent Air Input -->
+        <form class="air-chat-input-bar" id="panel-chat-form">
+            <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+    </div>
+
     <!-- Victory Celebration Modal -->
     <div class="modal-overlay" id="modal-victory">
         <div class="victory-card interactive">

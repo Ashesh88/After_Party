@@ -8,6 +8,7 @@ const ticTacToe = require('../games/ticTacToe');
 const onlineUsers = new Set();
 const activeLocations = new Map(); // roomId -> Map(userId -> locationPayload)
 const ludoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
+const poolRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 
 const setupSocket = (io) => {
   io.use((socket, next) => {
@@ -665,6 +666,16 @@ const setupSocket = (io) => {
       });
     });
 
+    socket.on('ludo:chat', ({ sessionCode, message, senderName }) => {
+      if (!sessionCode) return;
+      socket.to(`ludo:${sessionCode}`).emit('ludo:chat', {
+        message,
+        senderName,
+        senderId: userId,
+        timestamp: Date.now(),
+      });
+    });
+
     socket.on('ludo:leave', ({ sessionCode }) => {
       if (!sessionCode) return;
       socket.leave(`ludo:${sessionCode}`);
@@ -676,6 +687,98 @@ const setupSocket = (io) => {
         }
       }
       socket.to(`ludo:${sessionCode}`).emit('ludo:opponent_left', {
+        senderId: userId,
+        players: room ? room.players : [],
+      });
+    });
+
+    // Real-Time 8-Ball Pool Match Events
+    socket.on('pool:join', ({ sessionCode, role, playerName }) => {
+      if (!sessionCode) return;
+      socket.join(`pool:${sessionCode}`);
+
+      let room = poolRooms.get(sessionCode);
+      if (!room) {
+        room = { hostId: userId, players: [] };
+        poolRooms.set(sessionCode, room);
+      }
+
+      let assignedRole = role || (room.players.length === 0 ? 'p1' : 'p2');
+      const playerObj = {
+        userId,
+        playerName: playerName || (assignedRole === 'p1' ? 'Player 1' : 'Player 2'),
+        role: assignedRole,
+        socketId: socket.id,
+      };
+
+      const existingIdx = room.players.findIndex(p => p.userId?.toString() === userId?.toString());
+      if (existingIdx >= 0) {
+        room.players[existingIdx] = playerObj;
+      } else {
+        room.players.push(playerObj);
+      }
+
+      socket.emit('pool:joined_ack', {
+        sessionCode,
+        role: assignedRole,
+        players: room.players,
+      });
+
+      socket.to(`pool:${sessionCode}`).emit('pool:opponent_joined', {
+        role: assignedRole,
+        playerName: playerObj.playerName,
+        userId,
+        players: room.players,
+      });
+    });
+
+    socket.on('pool:shot', ({ sessionCode, power, aimAngle, cueBallX, cueBallZ }) => {
+      if (!sessionCode) return;
+      socket.to(`pool:${sessionCode}`).emit('pool:shot', {
+        power,
+        aimAngle,
+        cueBallX,
+        cueBallZ,
+        senderId: userId,
+      });
+    });
+
+    socket.on('pool:sync_balls', ({ sessionCode, ballsData, currentTurn, playerGroups }) => {
+      if (!sessionCode) return;
+      socket.to(`pool:${sessionCode}`).emit('pool:sync_balls', {
+        ballsData,
+        currentTurn,
+        playerGroups,
+        senderId: userId,
+      });
+    });
+
+    socket.on('pool:rematch', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.to(`pool:${sessionCode}`).emit('pool:rematch', {
+        senderId: userId,
+      });
+    });
+
+    socket.on('pool:chat', ({ sessionCode, message, senderName }) => {
+      if (!sessionCode) return;
+      socket.to(`pool:${sessionCode}`).emit('pool:chat', {
+        message,
+        senderName,
+        senderId: userId,
+        timestamp: Date.now(),
+      });
+    });
+
+    socket.on('pool:leave', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.leave(`pool:${sessionCode}`);
+      const room = poolRooms.get(sessionCode);
+      if (room) {
+        room.players = room.players.filter(p => p.userId?.toString() !== userId?.toString());
+        if (room.players.length === 0) poolRooms.delete(sessionCode);
+      }
+      socket.to(`pool:${sessionCode}`).emit('pool:opponent_left', {
         senderId: userId,
         players: room ? room.players : [],
       });

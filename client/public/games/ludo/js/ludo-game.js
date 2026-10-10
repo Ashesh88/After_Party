@@ -389,6 +389,10 @@ class ClassicLudo3D {
                 }
             }
 
+            if (e.data.type === 'REMOTE_CHAT') {
+                this.appendChatMessage(e.data.text, 'remote', e.data.senderName);
+            }
+
             if (e.data.type === 'SET_MODE') {
                 const modeMap = { couple: '2p', friends: '4p', ai: 'ai', '2p': '2p', '4p': '4p' };
                 if (modeMap[e.data.mode]) this.setGameMode(modeMap[e.data.mode]);
@@ -405,6 +409,55 @@ class ClassicLudo3D {
                 this.updateUI();
             }
         });
+
+        // Floating In-Game Corner Chat Form & Emojis
+        const chatForm = document.getElementById('panel-chat-form');
+        const chatInput = document.getElementById('panel-chat-input');
+        if (chatForm && chatInput) {
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = chatInput.value.trim();
+                if (!text) return;
+                chatInput.value = '';
+                this.appendChatMessage(text, 'self');
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'GAME_CHAT', text }, '*');
+                }
+            });
+        }
+
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const emoji = btn.getAttribute('data-emoji');
+                if (!emoji) return;
+                this.appendChatMessage(emoji, 'self');
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'GAME_CHAT', text: emoji }, '*');
+                }
+            });
+        });
+    }
+
+    appendChatMessage(text, senderType = 'self', senderName = '') {
+        const container = document.getElementById('panel-chat-messages');
+        if (!container) return;
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `air-msg-item ${senderType}`;
+        if (senderType === 'remote' && senderName) {
+            msgDiv.textContent = `${senderName}: ${text}`;
+        } else {
+            msgDiv.textContent = text;
+        }
+
+        container.appendChild(msgDiv);
+
+        // Keep at most 5 messages in stack
+        while (container.children.length > 5) {
+            container.removeChild(container.firstElementChild);
+        }
+
+        container.scrollTop = container.scrollHeight;
     }
 
     setGameMode(mode) {

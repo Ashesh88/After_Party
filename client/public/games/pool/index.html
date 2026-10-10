@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Luxury 3D Pool Deluxe</title>
+    <title>Luxury 8-Ball Pool</title>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -14,53 +14,57 @@
 
     <!-- UI Overlay Layer -->
     <div class="ui-layer">
-        <!-- Compact Top Control Dock -->
+        <!-- Sleek Top Status & Ball Tracking Dock -->
         <div class="top-dock-panel interactive">
-            <div class="top-controls-row">
-                <!-- Game Mode -->
-                <div class="toggle-group">
-                    <button class="toggle-btn active" id="btn-mode-2p" title="Couples 2-Player (Him vs Her)">2P</button>
-                    <button class="toggle-btn" id="btn-mode-ai" title="Play with Smart AI Bot">vs AI</button>
-                </div>
-
-                <!-- Camera View Preset -->
-                <div class="toggle-group">
-                    <button class="toggle-btn active view-btn" id="btn-view-orbit" title="3D Orbit View">
-                        <i class="fa-solid fa-cube"></i> 3D
-                    </button>
-                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top-Down Overhead View">
-                        <i class="fa-solid fa-table"></i> Top
-                    </button>
-                    <button class="toggle-btn view-btn" id="btn-view-cue" title="Aim View behind Cue Stick">
+            <div class="top-status-row">
+                <span class="status-pill" id="status-banner">New Rack! Break the balls 🎱</span>
+                <div class="view-toggle-mini">
+                    <button class="toggle-btn active view-btn" id="btn-view-cue" title="Aim View (Behind Stick)">
                         <i class="fa-solid fa-crosshairs"></i> Aim
                     </button>
-                </div>
-
-                <!-- Quick Action Buttons -->
-                <div class="action-buttons">
-                    <button class="btn-icon" id="btn-mute" title="Toggle Sound">
-                        <i class="fa-solid fa-volume-high"></i>
+                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top-Down Tactical View">
+                        <i class="fa-solid fa-table"></i> Top
                     </button>
-                    <button class="btn-icon" id="btn-restart" title="New Rack">
-                        <i class="fa-solid fa-rotate-right"></i>
+                    <button class="toggle-btn view-btn" id="btn-view-orbit" title="Free 3D View">
+                        <i class="fa-solid fa-cube"></i> 3D
                     </button>
                 </div>
             </div>
 
-            <!-- Status Banner & Mini Player Badges -->
-            <div class="top-status-row">
-                <span class="status-pill" id="status-banner">New Rack! Player 1 breaks the balls 🎱</span>
-                <div class="players-bar">
-                    <div class="player-hud-card p1 active-turn" id="card-p1">
+            <!-- Detailed Player Cards with Potted & Remaining Ball Tracker -->
+            <div class="players-rack-row">
+                <!-- Player 1 Card -->
+                <div class="player-hud-card p1 active-turn" id="card-p1">
+                    <div class="player-header-mini">
                         <span class="player-name" id="name-p1">Player 1 💖</span>
-                        <span class="ball-badge" id="badge-p1">ANY</span>
+                        <span class="ball-badge" id="badge-p1">OPEN TABLE</span>
                     </div>
-                    <div class="player-hud-card p2" id="card-p2">
+                    <!-- Miniature Ball Badges Row (Balls 1-7 or 9-15) -->
+                    <div class="ball-rack-pills" id="rack-p1">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Player 2 Card -->
+                <div class="player-hud-card p2" id="card-p2">
+                    <div class="player-header-mini">
                         <span class="player-name" id="name-p2">Player 2 💙</span>
-                        <span class="ball-badge" id="badge-p2">ANY</span>
+                        <span class="ball-badge" id="badge-p2">OPEN TABLE</span>
+                    </div>
+                    <!-- Miniature Ball Badges Row (Balls 9-15 or 1-7) -->
+                    <div class="ball-rack-pills" id="rack-p2">
+                        <!-- Populated dynamically by JS -->
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Left Side Aim Fine-Tune Wheel (Touch to rotate aim with micro precision) -->
+        <div class="aim-wheel-panel interactive" id="aim-wheel-panel" title="Drag thumb up/down to rotate aim">
+            <div class="aim-wheel-track" id="aim-wheel-track">
+                <div class="aim-wheel-indicator"></div>
+            </div>
+            <span class="aim-wheel-label">FINE AIM</span>
         </div>
 
         <!-- Bottom Controls HUD (Shot Power & Strike Action) -->
@@ -72,7 +76,7 @@
 
                 <div class="power-control-panel">
                     <div class="power-header">
-                        <span><i class="fa-solid fa-bolt"></i> Power</span>
+                        <span><i class="fa-solid fa-bolt"></i> Strike Power</span>
                         <span class="power-pct" id="power-value-label">50%</span>
                     </div>
                     <div class="power-slider-wrapper">
@@ -90,6 +94,26 @@
                 </button>
             </div>
         </footer>
+    </div>
+
+    <!-- Floating Air-Glass Corner Chat HUD (Borderless, No Header, Clean 5-Msg Stack) -->
+    <div class="floating-corner-chat interactive" id="floating-chat">
+        <div class="air-chat-messages" id="panel-chat-messages">
+            <!-- Live match chat messages only (up to 5 messages) -->
+        </div>
+        <!-- Corner Emojis Bar -->
+        <div class="air-chat-emojis">
+            <button class="emoji-btn" data-emoji="🎱">🎱</button>
+            <button class="emoji-btn" data-emoji="🔥">🔥</button>
+            <button class="emoji-btn" data-emoji="👑">👑</button>
+            <button class="emoji-btn" data-emoji="👍">👍</button>
+            <button class="emoji-btn" data-emoji="🎯">🎯</button>
+        </div>
+        <!-- Transparent Air Input -->
+        <form class="air-chat-input-bar" id="panel-chat-form">
+            <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
     </div>
 
     <!-- Victory Celebration Modal -->

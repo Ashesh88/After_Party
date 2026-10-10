@@ -1,26 +1,52 @@
-// Couples 3D Pool - Master Game Controller & 8-Ball Rule Engine
-// Realistic 3D ball rolling rotation, smart aiming guide, AI Bot, and couples turn HUD
+// Couples 3D Pool - Master Game Controller & Professional 8-Ball Engine
+// Direct Felt Tap-To-Aim, Orbit Controls Isolation, Dual Deflection Trajectory Guide,
+// Live Miniature Ball Racks HUD, Multiplayer Socket Sync & Air-Glass Floating Chat
 
 class PoolGameApp {
     constructor() {
         this.container = document.getElementById('canvas-container');
         this.clock = new THREE.Clock();
 
-        this.mode = '2p'; // '2p' or 'ai'
-        this.currentTurn = 'p1'; // 'p1' or 'p2'
-        this.playerGroups = { p1: null, p2: null }; // 'solids' or 'stripes'
-        this.playerNames = { p1: 'Player 1 💖', p2: 'Player 2 💙' };
+        // Parse URL query parameters
+        const params = new URLSearchParams(window.location.search);
+        this.mode = params.get('mode') || '2p'; // 'online', 'ai', '2p'
+        this.sessionCode = params.get('code') || null;
+        this.myRole = params.get('role') || 'p1'; // 'p1' or 'p2'
 
-        this.aimAngle = Math.PI / 2; // Aim pointing right towards rack initially
+        const rawP1 = params.get('name') || 'Player 1';
+        const rawP2 = params.get('opponent') || 'Player 2';
+
+        this.currentTurn = 'p1'; // 'p1' or 'p2'
+        this.playerGroups = { p1: null, p2: null }; // 'solids' (1-7) or 'stripes' (9-15)
+        
+        if (this.mode === 'online') {
+            this.playerNames = {
+                p1: this.myRole === 'p1' ? `${rawP1} (You) 💖` : `${rawP2} 💖`,
+                p2: this.myRole === 'p2' ? `${rawP1} (You) 💙` : `${rawP2} 💙`
+            };
+        } else if (this.mode === 'ai') {
+            this.playerNames = {
+                p1: `${rawP1} 💖`,
+                p2: 'Smart AI Bot 🤖'
+            };
+        } else {
+            this.playerNames = {
+                p1: `${rawP1} 💖`,
+                p2: `${rawP2} 💙`
+            };
+        }
+
+        this.aimAngle = 0; // Point towards foot rack initially
         this.power = 0.5; // 0.1 to 1.0
         this.isShotActive = false;
         this.cueBallScratch = false;
         this.pocketedThisShot = [];
-        this.cameraViewMode = 'orbit'; // 'orbit', 'top', 'cue'
+        this.cameraViewMode = 'cue'; // Default to authentic over-the-cue aim view
 
         this.initThree();
         this.initEntities();
         this.initEvents();
+        this.setCameraView(this.cameraViewMode);
         this.updateHUD();
 
         this.animate = this.animate.bind(this);
@@ -47,16 +73,17 @@ class PoolGameApp {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        this.controls.maxPolarAngle = Math.PI / 2.15; // Don't go below table surface
+        this.controls.maxPolarAngle = Math.PI / 2.15; // Keep above table surface
         this.controls.minDistance = 3.5;
         this.controls.maxDistance = 18;
         this.controls.target.set(0, 0, 0);
+        this.controls.enabled = false; // Disabled by default in cue/aim mode to prevent unwanted tumbling
 
-        // Soft Diffused Lighting (Zero blinding glare)
+        // Diffused Overhead Lighting (Eye-friendly, matte)
         const ambient = new THREE.AmbientLight(0xfff7ed, 0.65);
         this.scene.add(ambient);
 
-        // Overhead Pool Table Overhead Pendant Light
+        // Overhead Pendant Light
         const tableLight = new THREE.DirectionalLight(0xfffaed, 0.85);
         tableLight.position.set(0, 10, 0);
         tableLight.castShadow = true;
@@ -89,6 +116,17 @@ class PoolGameApp {
         floor.receiveShadow = true;
         this.scene.add(floor);
 
+        // Felt Raycasting Target Plane (Invisible)
+        const feltGeo = new THREE.PlaneGeometry(7.2, 3.6);
+        const feltMat = new THREE.MeshBasicMaterial({ visible: false });
+        this.feltPlane = new THREE.Mesh(feltGeo, feltMat);
+        this.feltPlane.rotation.x = -Math.PI / 2;
+        this.feltPlane.position.y = 0.10; // Ball radius height
+        this.scene.add(this.feltPlane);
+
+        this.raycaster = new THREE.Raycaster();
+        this.pointer = new THREE.Vector2();
+
         window.addEventListener('resize', () => {
             const isMob = window.innerWidth < 768;
             this.camera.fov = isMob ? 54 : 42;
@@ -111,7 +149,6 @@ class PoolGameApp {
     }
 
     spawnBalls() {
-        // Clear previous meshes
         Object.values(this.ballMeshes).forEach(mesh => this.scene.remove(mesh));
         this.ballMeshes = {};
 
@@ -129,37 +166,99 @@ class PoolGameApp {
     }
 
     initEvents() {
-        let isDraggingAim = false;
-        let lastMouseX = 0;
+        let isAimingOnTable = false;
 
-        // Pointer Drag for Aim Rotation
-        this.renderer.domElement.addEventListener('pointerdown', (e) => {
+        // Direct Felt Tap-To-Aim / Drag-To-Aim on Table
+        const handleFeltAim = (e) => {
             if (this.isShotActive) return;
-            // Only drag aim if left click
-            if (e.button === 0) {
-                isDraggingAim = true;
-                lastMouseX = e.clientX;
+            const cueBall = this.ballsData[0];
+            if (!cueBall || cueBall.inPocket) return;
+
+            // Only allow aiming if it's our turn in online/ai mode
+            if (this.mode === 'online' && this.currentTurn !== this.myRole) return;
+            if (this.mode === 'ai' && this.currentTurn === 'p2') return;
+
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            this.raycaster.setFromCamera(this.pointer, this.camera);
+            const intersects = this.raycaster.intersectObject(this.feltPlane);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0].point;
+                // Vector from Cue Ball to hit point
+                const dx = hit.x - cueBall.x;
+                const dz = hit.z - cueBall.z;
+                if (Math.hypot(dx, dz) > 0.15) {
+                    this.aimAngle = Math.atan2(dz, dx);
+                    this.updateAiming();
+                }
             }
+        };
+
+        this.renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.interactive')) return;
+            isAimingOnTable = true;
+            this.controls.enabled = false; // Never tumble table while aiming
+            handleFeltAim(e);
         });
 
         window.addEventListener('pointermove', (e) => {
-            if (isDraggingAim && !this.isShotActive) {
-                const deltaX = e.clientX - lastMouseX;
-                lastMouseX = e.clientX;
-                this.aimAngle += deltaX * 0.008;
-                this.updateAiming();
+            if (isAimingOnTable) {
+                handleFeltAim(e);
             }
         });
 
         window.addEventListener('pointerup', () => {
-            isDraggingAim = false;
+            if (isAimingOnTable) {
+                isAimingOnTable = false;
+                if (this.cameraViewMode === 'orbit') {
+                    this.controls.enabled = true;
+                }
+            }
         });
 
-        // UI Controls
-        const btnShoot = document.getElementById('btn-shoot');
-        const sliderPower = document.getElementById('slider-power');
-        const sliderAim = document.getElementById('slider-aim-fine');
+        // Tactile Left Fine-Aim Wheel Dial
+        const wheelTrack = document.getElementById('aim-wheel-track');
+        let isDraggingWheel = false;
+        let lastWheelY = 0;
 
+        if (wheelTrack) {
+            const handleWheelMove = (clientY) => {
+                const deltaY = clientY - lastWheelY;
+                lastWheelY = clientY;
+                // Move indicator
+                const indicator = wheelTrack.querySelector('.aim-wheel-indicator');
+                if (indicator) {
+                    const currentTop = 54 + (deltaY * 0.4);
+                    indicator.style.transform = `translateY(${Math.max(-40, Math.min(40, deltaY * 2))}px)`;
+                    setTimeout(() => { if (indicator) indicator.style.transform = 'none'; }, 100);
+                }
+                this.aimAngle += deltaY * 0.005;
+                this.updateAiming();
+            };
+
+            wheelTrack.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                isDraggingWheel = true;
+                lastWheelY = e.clientY;
+                this.controls.enabled = false;
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (isDraggingWheel) {
+                    handleWheelMove(e.clientY);
+                }
+            });
+
+            window.addEventListener('pointerup', () => {
+                isDraggingWheel = false;
+            });
+        }
+
+        // Shot Power Slider
+        const sliderPower = document.getElementById('slider-power');
         if (sliderPower) {
             sliderPower.addEventListener('input', (e) => {
                 this.power = parseFloat(e.target.value);
@@ -170,43 +269,34 @@ class PoolGameApp {
             });
         }
 
-        if (sliderAim) {
-            sliderAim.addEventListener('input', (e) => {
-                this.aimAngle = parseFloat(e.target.value);
-                this.updateAiming();
-            });
-        }
-
+        // Shoot Button
+        const btnShoot = document.getElementById('btn-shoot');
         if (btnShoot) {
             btnShoot.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.takeShot();
             });
-            btnShoot.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                this.takeShot();
-            });
         }
 
-        // Aim fine-tune buttons
+        // Aim Step Buttons
         document.getElementById('btn-aim-left')?.addEventListener('click', () => {
-            this.aimAngle -= 0.05;
+            this.aimAngle -= 0.03;
             this.updateAiming();
         });
         document.getElementById('btn-aim-right')?.addEventListener('click', () => {
-            this.aimAngle += 0.05;
+            this.aimAngle += 0.03;
             this.updateAiming();
         });
 
-        // Desktop Spacebar to shoot
+        // Desktop Spacebar to Shoot
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
+            if (e.code === 'Space' && !e.target.matches('input, textarea')) {
                 e.preventDefault();
                 this.takeShot();
             }
         });
 
-        // View Mode Toggles
+        // Camera View Mode Buttons
         document.getElementById('btn-view-orbit')?.addEventListener('click', () => this.setCameraView('orbit'));
         document.getElementById('btn-view-top')?.addEventListener('click', () => this.setCameraView('top'));
         document.getElementById('btn-view-cue')?.addEventListener('click', () => this.setCameraView('cue'));
@@ -222,12 +312,128 @@ class PoolGameApp {
             if (icon) icon.className = active ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
         });
 
-        // Restart
-        document.getElementById('btn-restart')?.addEventListener('click', () => this.restartGame());
-        document.getElementById('btn-play-again')?.addEventListener('click', () => {
-            document.getElementById('modal-victory')?.classList.remove('open');
+        // Restart / Play Again
+        document.getElementById('btn-restart')?.addEventListener('click', () => {
+            if (this.mode === 'online' && window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'POOL_LOCAL_REMATCH' }, '*');
+            }
             this.restartGame();
         });
+
+        document.getElementById('btn-play-again')?.addEventListener('click', () => {
+            document.getElementById('modal-victory')?.classList.remove('open');
+            if (this.mode === 'online' && window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'POOL_LOCAL_REMATCH' }, '*');
+            }
+            this.restartGame();
+        });
+
+        // Listen for parent postMessages (Multiplayer Remote Shot, Ball Sync, Chat)
+        window.addEventListener('message', (e) => {
+            if (!e.data || typeof e.data !== 'object') return;
+
+            if (e.data.type === 'POOL_REMOTE_SHOT') {
+                const cueBall = this.ballsData[0];
+                if (cueBall) {
+                    if (typeof e.data.cueBallX === 'number') cueBall.x = e.data.cueBallX;
+                    if (typeof e.data.cueBallZ === 'number') cueBall.z = e.data.cueBallZ;
+                }
+                this.aimAngle = e.data.aimAngle;
+                this.power = e.data.power;
+                this.updateAiming();
+                this.executePhysicsShot(this.power, this.aimAngle);
+            }
+
+            if (e.data.type === 'POOL_REMOTE_SYNC') {
+                if (Array.isArray(e.data.ballsData)) {
+                    e.data.ballsData.forEach(remoteB => {
+                        const localB = this.ballsData.find(b => b.number === remoteB.number);
+                        if (localB) {
+                            localB.x = remoteB.x;
+                            localB.z = remoteB.z;
+                            localB.inPocket = remoteB.inPocket;
+                            const mesh = this.ballMeshes[localB.number];
+                            if (mesh) {
+                                mesh.position.x = remoteB.x;
+                                mesh.position.z = remoteB.z;
+                                if (remoteB.inPocket) {
+                                    mesh.visible = false;
+                                } else {
+                                    mesh.visible = true;
+                                    mesh.position.y = this.ballFactory.radius;
+                                }
+                            }
+                        }
+                    });
+                }
+                if (e.data.currentTurn) this.currentTurn = e.data.currentTurn;
+                if (e.data.playerGroups) this.playerGroups = e.data.playerGroups;
+                this.updateHUD();
+                this.updateAiming();
+            }
+
+            if (e.data.type === 'POOL_REMATCH') {
+                this.restartGame();
+            }
+
+            if (e.data.type === 'POOL_TOGGLE_MUTE') {
+                if (window.poolAudio) {
+                    window.poolAudio.muted = Boolean(e.data.muted);
+                }
+            }
+
+            if (e.data.type === 'REMOTE_CHAT') {
+                this.appendChatMessage(e.data.text, 'remote', e.data.senderName);
+            }
+        });
+
+        // Floating Corner Chat Form & Emojis
+        const chatForm = document.getElementById('panel-chat-form');
+        const chatInput = document.getElementById('panel-chat-input');
+        if (chatForm && chatInput) {
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = chatInput.value.trim();
+                if (!text) return;
+                chatInput.value = '';
+                this.appendChatMessage(text, 'self');
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'GAME_CHAT', text }, '*');
+                }
+            });
+        }
+
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const emoji = btn.getAttribute('data-emoji');
+                if (!emoji) return;
+                this.appendChatMessage(emoji, 'self');
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'GAME_CHAT', text: emoji }, '*');
+                }
+            });
+        });
+    }
+
+    appendChatMessage(text, senderType = 'self', senderName = '') {
+        const container = document.getElementById('panel-chat-messages');
+        if (!container) return;
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `air-msg-item ${senderType}`;
+        if (senderType === 'remote' && senderName) {
+            msgDiv.textContent = `${senderName}: ${text}`;
+        } else {
+            msgDiv.textContent = text;
+        }
+
+        container.appendChild(msgDiv);
+
+        while (container.children.length > 5) {
+            container.removeChild(container.firstElementChild);
+        }
+
+        container.scrollTop = container.scrollHeight;
     }
 
     setGameMode(mode) {
@@ -246,15 +452,20 @@ class PoolGameApp {
         const isMob = window.innerWidth < 768;
 
         if (view === 'top') {
-            // Direct Top-Down Bird's Eye View
+            // Direct Top-Down Bird's Eye Tactical View
+            this.controls.enabled = false;
             this.camera.position.set(0, isMob ? 11.5 : 9.5, 0);
+            this.camera.lookAt(0, 0, 0);
             this.controls.target.set(0, 0, 0);
         } else if (view === 'cue') {
-            // Over-the-cue aim view
+            // Over-the-cue authentic Aim View
+            this.controls.enabled = false;
             this.updateCueCamera();
         } else {
-            // Orbit view
+            // Free Orbit 3D View
+            this.controls.enabled = true;
             this.camera.position.set(0, isMob ? 9.8 : 7.8, isMob ? 6.8 : 6.2);
+            this.camera.lookAt(0, 0, 0);
             this.controls.target.set(0, 0, 0);
         }
         this.controls.update();
@@ -271,7 +482,10 @@ class PoolGameApp {
         const camZ = cueBall.z - Math.sin(this.aimAngle) * camDist;
 
         this.camera.position.set(camX, camHeight, camZ);
-        this.controls.target.set(cueBall.x + Math.cos(this.aimAngle) * 2.0, 0.1, cueBall.z + Math.sin(this.aimAngle) * 2.0);
+        const lookX = cueBall.x + Math.cos(this.aimAngle) * 2.0;
+        const lookZ = cueBall.z + Math.sin(this.aimAngle) * 2.0;
+        this.camera.lookAt(lookX, 0.1, lookZ);
+        this.controls.target.set(lookX, 0.1, lookZ);
     }
 
     updateAiming() {
@@ -281,10 +495,14 @@ class PoolGameApp {
             return;
         }
 
-        // Raycast aim line towards target ball
+        const r = this.ballFactory.radius; // 0.10
+        const dRadius = r * 2; // 0.20
         const dirX = Math.cos(this.aimAngle);
         const dirZ = Math.sin(this.aimAngle);
-        let closestDist = 5.0;
+
+        // 1. Raycast for object ball collision
+        let closestHit = null;
+        let minT = 10.0;
 
         for (let i = 1; i < this.ballsData.length; i++) {
             const b = this.ballsData[i];
@@ -293,21 +511,120 @@ class PoolGameApp {
             const dx = b.x - cueBall.x;
             const dz = b.z - cueBall.z;
             const proj = dx * dirX + dz * dirZ;
+            if (proj <= 0) continue; // Behind cue ball
 
-            if (proj > 0 && proj < closestDist) {
-                const perp = Math.abs(dx * dirZ - dz * dirX);
-                if (perp < this.ballFactory.radius * 2) {
-                    closestDist = proj;
+            const h2 = (dx * dx + dz * dz) - (proj * proj);
+            const targetDist2 = dRadius * dRadius;
+            if (h2 < targetDist2) {
+                const offset = Math.sqrt(Math.max(0, targetDist2 - h2));
+                const t = proj - offset;
+                if (t > 0 && t < minT) {
+                    minT = t;
+                    closestHit = {
+                        type: 'ball',
+                        t,
+                        ball: b,
+                        impactX: cueBall.x + dirX * t,
+                        impactZ: cueBall.z + dirZ * t
+                    };
                 }
             }
         }
 
+        // 2. Raycast for cushion wall collision
+        const halfL = 3.6 - r; // 3.5
+        const halfW = 1.8 - r; // 1.7
+        let wallT = 10.0;
+        let wallBounceX = 0;
+        let wallBounceZ = 0;
+
+        if (dirX > 0) {
+            const t = (halfL - cueBall.x) / dirX;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = -dirX;
+                wallBounceZ = dirZ;
+            }
+        } else if (dirX < 0) {
+            const t = (-halfL - cueBall.x) / dirX;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = -dirX;
+                wallBounceZ = dirZ;
+            }
+        }
+
+        if (dirZ > 0) {
+            const t = (halfW - cueBall.z) / dirZ;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = dirX;
+                wallBounceZ = -dirZ;
+            }
+        } else if (dirZ < 0) {
+            const t = (-halfW - cueBall.z) / dirZ;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = dirX;
+                wallBounceZ = -dirZ;
+            }
+        }
+
+        // 3. Update Cue stick position
         this.cue.update(
-            new THREE.Vector3(cueBall.x, this.ballFactory.radius, cueBall.z),
-            -this.aimAngle - Math.PI / 2, // Aligned Three.js rotation angle
+            new THREE.Vector3(cueBall.x, r, cueBall.z),
+            this.aimAngle,
             this.power
         );
-        this.cue.setGhostTarget(closestDist);
+
+        // 4. Calculate Complete Trajectory & Deflections
+        if (closestHit && closestHit.t < wallT) {
+            const b = closestHit.ball;
+            const impX = closestHit.impactX;
+            const impZ = closestHit.impactZ;
+
+            // Normal vector from impact point to target ball center:
+            let nx = b.x - impX;
+            let nz = b.z - impZ;
+            const nLen = Math.hypot(nx, nz) || 1;
+            nx /= nLen;
+            nz /= nLen;
+
+            // Cue ball deflection: tangential component:
+            const dot = dirX * nx + dirZ * nz;
+            let defX = dirX - dot * nx;
+            let defZ = dirZ - dot * nz;
+            const defLen = Math.hypot(defX, defZ);
+            if (defLen > 0.001) {
+                defX /= defLen;
+                defZ /= defLen;
+            } else {
+                defX = -nz;
+                defZ = nx;
+            }
+
+            this.cue.setTrajectory(cueBall.x, cueBall.z, r, this.aimAngle, {
+                impactX: impX,
+                impactZ: impZ,
+                hasBallHit: true,
+                targetBallX: b.x,
+                targetBallZ: b.z,
+                targetDirX: nx,
+                targetDirZ: nz,
+                cueDeflectX: defX,
+                cueDeflectZ: defZ
+            });
+        } else {
+            const impX = cueBall.x + dirX * wallT;
+            const impZ = cueBall.z + dirZ * wallT;
+            this.cue.setTrajectory(cueBall.x, cueBall.z, r, this.aimAngle, {
+                impactX: impX,
+                impactZ: impZ,
+                hasBallHit: false,
+                cushionBounceX: wallBounceX,
+                cushionBounceZ: wallBounceZ
+            });
+        }
 
         if (this.cameraViewMode === 'cue') {
             this.updateCueCamera();
@@ -316,25 +633,42 @@ class PoolGameApp {
 
     takeShot() {
         if (this.isShotActive) return;
+        if (this.mode === 'online' && this.currentTurn !== this.myRole) return;
+        if (this.mode === 'ai' && this.currentTurn === 'p2') return;
+
         const cueBall = this.ballsData[0];
         if (!cueBall || cueBall.inPocket) return;
 
+        // Broadcast to multiplayer peer
+        if (this.mode === 'online' && window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'POOL_LOCAL_SHOT',
+                power: this.power,
+                aimAngle: this.aimAngle,
+                cueBallX: cueBall.x,
+                cueBallZ: cueBall.z
+            }, '*');
+        }
+
+        this.executePhysicsShot(this.power, this.aimAngle);
+    }
+
+    executePhysicsShot(power, aimAngle) {
         this.isShotActive = true;
-        this.shotFrameDelay = 30; // Wait 30 frames before checking if stationary
+        this.shotFrameDelay = 30;
         this.pocketedThisShot = [];
         this.cueBallScratch = false;
         document.getElementById('btn-shoot')?.setAttribute('disabled', 'true');
 
-        // Apply shot impulse immediately so cue ball launches
-        const speed = 4.5 + this.power * 11.5;
-        cueBall.vx = Math.cos(this.aimAngle) * speed;
-        cueBall.vz = Math.sin(this.aimAngle) * speed;
+        const cueBall = this.ballsData[0];
+        const speed = 4.5 + power * 11.5;
+        cueBall.vx = Math.cos(aimAngle) * speed;
+        cueBall.vz = Math.sin(aimAngle) * speed;
 
         if (window.poolAudio) {
-            window.poolAudio.playCueHit(this.power);
+            window.poolAudio.playCueHit(power);
         }
 
-        // Trigger cue strike snap
         this.cue.strike();
     }
 
@@ -342,7 +676,7 @@ class PoolGameApp {
         requestAnimationFrame(this.animate);
         const delta = this.clock.getDelta();
 
-        // 1. Run physics update
+        // 1. Run physical collision simulation
         this.physics.update(this.ballsData, delta);
 
         // 2. Sync 3D Meshes & Rolling Ball Rotations
@@ -352,7 +686,6 @@ class PoolGameApp {
             if (!mesh) continue;
 
             if (b.inPocket) {
-                // Drop downward into leather pocket recess
                 if (mesh.position.y > -0.35) {
                     mesh.position.y -= delta * 0.8;
                     mesh.scale.multiplyScalar(0.96);
@@ -364,7 +697,7 @@ class PoolGameApp {
                 mesh.position.z = b.z;
                 mesh.position.y = this.ballFactory.radius;
 
-                // 3D Physical Ball Roll Rotation
+                // Authentic rolling rotation on world axis
                 const speed = Math.hypot(b.vx, b.vz);
                 if (speed > 0.001) {
                     const distMoved = speed * delta;
@@ -375,7 +708,7 @@ class PoolGameApp {
             }
         }
 
-        // 3. Check when all balls come to a complete stop
+        // 3. Detect when all balls have come to rest
         if (this.isShotActive) {
             if (this.shotFrameDelay > 0) {
                 this.shotFrameDelay--;
@@ -394,11 +727,10 @@ class PoolGameApp {
 
         const cueBall = this.ballsData[0];
 
-        // 1. Check Scratch (Cue ball in pocket)
+        // 1. Check Scratch
         if (cueBall.inPocket) {
             this.cueBallScratch = true;
             this.showStatus('Scratch! Foul committed ⚠️ Cue ball replaced.');
-            // Reset Cue Ball to head string
             cueBall.inPocket = false;
             cueBall.x = -1.8;
             cueBall.z = 0;
@@ -419,11 +751,9 @@ class PoolGameApp {
             const hasRemainingBalls = this.hasRemainingGroupBalls(pGroup);
 
             if (!hasRemainingBalls && !this.cueBallScratch) {
-                // Legitimate Victory!
                 this.handleVictory(this.currentTurn);
                 return;
             } else {
-                // Illegal 8-ball drop (Early or with scratch) = Loss!
                 const opponent = this.currentTurn === 'p1' ? 'p2' : 'p1';
                 this.handleVictory(opponent, '8-ball sunk prematurely or with a foul!');
                 return;
@@ -448,7 +778,6 @@ class PoolGameApp {
         let switchTurn = true;
         if (!this.cueBallScratch) {
             const currentGroup = this.playerGroups[this.currentTurn];
-            // If sunk any valid ball of their group, player shoots again!
             const sunkOwnGroup = pocketedThisTurn.some(b => {
                 if (!currentGroup) return true;
                 return currentGroup === 'solids' ? b.number <= 7 : b.number >= 9;
@@ -468,7 +797,17 @@ class PoolGameApp {
         this.updateAiming();
         this.updateHUD();
 
-        // 5. Trigger AI shot if AI's turn
+        // 5. Broadcast Ball Sync to multiplayer peer
+        if (this.mode === 'online' && window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'POOL_LOCAL_SYNC',
+                ballsData: this.ballsData.map(b => ({ number: b.number, x: b.x, z: b.z, inPocket: b.inPocket })),
+                currentTurn: this.currentTurn,
+                playerGroups: this.playerGroups
+            }, '*');
+        }
+
+        // 6. Trigger AI shot if AI's turn
         if (this.mode === 'ai' && this.currentTurn === 'p2') {
             setTimeout(() => this.executeAIShot(), 900);
         }
@@ -488,7 +827,6 @@ class PoolGameApp {
         const cueBall = this.ballsData[0];
         const group = this.playerGroups.p2;
 
-        // Find best target ball
         let targets = this.ballsData.filter(b => {
             if (b.inPocket || b.number === 0) return false;
             if (!group) return b.number !== 8;
@@ -502,11 +840,9 @@ class PoolGameApp {
         }
 
         if (targets.length > 0) {
-            // Target closest ball
             targets.sort((a, b) => Math.hypot(a.x - cueBall.x, a.z - cueBall.z) - Math.hypot(b.x - cueBall.x, b.z - cueBall.z));
             const target = targets[0];
 
-            // Aim angle towards target + slight natural human imperfection
             const angle = Math.atan2(target.z - cueBall.z, target.x - cueBall.x) + (Math.random() - 0.5) * 0.05;
             this.aimAngle = angle;
             this.power = 0.45 + Math.random() * 0.35;
@@ -523,7 +859,7 @@ class PoolGameApp {
         const titleEl = document.getElementById('victory-title');
         const descEl = document.getElementById('victory-desc');
         if (titleEl) titleEl.textContent = `👑 ${winnerName} Wins!`;
-        if (descEl) descEl.textContent = reason || 'Masterful 8-Ball execution! Congratulations on claiming the Couples Trophy!';
+        if (descEl) descEl.textContent = reason || 'Masterful 8-Ball execution! Congratulations on winning the match!';
 
         document.getElementById('modal-victory')?.classList.add('open');
     }
@@ -548,8 +884,6 @@ class PoolGameApp {
         const cardP2 = document.getElementById('card-p2');
         const nameP1 = document.getElementById('name-p1');
         const nameP2 = document.getElementById('name-p2');
-        const badgeP1 = document.getElementById('badge-p1');
-        const badgeP2 = document.getElementById('badge-p2');
 
         if (nameP1) nameP1.textContent = this.playerNames.p1;
         if (nameP2) nameP2.textContent = this.playerNames.p2;
@@ -557,8 +891,65 @@ class PoolGameApp {
         if (cardP1) cardP1.classList.toggle('active-turn', this.currentTurn === 'p1');
         if (cardP2) cardP2.classList.toggle('active-turn', this.currentTurn === 'p2');
 
-        if (badgeP1) badgeP1.textContent = this.playerGroups.p1 ? this.playerGroups.p1.toUpperCase() : 'ANY';
-        if (badgeP2) badgeP2.textContent = this.playerGroups.p2 ? this.playerGroups.p2.toUpperCase() : 'ANY';
+        // Render Miniature Ball Racks for P1 and P2
+        this.renderPlayerRack('p1', 'rack-p1', 'badge-p1');
+        this.renderPlayerRack('p2', 'rack-p2', 'badge-p2');
+
+        // Enable/Disable Shoot Button according to turn
+        const btnShoot = document.getElementById('btn-shoot');
+        if (btnShoot) {
+            if (this.isShotActive) {
+                btnShoot.disabled = true;
+            } else if (this.mode === 'online') {
+                btnShoot.disabled = (this.currentTurn !== this.myRole);
+            } else if (this.mode === 'ai') {
+                btnShoot.disabled = (this.currentTurn === 'p2');
+            } else {
+                btnShoot.disabled = false;
+            }
+        }
+    }
+
+    renderPlayerRack(playerKey, rackElId, badgeElId) {
+        const rackEl = document.getElementById(rackElId);
+        const badgeEl = document.getElementById(badgeElId);
+        if (!rackEl) return;
+
+        const group = this.playerGroups[playerKey];
+        if (!group) {
+            if (badgeEl) badgeEl.textContent = 'OPEN TABLE';
+            rackEl.innerHTML = `<span class="rack-status-text">Pot any solid or stripe to claim</span>`;
+            return;
+        }
+
+        const ballNums = group === 'solids' ? [1, 2, 3, 4, 5, 6, 7] : [9, 10, 11, 12, 13, 14, 15];
+        let pottedCount = 0;
+
+        let html = '';
+        ballNums.forEach(num => {
+            const ball = this.ballsData.find(b => b.number === num);
+            const isPotted = ball ? ball.inPocket : false;
+            if (isPotted) pottedCount++;
+            html += `<div class="ball-pill-mini ${isPotted ? 'potted' : 'active'}" data-num="${num}">${num}</div>`;
+        });
+
+        // 8-ball slot: lit up when all 7 are cleared
+        const eightBall = this.ballsData.find(b => b.number === 8);
+        const eightPotted = eightBall ? eightBall.inPocket : false;
+        const isEightReady = pottedCount === 7;
+        html += `<div class="ball-pill-mini ${eightPotted ? 'potted' : (isEightReady ? 'active' : 'locked')}" data-num="8" style="${isEightReady ? 'box-shadow: 0 0 10px #d4af37;' : 'opacity: 0.35;'}" title="8-Ball">8</div>`;
+
+        rackEl.innerHTML = html;
+
+        if (badgeEl) {
+            if (isEightReady) {
+                badgeEl.textContent = `🎯 SINK THE 8-BALL!`;
+                badgeEl.style.color = '#facc15';
+            } else {
+                badgeEl.textContent = `${group.toUpperCase()} (${pottedCount}/7)`;
+                badgeEl.style.color = '';
+            }
+        }
     }
 }
 

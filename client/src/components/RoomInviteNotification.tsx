@@ -105,13 +105,17 @@ export default function RoomInviteNotification() {
     }
 
     const isLudo = currentGameInvite.game === 'ludo';
-    const gameLabel = isLudo ? 'Ludo Match 🎲' : 'Chess Match ♟️';
+    const isPool = currentGameInvite.game === 'pool';
+    const gameLabel = isLudo ? 'Ludo Match 🎲' : isPool ? '8-Ball Pool Match 🎱' : 'Chess Match ♟️';
+    const gameId = isLudo ? 'ludo' : isPool ? 'pool' : 'chess';
+    const guestRole = isLudo ? 'yellow' : isPool ? 'p2' : 'b';
+
     toast.success(`Joining ${currentGameInvite.senderName}'s ${gameLabel}!`);
 
-    // Launch game in multiplayer mode as Guest/Opponent (yellow for Ludo, b for Chess)
-    setActiveGame(isLudo ? 'ludo' : 'chess', {
+    // Launch game in multiplayer mode as Guest/Opponent
+    setActiveGame(gameId, {
       sessionCode: currentGameInvite.sessionCode,
-      role: isLudo ? 'yellow' : 'b',
+      role: guestRole,
       opponentName: currentGameInvite.senderName,
       opponentId: currentGameInvite.senderId,
     });
@@ -234,7 +238,7 @@ export default function RoomInviteNotification() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span>{currentGameInvite.game === 'ludo' ? '🎲' : '♟️'}</span>
+                      <span>{currentGameInvite.game === 'ludo' ? '🎲' : currentGameInvite.game === 'pool' ? '🎱' : '♟️'}</span>
                     )}
                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#140e26]" />
                   </div>
@@ -242,7 +246,7 @@ export default function RoomInviteNotification() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-black uppercase tracking-wider text-pink-400">
-                        {currentGameInvite.game === 'ludo' ? 'Live Ludo Duel 🎲' : 'Live Chess Duel ⚔️'}
+                        {currentGameInvite.game === 'ludo' ? 'Live Ludo Duel 🎲' : currentGameInvite.game === 'pool' ? 'Live 8-Ball Pool Duel 🎱' : 'Live Chess Duel ⚔️'}
                       </span>
                       <Swords size={12} className="text-pink-400" />
                     </div>
@@ -252,7 +256,7 @@ export default function RoomInviteNotification() {
                     <p className="text-[11px] text-slate-300">
                       Challenged you to a live match of{' '}
                       <strong className="text-pink-300">
-                        {currentGameInvite.game === 'ludo' ? 'Classic Ludo' : 'Zen 3D Chess'}
+                        {currentGameInvite.game === 'ludo' ? 'Classic Ludo' : currentGameInvite.game === 'pool' ? 'Luxury 8-Ball Pool' : 'Zen 3D Chess'}
                       </strong>
                       !
                     </p>

@@ -275,6 +275,19 @@ export default function LudoGame({ onBack }: LudoGameProps) {
       toast.success('Rematch started! Board refreshed...', { icon: '🔄' });
     };
 
+    // Remote in-game chat
+    const handleRemoteChat = (data: { text: string; senderName?: string; role?: string }) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'REMOTE_CHAT',
+          text: data.text,
+          senderName: data.senderName,
+          role: data.role,
+        },
+        '*'
+      );
+    };
+
     // Opponent left
     const handleOpponentLeft = (data: { players?: RoomPlayer[] }) => {
       if (data?.players) {
@@ -291,6 +304,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
     socket.on('ludo:roll', handleRemoteRoll);
     socket.on('ludo:move', handleRemoteMove);
     socket.on('ludo:restart', handleRematch);
+    socket.on('ludo:chat', handleRemoteChat);
     socket.on('ludo:opponent_left', handleOpponentLeft);
 
     return () => {
@@ -302,6 +316,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
       socket.off('ludo:roll', handleRemoteRoll);
       socket.off('ludo:move', handleRemoteMove);
       socket.off('ludo:restart', handleRematch);
+      socket.off('ludo:chat', handleRemoteChat);
       socket.off('ludo:opponent_left', handleOpponentLeft);
     };
   }, [socket, sessionCode]);
@@ -338,6 +353,18 @@ export default function LudoGame({ onBack }: LudoGameProps) {
           if (sessionCode && socket) {
             socket.emit('ludo:restart', {
               sessionCode,
+            });
+          }
+          break;
+
+        case 'LUDO_LOCAL_CHAT':
+        case 'GAME_CHAT':
+          if (sessionCode && socket) {
+            socket.emit('ludo:chat', {
+              sessionCode,
+              text: data.text,
+              senderName: user?.displayName || 'Player',
+              role: playerRole,
             });
           }
           break;
