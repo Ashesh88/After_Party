@@ -43,7 +43,9 @@ const games = [
     desc: 'Luxury 3D pieces, AI & Video Call',
     icon: Crown, 
     color: 'from-amber-400 to-rose-500', 
-    tag: '3D LIVE' 
+    tag: '3D LIVE',
+    video: '/videos/chess-preview.mp4',
+    thumb: '/videos/chess-thumb.jpg'
   },
   { 
     id: 'ludo', 
@@ -130,33 +132,60 @@ export default function GamesPage() {
       <div className="grid grid-cols-2 gap-3.5 relative z-10">
         {games.map(game => {
           const Icon = game.icon;
+          const videoSrc = (game as any).video;
+          const thumbSrc = (game as any).thumb;
+
           return (
             <button
               key={game.id}
               onClick={() => setActiveGame(game.id)}
-              className="p-5 rounded-[28px] glass-panel hover:border-pink-500/40 transition-all duration-300 text-left group overflow-hidden relative cursor-pointer"
+              className="p-4 sm:p-5 rounded-[28px] glass-panel hover:border-pink-500/40 transition-all duration-300 text-left group overflow-hidden relative cursor-pointer flex flex-col justify-between"
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-15 transition-opacity`} />
               
-              <div className="flex justify-between items-start mb-3">
-                <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-pink-400 group-hover:scale-110 group-hover:border-pink-500/40 transition-all shadow-md">
-                  <Icon size={22} strokeWidth={2} />
-                </div>
-                {game.tag && (
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                    {game.tag}
-                  </span>
+              <div>
+                {videoSrc ? (
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-lg relative bg-black/80 group-hover:border-pink-500/30 transition-all">
+                    <video
+                      src={videoSrc}
+                      poster={thumbSrc}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                    <div className="absolute top-2 left-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-pink-400 shadow-md">
+                      <Icon size={14} strokeWidth={2} />
+                    </div>
+                    {game.tag && (
+                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/30 text-pink-300 border border-pink-500/40 backdrop-blur-md">
+                        {game.tag}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-pink-400 group-hover:scale-110 group-hover:border-pink-500/40 transition-all shadow-md">
+                      <Icon size={22} strokeWidth={2} />
+                    </div>
+                    {game.tag && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                        {game.tag}
+                      </span>
+                    )}
+                  </div>
                 )}
+
+                <h3 className="font-extrabold text-white text-sm mb-0.5 group-hover:text-pink-200 transition-colors">
+                  {game.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium line-clamp-1 mb-2">
+                  {game.desc}
+                </p>
               </div>
 
-              <h3 className="font-extrabold text-white text-sm mb-0.5 group-hover:text-pink-200 transition-colors">
-                {game.name}
-              </h3>
-              <p className="text-[11px] text-slate-400 font-medium line-clamp-1 mb-2">
-                {game.desc}
-              </p>
-
-              <div className="flex items-center text-[10px] font-bold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform">
+              <div className="flex items-center text-[10px] font-bold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform mt-auto">
                 <span>Play now</span>
                 <span>→</span>
               </div>
