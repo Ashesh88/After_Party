@@ -77,8 +77,8 @@ export default function CallOverlay() {
       useCallStore.getState().handleIncomingSignal(signal);
     };
 
-    const handleAccepted = () => {
-      useCallStore.getState().handleCallAccepted(socket);
+    const handleAccepted = (data?: any) => {
+      useCallStore.getState().handleCallAccepted(socket, data);
     };
 
     const handleRejected = () => {

@@ -17,7 +17,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [partnerTyping, setPartnerTyping] = useState(false);
-  const [partner, setPartner] = useState<{ displayName: string; avatar?: string } | null>(null);
+  const [partner, setPartner] = useState<{ _id?: string; displayName: string; avatar?: string } | null>(null);
   const [vanishMode, setVanishMode] = useState(false);
 
   const socket = useSocketStore(state => state.socket);
@@ -31,7 +31,7 @@ export default function ChatPage() {
       const members = res.data.room?.members || [];
       const otherMember = members.find((m: any) => m._id !== user?._id);
       if (otherMember) {
-        setPartner({ displayName: otherMember.displayName, avatar: otherMember.avatar });
+        setPartner({ _id: otherMember._id, displayName: otherMember.displayName, avatar: otherMember.avatar });
       }
     }).catch(() => {});
   }, [user]);

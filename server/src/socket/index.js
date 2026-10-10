@@ -31,6 +31,21 @@ const setupSocket = (io) => {
     onlineUsers.add(userId.toString());
     io.emit('presence:online', { userId });
 
+    // Helpers to get current active room
+    const getActiveRoomChannel = () => {
+      for (const r of socket.rooms) {
+        if (r.startsWith('room:')) {
+          return r;
+        }
+      }
+      return null;
+    };
+
+    const getActiveRoomId = () => {
+      const channel = getActiveRoomChannel();
+      return channel ? channel.replace('room:', '') : null;
+    };
+
     // Room switch / join live handler
     socket.on('room:switch', (data) => {
       const newRoomId = data?.roomId;
@@ -42,7 +57,10 @@ const setupSocket = (io) => {
       if (newRoomId) {
         const newChannel = `room:${newRoomId}`;
         socket.join(newChannel);
+        socket.user.roomId = newRoomId;
         socket.to(newChannel).emit('presence:online', { userId });
+      } else {
+        socket.user.roomId = null;
       }
     });
 
@@ -57,265 +75,372 @@ const setupSocket = (io) => {
       }
     });
 
-    // Fetch user from DB to always get the latest roomId
-    let roomId = socket.user.roomId;
+    // Fetch user from DB to always get the latest roomId on initial connection
+    let initialRoomId = socket.user.roomId;
     try {
       const dbUser = await User.findById(userId);
       if (dbUser && dbUser.roomId) {
-        roomId = dbUser.roomId.toString();
-        socket.user.roomId = roomId;
+        initialRoomId = dbUser.roomId.toString();
+        socket.user.roomId = initialRoomId;
       }
     } catch (err) {
       console.error('Error fetching user for socket:', err);
     }
 
-    if (roomId) {
-      const roomChannel = `room:${roomId}`;
+    if (initialRoomId) {
+      const roomChannel = `room:${initialRoomId}`;
       socket.join(roomChannel);
       socket.to(roomChannel).emit('presence:online', { userId });
-
-      // Chat
-      socket.on('chat:message', async (data) => {
-        try {
-          const content = typeof data === 'object' ? data.content : data;
-          const type = (typeof data === 'object' && data.type) ? data.type : 'text';
-
-          if (!content || !content.trim()) return;
-
-          const message = new Message({
-            roomId,
-            senderId: userId,
-            type,
-            content,
-          });
-          await message.save();
-          await message.populate('senderId', 'displayName avatar');
-          // Broadcast to entire room
-          io.to(roomChannel).emit('chat:message', message);
-        } catch (err) {
-          console.error('chat:message error:', err);
-        }
-      });
-
-      socket.on('chat:typing', ({ isTyping }) => {
-        socket.to(roomChannel).emit('chat:typing', { userId, isTyping });
-      });
-
-      socket.on('chat:seen', ({ messageId }) => {
-        socket.to(roomChannel).emit('chat:seen', { messageId, seenBy: userId });
-      });
-
-      socket.on('chat:vanish', () => {
-        socket.to(roomChannel).emit('chat:vanish');
-      });
-
-      // Mood Theme
-      socket.on('mood:set', async ({ mood }) => {
-        try {
-          const validMoods = ['love', 'horny', 'angry', 'just_friends'];
-          if (!mood || !validMoods.includes(mood)) return;
-
-          const user = await User.findById(userId);
-          const room = await Room.findById(roomId);
-          if (!user || !room) return;
-
-          if (!room.moodTheme) {
-            room.moodTheme = {
-              current: 'love',
-              updatedBy: user._id,
-              updatedByName: user.displayName || 'Partner',
-              updatedAt: new Date(),
-              history: [],
-            };
-          }
-
-          const setByName = user.displayName || 'Partner';
-          const setTime = new Date();
-
-          room.moodTheme.current = mood;
-          room.moodTheme.updatedBy = user._id;
-          room.moodTheme.updatedByName = setByName;
-          room.moodTheme.updatedAt = setTime;
-
-          room.moodTheme.history.unshift({
-            mood,
-            setBy: user._id,
-            setName: setByName,
-            createdAt: setTime,
-          });
-
-          if (room.moodTheme.history.length > 40) {
-            room.moodTheme.history = room.moodTheme.history.slice(0, 40);
-          }
-
-          await room.save();
-
-          io.to(roomChannel).emit('mood:update', {
-            moodTheme: room.moodTheme,
-            changedBy: {
-              _id: user._id,
-              displayName: setByName,
-            },
-          });
-        } catch (err) {
-          console.error('mood:set error:', err);
-        }
-      });
-
-      // Watch Together
-      socket.on('watch:load', (data) => {
-        socket.to(roomChannel).emit('watch:load', data);
-      });
-
-      socket.on('watch:sync', (data) => {
-        socket.to(roomChannel).emit('watch:sync', data);
-      });
-
-      socket.on('watch:state', (data) => {
-        socket.to(roomChannel).emit('watch:state', data);
-      });
-
-      socket.on('watch:reaction', ({ emoji }) => {
-        socket.to(roomChannel).emit('watch:reaction', { emoji, userId });
-      });
-
-      socket.on('watch:join', () => {
-        socket.to(roomChannel).emit('watch:join', { userId });
-      });
-
-      socket.on('watch:leave', () => {
-        socket.to(roomChannel).emit('watch:leave', { userId });
-      });
-
-      // WebRTC Call Signaling
-      socket.on('webrtc:call-user', ({ callType, callerName, callerAvatar }) => {
-        socket.to(roomChannel).emit('webrtc:incoming-call', {
-          callerId: userId,
-          callerName,
-          callerAvatar,
-          callType: callType || 'video',
-        });
-      });
-
-      socket.on('webrtc:accept-call', () => {
-        socket.to(roomChannel).emit('webrtc:call-accepted');
-      });
-
-      socket.on('webrtc:reject-call', () => {
-        socket.to(roomChannel).emit('webrtc:call-rejected');
-      });
-
-      socket.on('webrtc:signal', ({ signal }) => {
-        socket.to(roomChannel).emit('webrtc:signal', { signal, senderId: userId });
-      });
-
-      socket.on('webrtc:hangup', () => {
-        socket.to(roomChannel).emit('webrtc:hangup', { senderId: userId });
-      });
-
-      socket.on('webrtc:end', () => {
-        socket.to(roomChannel).emit('webrtc:hangup', { senderId: userId });
-      });
-
-      socket.on('webrtc:offer', (offer) => {
-        socket.to(roomChannel).emit('webrtc:offer', { offer, senderId: userId });
-      });
-
-      socket.on('webrtc:answer', (answer) => {
-        socket.to(roomChannel).emit('webrtc:answer', { answer, senderId: userId });
-      });
-
-      socket.on('webrtc:ice-candidate', (candidate) => {
-        socket.to(roomChannel).emit('webrtc:ice-candidate', { candidate, senderId: userId });
-      });
-
-      // Location
-      socket.on('location:update', ({ lat, lng, timestamp }) => {
-        socket.to(roomChannel).emit('location:update', { userId, lat, lng, timestamp });
-      });
-
-      socket.on('location:stop', () => {
-        socket.to(roomChannel).emit('location:stop', { userId });
-      });
-
-      // Goals sync
-      socket.on('goal:update', (data) => {
-        socket.to(roomChannel).emit('goal:update', data);
-      });
-
-      // Games
-      socket.on('game:start', async ({ gameType, partnerId }) => {
-        try {
-          let initialState = {};
-          if (gameType === 'tic-tac-toe') {
-            initialState = {
-              board: Array(9).fill(null),
-              currentPlayer: userId,
-              xPlayer: userId,
-              oPlayer: partnerId,
-            };
-          }
-          
-          const session = new GameSession({
-            roomId,
-            gameType,
-            state: initialState,
-          });
-          await session.save();
-          
-          io.to(roomChannel).emit('game:start', { session });
-        } catch (error) {
-          console.error('Error starting game:', error);
-        }
-      });
-
-      socket.on('game:move', async ({ sessionId, move }) => {
-        try {
-          const session = await GameSession.findById(sessionId);
-          if (!session || session.status !== 'active') return;
-
-          if (session.gameType === 'tic-tac-toe') {
-            const { valid, newState, winner } = ticTacToe.validateMove(session.state, move, userId);
-            if (valid) {
-              session.state = newState;
-              if (winner) {
-                session.status = 'finished';
-                if (winner !== 'draw') {
-                  session.winner = winner;
-                }
-              }
-              await session.save();
-              io.to(roomChannel).emit('game:move', { session });
-            }
-          }
-          // other games can be handled here...
-        } catch (error) {
-          console.error('Error processing game move:', error);
-        }
-      });
-
-      socket.on('game:end', async ({ sessionId, scores, winnerId }) => {
-        try {
-          const session = await GameSession.findById(sessionId);
-          if (session) {
-            session.status = 'finished';
-            if (scores) session.scores = scores;
-            if (winnerId) session.winner = winnerId;
-            await session.save();
-            io.to(roomChannel).emit('game:end', { session });
-          }
-        } catch (error) {
-          console.error('Error ending game:', error);
-        }
-      });
     }
+
+    // Chat
+    socket.on('chat:message', async (data) => {
+      try {
+        const content = typeof data === 'object' ? data.content : data;
+        const type = (typeof data === 'object' && data.type) ? data.type : 'text';
+        const currentRoomId = getActiveRoomId();
+        const currentChannel = getActiveRoomChannel();
+
+        if (!content || !content.trim() || !currentRoomId || !currentChannel) return;
+
+        const message = new Message({
+          roomId: currentRoomId,
+          senderId: userId,
+          type,
+          content,
+        });
+        await message.save();
+        await message.populate('senderId', 'displayName avatar');
+        // Broadcast to entire room
+        io.to(currentChannel).emit('chat:message', message);
+      } catch (err) {
+        console.error('chat:message error:', err);
+      }
+    });
+
+    socket.on('chat:typing', ({ isTyping }) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('chat:typing', { userId, isTyping });
+      }
+    });
+
+    socket.on('chat:seen', ({ messageId }) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('chat:seen', { messageId, seenBy: userId });
+      }
+    });
+
+    socket.on('chat:vanish', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('chat:vanish');
+      }
+    });
+
+    // Mood Theme
+    socket.on('mood:set', async ({ mood }) => {
+      try {
+        const validMoods = ['love', 'horny', 'angry', 'just_friends'];
+        if (!mood || !validMoods.includes(mood)) return;
+
+        const currentRoomId = getActiveRoomId();
+        const currentChannel = getActiveRoomChannel();
+        if (!currentRoomId || !currentChannel) return;
+
+        const user = await User.findById(userId);
+        const room = await Room.findById(currentRoomId);
+        if (!user || !room) return;
+
+        if (!room.moodTheme) {
+          room.moodTheme = {
+            current: 'love',
+            updatedBy: user._id,
+            updatedByName: user.displayName || 'Partner',
+            updatedAt: new Date(),
+            history: [],
+          };
+        }
+
+        const setByName = user.displayName || 'Partner';
+        const setTime = new Date();
+
+        room.moodTheme.current = mood;
+        room.moodTheme.updatedBy = user._id;
+        room.moodTheme.updatedByName = setByName;
+        room.moodTheme.updatedAt = setTime;
+
+        room.moodTheme.history.unshift({
+          mood,
+          setBy: user._id,
+          setName: setByName,
+          createdAt: setTime,
+        });
+
+        if (room.moodTheme.history.length > 40) {
+          room.moodTheme.history = room.moodTheme.history.slice(0, 40);
+        }
+
+        await room.save();
+
+        io.to(currentChannel).emit('mood:update', {
+          moodTheme: room.moodTheme,
+          changedBy: {
+            _id: user._id,
+            displayName: setByName,
+          },
+        });
+      } catch (err) {
+        console.error('mood:set error:', err);
+      }
+    });
+
+    // Watch Together
+    socket.on('watch:load', (data) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:load', data);
+      }
+    });
+
+    socket.on('watch:sync', (data) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:sync', data);
+      }
+    });
+
+    socket.on('watch:state', (data) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:state', data);
+      }
+    });
+
+    socket.on('watch:reaction', ({ emoji }) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:reaction', { emoji, userId });
+      }
+    });
+
+    socket.on('watch:join', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:join', { userId });
+      }
+    });
+
+    socket.on('watch:leave', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:leave', { userId });
+      }
+    });
+
+    // WebRTC Call Signaling (Supports both direct user targeting & room broadcast)
+    socket.on('webrtc:call-user', ({ callType, callerName, callerAvatar, targetUserId }) => {
+      const payload = {
+        callerId: userId,
+        callerName,
+        callerAvatar,
+        callType: callType || 'video',
+      };
+      if (targetUserId) {
+        io.to(`user:${targetUserId}`).emit('webrtc:incoming-call', payload);
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:incoming-call', payload);
+      }
+    });
+
+    socket.on('webrtc:accept-call', (data) => {
+      const callerId = data?.callerId;
+      const payload = { receiverId: userId };
+      if (callerId) {
+        io.to(`user:${callerId}`).emit('webrtc:call-accepted', payload);
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:call-accepted', payload);
+      }
+    });
+
+    socket.on('webrtc:reject-call', (data) => {
+      const callerId = data?.callerId;
+      const payload = { receiverId: userId };
+      if (callerId) {
+        io.to(`user:${callerId}`).emit('webrtc:call-rejected', payload);
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:call-rejected', payload);
+      }
+    });
+
+    socket.on('webrtc:signal', ({ signal, targetUserId }) => {
+      const payload = { signal, senderId: userId };
+      if (targetUserId) {
+        io.to(`user:${targetUserId}`).emit('webrtc:signal', payload);
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:signal', payload);
+      }
+    });
+
+    socket.on('webrtc:hangup', (data) => {
+      const targetUserId = data?.targetUserId;
+      const payload = { senderId: userId };
+      if (targetUserId) {
+        io.to(`user:${targetUserId}`).emit('webrtc:hangup', payload);
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:hangup', payload);
+      }
+    });
+
+    socket.on('webrtc:end', (data) => {
+      const targetUserId = data?.targetUserId;
+      const payload = { senderId: userId };
+      if (targetUserId) {
+        io.to(`user:${targetUserId}`).emit('webrtc:hangup', payload);
+      }
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:hangup', payload);
+      }
+    });
+
+    socket.on('webrtc:offer', (offer) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:offer', { offer, senderId: userId });
+      }
+    });
+
+    socket.on('webrtc:answer', (answer) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:answer', { answer, senderId: userId });
+      }
+    });
+
+    socket.on('webrtc:ice-candidate', (candidate) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('webrtc:ice-candidate', { candidate, senderId: userId });
+      }
+    });
+
+    // Location
+    socket.on('location:update', ({ lat, lng, timestamp }) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('location:update', { userId, lat, lng, timestamp });
+      }
+    });
+
+    socket.on('location:stop', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('location:stop', { userId });
+      }
+    });
+
+    // Goals sync
+    socket.on('goal:update', (data) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('goal:update', data);
+      }
+    });
+
+    // Games
+    socket.on('game:start', async ({ gameType, partnerId }) => {
+      try {
+        const currentRoomId = getActiveRoomId();
+        const currentChannel = getActiveRoomChannel();
+        if (!currentRoomId || !currentChannel) return;
+
+        let initialState = {};
+        if (gameType === 'tic-tac-toe') {
+          initialState = {
+            board: Array(9).fill(null),
+            currentPlayer: userId,
+            xPlayer: userId,
+            oPlayer: partnerId,
+          };
+        }
+        
+        const session = new GameSession({
+          roomId: currentRoomId,
+          gameType,
+          state: initialState,
+        });
+        await session.save();
+        
+        io.to(currentChannel).emit('game:start', { session });
+      } catch (error) {
+        console.error('Error starting game:', error);
+      }
+    });
+
+    socket.on('game:move', async ({ sessionId, move }) => {
+      try {
+        const currentChannel = getActiveRoomChannel();
+        if (!currentChannel) return;
+
+        const session = await GameSession.findById(sessionId);
+        if (!session || session.status !== 'active') return;
+
+        if (session.gameType === 'tic-tac-toe') {
+          const { valid, newState, winner } = ticTacToe.validateMove(session.state, move, userId);
+          if (valid) {
+            session.state = newState;
+            if (winner) {
+              session.status = 'finished';
+              if (winner !== 'draw') {
+                session.winner = winner;
+              }
+            }
+            await session.save();
+            io.to(currentChannel).emit('game:move', { session });
+          }
+        }
+      } catch (error) {
+        console.error('Error processing game move:', error);
+      }
+    });
+
+    socket.on('game:end', async ({ sessionId, scores, winnerId }) => {
+      try {
+        const currentChannel = getActiveRoomChannel();
+        if (!currentChannel) return;
+
+        const session = await GameSession.findById(sessionId);
+        if (session) {
+          session.status = 'finished';
+          if (scores) session.scores = scores;
+          if (winnerId) session.winner = winnerId;
+          await session.save();
+          io.to(currentChannel).emit('game:end', { session });
+        }
+      } catch (error) {
+        console.error('Error ending game:', error);
+      }
+    });
 
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${userId}`);
       onlineUsers.delete(userId.toString());
       io.emit('presence:offline', { userId });
-      if (roomId) {
-        socket.to(`room:${roomId}`).emit('presence:offline', { userId });
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('presence:offline', { userId });
       }
     });
   });

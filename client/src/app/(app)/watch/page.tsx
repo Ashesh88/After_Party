@@ -46,7 +46,7 @@ export default function WatchPage() {
 
   const socket = useSocketStore(state => state.socket);
   const user = useAuthStore(state => state.user);
-  const [partner, setPartner] = useState<{ displayName: string; avatar?: string } | null>(null);
+  const [partner, setPartner] = useState<{ _id?: string; displayName: string; avatar?: string } | null>(null);
   const { callStatus, startCall: startGlobalCall, endCall: endGlobalCall } = useCallStore();
   const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
 
@@ -56,7 +56,7 @@ export default function WatchPage() {
         const members = res.data.room?.members || [];
         const otherMember = members.find((m: any) => m._id !== user?._id);
         if (otherMember) {
-          setPartner({ displayName: otherMember.displayName, avatar: otherMember.avatar });
+          setPartner({ _id: otherMember._id, displayName: otherMember.displayName, avatar: otherMember.avatar });
         }
       }).catch(() => {});
     });

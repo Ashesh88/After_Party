@@ -6,6 +6,12 @@ import { soundService } from '../soundService';
 export type CallStatus = 'idle' | 'outgoing' | 'incoming' | 'connected';
 export type CallType = 'video' | 'audio';
 
+export interface PartnerInfo {
+  _id?: string;
+  displayName: string;
+  avatar?: string;
+}
+
 interface CallState {
   callStatus: CallStatus;
   callType: CallType;
@@ -13,24 +19,24 @@ interface CallState {
   isVideoOff: boolean;
   isMinimized: boolean;
   callDuration: number;
-  partnerInfo: { displayName: string; avatar?: string } | null;
+  partnerInfo: PartnerInfo | null;
   incomingCaller: { callerId: string; callerName: string; callerAvatar?: string; callType: CallType } | null;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   peer: Peer.Instance | null;
 
   // Actions
-  setPartnerInfo: (info: { displayName: string; avatar?: string } | null) => void;
+  setPartnerInfo: (info: PartnerInfo | null) => void;
   startCall: (
     socket: Socket | null, 
     type: CallType, 
-    partnerInfo: { displayName: string; avatar?: string } | null, 
+    partnerInfo: PartnerInfo | null, 
     myInfo: { displayName: string; avatar?: string } | null
   ) => Promise<void>;
   acceptCall: (socket: Socket | null) => Promise<void>;
   rejectCall: (socket: Socket | null) => void;
   endCall: (socket: Socket | null) => void;
-  handleCallAccepted: (socket: Socket | null) => void;
+  handleCallAccepted: (socket: Socket | null, data?: any) => void;
   handleIncomingSignal: (signal: any) => void;
   toggleMute: () => void;
   toggleVideo: () => void;
@@ -71,7 +77,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         incomingCaller, 
         callStatus: 'incoming', 
         callType: incomingCaller.callType,
-        partnerInfo: { displayName: incomingCaller.callerName, avatar: incomingCaller.callerAvatar }
+        partnerInfo: { _id: incomingCaller.callerId, displayName: incomingCaller.callerName, avatar: incomingCaller.callerAvatar }
       });
     } else {
       soundService.stop();
@@ -127,11 +133,12 @@ export const useCallStore = create<CallState>((set, get) => ({
       // Play outgoing ringtone ("tuuut... tuuut...")
       soundService.playOutgoingTone();
 
-      // Emit incoming call alert to partner
+      // Emit incoming call alert to partner (with targetUserId if available)
       socket.emit('webrtc:call-user', {
         callType: type,
         callerName: myInfo?.displayName || 'Partner',
         callerAvatar: myInfo?.avatar,
+        targetUserId: partnerInfo?._id,
       });
     } catch (err) {
       console.error('Failed to get media devices for startCall:', err);
@@ -141,10 +148,10 @@ export const useCallStore = create<CallState>((set, get) => ({
     }
   },
 
-  handleCallAccepted: (socket) => {
+  handleCallAccepted: (socket, data?: any) => {
     // Partner accepted our call! Stop outgoing ringtone and transition caller to connected state
     soundService.playConnectTone();
-    const { localStream } = get();
+    const { localStream, partnerInfo, incomingCaller } = get();
 
     set({ callStatus: 'connected' });
 
@@ -152,6 +159,8 @@ export const useCallStore = create<CallState>((set, get) => ({
       console.error('No localStream available when call was accepted');
       return;
     }
+
+    const targetUserId = partnerInfo?._id || incomingCaller?.callerId || data?.receiverId;
 
     try {
       // Caller initiates the WebRTC offer peer
@@ -163,7 +172,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       });
 
       peer.on('signal', (signal) => {
-        socket?.emit('webrtc:signal', { signal });
+        socket?.emit('webrtc:signal', { signal, targetUserId });
       });
 
       peer.on('stream', (remoteStream) => {
@@ -211,15 +220,15 @@ export const useCallStore = create<CallState>((set, get) => ({
         localStream: stream,
         callStatus: 'connected',
         callType: incomingCaller.callType,
-        partnerInfo: { displayName: incomingCaller.callerName, avatar: incomingCaller.callerAvatar },
+        partnerInfo: { _id: incomingCaller.callerId, displayName: incomingCaller.callerName, avatar: incomingCaller.callerAvatar },
         incomingCaller: null,
         callDuration: 0,
         isMuted: false,
         isVideoOff: false,
       });
 
-      // Tell caller we accepted!
-      socket.emit('webrtc:accept-call');
+      // Tell caller we accepted (include callerId directly)
+      socket.emit('webrtc:accept-call', { callerId: incomingCaller.callerId });
 
       // Receiver creates non-initiator peer
       const peer = new Peer({
@@ -230,7 +239,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       });
 
       peer.on('signal', (signal) => {
-        socket.emit('webrtc:signal', { signal });
+        socket.emit('webrtc:signal', { signal, targetUserId: incomingCaller.callerId });
       });
 
       peer.on('stream', (remoteStream) => {
@@ -278,19 +287,22 @@ export const useCallStore = create<CallState>((set, get) => ({
 
   rejectCall: (socket) => {
     soundService.stop();
+    const { incomingCaller, partnerInfo } = get();
     if (socket) {
-      socket.emit('webrtc:reject-call');
+      socket.emit('webrtc:reject-call', { callerId: incomingCaller?.callerId || partnerInfo?._id });
     }
     set({ callStatus: 'idle', incomingCaller: null });
   },
 
   endCall: (socket) => {
     soundService.stop();
-    const { peer, localStream, callStatus } = get();
+    const { peer, localStream, callStatus, partnerInfo, incomingCaller } = get();
     if (callStatus === 'idle') return;
 
     if (socket) {
-      socket.emit('webrtc:hangup');
+      socket.emit('webrtc:hangup', {
+        targetUserId: partnerInfo?._id || incomingCaller?.callerId,
+      });
     }
 
     if (peer) {
