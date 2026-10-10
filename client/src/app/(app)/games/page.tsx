@@ -146,24 +146,24 @@ export default function GamesPage() {
   if (activeGame === 'wyr') return <WouldYouRather onBack={() => setActiveGame(null)} />;
 
   return (
-    <div className="relative min-h-screen p-4 sm:p-6 max-w-lg mx-auto pb-28">
+    <div className="relative min-h-screen p-4 sm:p-6 md:p-8 lg:p-10 w-full max-w-md sm:max-w-xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto pb-32">
       {/* Ambient background glow */}
       <div className="ambient-glow-pink -top-24 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple -bottom-24 -right-20 pointer-events-none" />
 
-      <header className="mb-6 relative z-10">
+      <header className="mb-6 md:mb-8 relative z-10">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">Play & Connect</span>
+          <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-pink-400">Play & Connect</span>
           <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse" />
         </div>
-        <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight flex items-center gap-2">
           <span>Game</span>
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400">Arcade</span>
         </h1>
-        <p className="text-xs text-slate-400 font-medium mt-1">Real-time 3D games and party challenges</p>
+        <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">Real-time 3D games and party challenges</p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3.5 relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 xl:gap-6 relative z-10">
         {games.map(game => {
           const Icon = game.icon;
           const videoSrc = (game as any).video;
