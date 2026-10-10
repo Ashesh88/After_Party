@@ -41,9 +41,10 @@ class ChessApp {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0c10);
 
-        // Natural 3D Perspective Camera (shows full piece bodies and board layout)
-        this.camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 100);
-        this.camera.position.set(0, 8.2, 7.8);
+        // Natural 3D Perspective Camera (framed for mobile portrait & desktop)
+        const isMobile = window.innerWidth < 768;
+        this.camera = new THREE.PerspectiveCamera(isMobile ? 54 : 44, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera.position.set(0, isMobile ? 11.0 : 8.2, isMobile ? 9.0 : 7.8);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -105,6 +106,8 @@ class ChessApp {
         this.mouse = new THREE.Vector2();
 
         window.addEventListener('resize', () => {
+            const isMob = window.innerWidth < 768;
+            this.camera.fov = isMob ? 54 : 44;
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -431,6 +434,25 @@ class ChessApp {
             });
         });
 
+        // Floating Chat Toggle / Minimizer
+        const btnToggleChat = document.getElementById('btn-toggle-chat');
+        const floatingChat = document.getElementById('floating-chat');
+        if (btnToggleChat && floatingChat) {
+            if (window.innerWidth < 768) {
+                floatingChat.classList.add('minimized');
+                const icon = document.getElementById('chat-toggle-icon');
+                if (icon) icon.className = 'fa-solid fa-chevron-up';
+            }
+            btnToggleChat.addEventListener('click', () => {
+                floatingChat.classList.toggle('minimized');
+                const isMin = floatingChat.classList.contains('minimized');
+                const icon = document.getElementById('chat-toggle-icon');
+                if (icon) {
+                    icon.className = isMin ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+                }
+            });
+        }
+
         // Game Over Buttons
         document.getElementById('btn-gameover-rematch').addEventListener('click', () => {
             document.getElementById('modal-gameover').classList.remove('open');
@@ -722,8 +744,9 @@ class ChessApp {
 
     // Camera Views (Natural 3D Perspective)
     setCameraView(color) {
-        const targetZ = color === 'w' ? 7.8 : -7.8;
-        this.camera.position.set(0, 8.2, targetZ);
+        const isMob = window.innerWidth < 768;
+        const targetZ = color === 'w' ? (isMob ? 9.0 : 7.8) : (isMob ? -9.0 : -7.8);
+        this.camera.position.set(0, isMob ? 11.0 : 8.2, targetZ);
         this.camera.lookAt(0, 0, 0);
         this.controls.target.set(0, 0.35, 0);
     }

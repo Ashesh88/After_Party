@@ -30,41 +30,43 @@
     <!-- UI Overlay Layer -->
     <div class="ui-overlay">
         
-        <!-- Top Navigation -->
-        <header class="top-nav interactive">
-            <div class="brand">
-                <i class="fa-solid fa-chess-knight brand-icon"></i>
-                <span class="brand-title">ZEN CHESS 3D</span>
-            </div>
+        <!-- Top Dock (Header + Status Indicator in clean single vertical flow) -->
+        <div class="top-dock-wrapper interactive">
+            <header class="top-nav">
+                <div class="brand">
+                    <i class="fa-solid fa-chess-knight brand-icon"></i>
+                    <span class="brand-title">ZEN CHESS 3D</span>
+                </div>
 
-            <!-- Game Mode Tabs -->
-            <div class="nav-tabs">
-                <button class="nav-btn active" id="btn-mode-ai" data-mode="ai">
-                    <i class="fa-solid fa-robot"></i> Play AI
-                </button>
-                <button class="nav-btn" id="btn-mode-online" data-mode="online">
-                    <i class="fa-solid fa-users"></i> Online Friend
-                </button>
-                <button class="nav-btn" id="btn-mode-local" data-mode="local">
-                    <i class="fa-solid fa-people-arrows"></i> Pass & Play
-                </button>
-            </div>
+                <!-- Game Mode Tabs -->
+                <div class="nav-tabs">
+                    <button class="nav-btn active" id="btn-mode-ai" data-mode="ai">
+                        <i class="fa-solid fa-robot"></i> <span class="tab-label">Play AI</span>
+                    </button>
+                    <button class="nav-btn" id="btn-mode-online" data-mode="online">
+                        <i class="fa-solid fa-users"></i> <span class="tab-label">Online</span>
+                    </button>
+                    <button class="nav-btn" id="btn-mode-local" data-mode="local">
+                        <i class="fa-solid fa-people-arrows"></i> <span class="tab-label">Pass & Play</span>
+                    </button>
+                </div>
 
-            <!-- Header Quick Actions -->
-            <div class="nav-actions">
-                <button class="btn-icon" id="btn-mute" title="Toggle Sound">
-                    <i class="fa-solid fa-volume-high"></i>
-                </button>
-                <button class="btn-primary" id="btn-open-invite">
-                    <i class="fa-solid fa-user-plus"></i> Invite Friend
-                </button>
-            </div>
-        </header>
+                <!-- Header Quick Actions -->
+                <div class="nav-actions">
+                    <button class="btn-icon" id="btn-mute" title="Toggle Sound">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <button class="btn-primary" id="btn-open-invite">
+                        <i class="fa-solid fa-user-plus"></i> <span class="action-label">Invite</span>
+                    </button>
+                </div>
+            </header>
 
-        <!-- Turn Status Indicator Banner -->
-        <div class="status-banner">
-            <div class="status-dot" id="status-dot"></div>
-            <span id="status-text">White to move</span>
+            <!-- Turn Status Indicator Banner -->
+            <div class="status-banner">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">White to move</span>
+            </div>
         </div>
 
         <!-- Main Workspace (Left & Right Glass Sidebars) -->
@@ -176,24 +178,32 @@
         </main>
     </div>
 
-    <!-- Floating Air-Glass Corner Chat HUD (See-through floating in air, borderless) -->
+    <!-- Floating Air-Glass Corner Chat HUD -->
     <div class="floating-corner-chat interactive" id="floating-chat">
-        <div class="air-chat-messages" id="panel-chat-messages">
-            <div class="air-msg them">Welcome! Chat floating in air.</div>
+        <div class="chat-header-bar" id="chat-header-bar">
+            <span class="chat-header-label"><i class="fa-solid fa-comments"></i> Chat</span>
+            <button class="btn-chat-toggle" id="btn-toggle-chat" title="Toggle Chat">
+                <i class="fa-solid fa-chevron-down" id="chat-toggle-icon"></i>
+            </button>
         </div>
-        <!-- Corner Emojis Bar -->
-        <div class="air-chat-emojis">
-            <button class="emoji-btn" data-emoji="👍">👍</button>
-            <button class="emoji-btn" data-emoji="🔥">🔥</button>
-            <button class="emoji-btn" data-emoji="👑">👑</button>
-            <button class="emoji-btn" data-emoji="♟️">♟️</button>
-            <button class="emoji-btn" data-emoji="😮">😮</button>
+        <div class="air-chat-collapsible" id="chat-collapsible-area">
+            <div class="air-chat-messages" id="panel-chat-messages">
+                <!-- Live match chat messages only -->
+            </div>
+            <!-- Corner Emojis Bar -->
+            <div class="air-chat-emojis">
+                <button class="emoji-btn" data-emoji="👍">👍</button>
+                <button class="emoji-btn" data-emoji="🔥">🔥</button>
+                <button class="emoji-btn" data-emoji="👑">👑</button>
+                <button class="emoji-btn" data-emoji="♟️">♟️</button>
+                <button class="emoji-btn" data-emoji="😮">😮</button>
+            </div>
+            <!-- Transparent Air Input -->
+            <form class="air-chat-input-bar" id="panel-chat-form">
+                <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
+                <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
         </div>
-        <!-- Transparent Air Input -->
-        <form class="air-chat-input-bar" id="panel-chat-form">
-            <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
-            <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
-        </form>
     </div>
 
     <!-- Invite Friends / Join Room Modal -->
