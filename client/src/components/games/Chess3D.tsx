@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Clock,
   UserPlus,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -50,6 +52,19 @@ export default function Chess3D({ onBack }: Chess3DProps) {
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, boolean>>({});
+  const [isMuted, setIsMuted] = useState(false);
+
+  const handleToggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    iframeRef.current?.contentWindow?.postMessage(
+      {
+        type: 'CHESS_TOGGLE_MUTE',
+        muted: nextMuted,
+      },
+      '*'
+    );
+  };
 
   // Iframe Source URL
   const [iframeSrc, setIframeSrc] = useState<string>(() => {
@@ -446,6 +461,19 @@ export default function Chess3D({ onBack }: Chess3DProps) {
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Mode Switcher Tabs */}
           <div className="flex items-center p-0.5 rounded-xl bg-white/[0.06] border border-white/10 text-xs">
+            {/* Audio Toggle button right next to Solo AI */}
+            <button
+              onClick={handleToggleMute}
+              title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
+              className="p-1 sm:p-1.5 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer mr-0.5"
+            >
+              {isMuted ? (
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+            </button>
+
             <button
               onClick={() => handleSelectAiMode()}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${

@@ -284,6 +284,11 @@ class ChessApp {
                     const select = document.getElementById('select-difficulty');
                     if (select && data.difficulty) select.value = data.difficulty;
                     break;
+                case 'CHESS_TOGGLE_MUTE':
+                    if (window.soundSystem) {
+                        window.soundSystem.muted = typeof data.muted === 'boolean' ? data.muted : !window.soundSystem.muted;
+                    }
+                    break;
             }
         });
     }
