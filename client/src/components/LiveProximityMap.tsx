@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LocationData } from '../hooks/useLocation';
+import { Layers, Moon, Globe, Map as MapIcon } from 'lucide-react';
 
 interface LiveProximityMapProps {
   userLocation: LocationData | null;
@@ -63,6 +64,9 @@ export default function LiveProximityMap({
   partnerAvatar,
   recenterTrigger,
 }: LiveProximityMapProps) {
+  // Tile layer style: 'dark' (Esri Dark Canvas) | 'satellite' (Esri Satellite) | 'streets' (OpenStreetMap)
+  const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'streets'>('dark');
+
   // Default coordinates (e.g. New Delhi fallback if no GPS yet)
   const defaultCenter: [number, number] = [28.6139, 77.2090];
   const initialCenter: [number, number] = userLocation
@@ -127,6 +131,46 @@ export default function LiveProximityMap({
 
   return (
     <div className="w-full h-full relative">
+      {/* Map Layer Mode Switcher floating control */}
+      <div className="absolute top-3 right-3 z-[400] flex items-center gap-1 p-1 rounded-2xl bg-[#0d0e1a]/85 backdrop-blur-md border border-white/15 shadow-xl">
+        <button
+          onClick={() => setMapStyle('dark')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+            mapStyle === 'dark'
+              ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+          title="Dark Canvas"
+        >
+          <Moon size={12} />
+          <span>Dark</span>
+        </button>
+        <button
+          onClick={() => setMapStyle('satellite')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+            mapStyle === 'satellite'
+              ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+          title="Satellite View"
+        >
+          <Globe size={12} />
+          <span>Satellite</span>
+        </button>
+        <button
+          onClick={() => setMapStyle('streets')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+            mapStyle === 'streets'
+              ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+          title="Street Map"
+        >
+          <MapIcon size={12} />
+          <span>Streets</span>
+        </button>
+      </div>
+
       <MapContainer
         center={initialCenter}
         zoom={14}
@@ -134,11 +178,43 @@ export default function LiveProximityMap({
         className="w-full h-full z-0"
         style={{ background: '#0b0c16' }}
       >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          maxZoom={19}
-        />
+        {/* Esri World Dark Gray Base + Reference (Key-Free & Clean) */}
+        {mapStyle === 'dark' && (
+          <>
+            <TileLayer
+              key="esri-dark-base"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+              maxZoom={18}
+            />
+            <TileLayer
+              key="esri-dark-ref"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+              maxZoom={18}
+            />
+          </>
+        )}
+
+        {/* Esri Satellite Imagery (Key-Free) */}
+        {mapStyle === 'satellite' && (
+          <TileLayer
+            key="esri-satellite"
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+            maxZoom={19}
+          />
+        )}
+
+        {/* OpenStreetMap Streets (Key-Free) */}
+        {mapStyle === 'streets' && (
+          <TileLayer
+            key="osm-streets"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+            maxZoom={19}
+          />
+        )}
 
         <MapViewController
           userLocation={userLocation}
@@ -157,7 +233,7 @@ export default function LiveProximityMap({
               color: '#ec4899',
               weight: 3,
               dashArray: '8, 8',
-              opacity: 0.8,
+              opacity: 0.85,
             }}
           />
         )}
