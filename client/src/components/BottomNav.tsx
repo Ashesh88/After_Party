@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Home, Clapperboard, Gamepad2, MessageCircleHeart, MapPin } from 'lucide-react';
+import { useGameStore } from '../lib/store/gameStore';
 
 const tabs = [
   { name: 'Home', path: '/dashboard', icon: Home },
@@ -14,6 +15,12 @@ const tabs = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const activeGame = useGameStore((state) => state.activeGame);
+
+  // Hide the 5 bottom navigation tabs completely when inside any game (Chess, Ludo, Pool, etc.)
+  if (activeGame) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4 pointer-events-none z-50">

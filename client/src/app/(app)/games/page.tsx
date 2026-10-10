@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useGameStore } from '../../../lib/store/gameStore';
 import TicTacToe from '../../../components/games/TicTacToe';
 import TruthOrDare from '../../../components/games/TruthOrDare';
 import Quiz from '../../../components/games/Quiz';
@@ -69,7 +69,7 @@ const games = [
 ];
 
 export default function GamesPage() {
-  const [activeGame, setActiveGame] = useState<string | null>(null);
+  const { activeGame, setActiveGame } = useGameStore();
 
   if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
   if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;

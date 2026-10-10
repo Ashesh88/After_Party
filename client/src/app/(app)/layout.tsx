@@ -7,12 +7,14 @@ import { useAuthStore } from '../../lib/store/authStore';
 import CallOverlay from '../../components/CallOverlay';
 import MoodThemeModal from '../../components/MoodThemeModal';
 import { useMoodStore } from '../../lib/store/moodStore';
+import { useGameStore } from '../../lib/store/gameStore';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { connectSocket, disconnectSocket, socket } = useSocketStore();
   const token = useAuthStore((state) => state.token);
   const fetchMe = useAuthStore((state) => state.fetchMe);
   const { fetchMood, updateFromSocket } = useMoodStore();
+  const activeGame = useGameStore((state) => state.activeGame);
 
   useEffect(() => {
     fetchMe();
@@ -34,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [socket, updateFromSocket]);
 
   return (
-    <div className="pb-24 relative min-h-screen overflow-x-hidden">
+    <div className={`relative min-h-screen overflow-x-hidden ${activeGame ? 'pb-0' : 'pb-24'}`}>
       {/* Global Ambient Mood Glow Blobs */}
       <div className="ambient-glow-mood-primary -top-28 -left-24 pointer-events-none fixed z-0" />
       <div className="ambient-glow-mood-secondary top-72 -right-28 pointer-events-none fixed z-0" />
