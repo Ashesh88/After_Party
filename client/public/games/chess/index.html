@@ -147,32 +147,24 @@
         </main>
     </div>
 
-    <!-- Floating Air-Glass Corner Chat HUD -->
+    <!-- Floating Air-Glass Corner Chat HUD (Borderless, No Header, Clean 5-Msg Stack) -->
     <div class="floating-corner-chat interactive" id="floating-chat">
-        <div class="chat-header-bar" id="chat-header-bar">
-            <span class="chat-header-label"><i class="fa-solid fa-comments"></i> Chat</span>
-            <button class="btn-chat-toggle" id="btn-toggle-chat" title="Toggle Chat">
-                <i class="fa-solid fa-chevron-down" id="chat-toggle-icon"></i>
-            </button>
+        <div class="air-chat-messages" id="panel-chat-messages">
+            <!-- Live match chat messages only (up to 5 messages) -->
         </div>
-        <div class="air-chat-collapsible" id="chat-collapsible-area">
-            <div class="air-chat-messages" id="panel-chat-messages">
-                <!-- Live match chat messages only -->
-            </div>
-            <!-- Corner Emojis Bar -->
-            <div class="air-chat-emojis">
-                <button class="emoji-btn" data-emoji="👍">👍</button>
-                <button class="emoji-btn" data-emoji="🔥">🔥</button>
-                <button class="emoji-btn" data-emoji="👑">👑</button>
-                <button class="emoji-btn" data-emoji="♟️">♟️</button>
-                <button class="emoji-btn" data-emoji="😮">😮</button>
-            </div>
-            <!-- Transparent Air Input -->
-            <form class="air-chat-input-bar" id="panel-chat-form">
-                <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
-                <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
-            </form>
+        <!-- Corner Emojis Bar -->
+        <div class="air-chat-emojis">
+            <button class="emoji-btn" data-emoji="👍">👍</button>
+            <button class="emoji-btn" data-emoji="🔥">🔥</button>
+            <button class="emoji-btn" data-emoji="👑">👑</button>
+            <button class="emoji-btn" data-emoji="♟️">♟️</button>
+            <button class="emoji-btn" data-emoji="😮">😮</button>
         </div>
+        <!-- Transparent Air Input -->
+        <form class="air-chat-input-bar" id="panel-chat-form">
+            <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
     </div>
 
     <!-- Invite Friends / Join Room Modal -->

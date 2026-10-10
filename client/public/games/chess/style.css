@@ -50,23 +50,22 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 12px 18px;
-    gap: 8px;
+    padding: 8px 14px;
+    gap: 0;
 }
 
 .interactive {
     pointer-events: auto;
 }
 
-/* Top Dock Wrapper - Header + Status Indicator in clean single vertical flow */
+/* Top Floating Status Indicator */
 .top-dock-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    max-width: 960px;
-    margin: 0 auto;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    pointer-events: auto;
 }
 
 /* Top Navbar - Transparent Air-Glass Effect */
@@ -206,8 +205,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    height: calc(100% - 76px);
-    padding-top: 16px;
+    width: 100%;
+    height: 100%;
+    padding-top: 0;
+    margin-top: 0;
 }
 
 /* Glass Sidebar Panels - Transparent Air-Glass Effect */
@@ -218,10 +219,10 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
-    padding: 10px 12px;
+    padding: 8px 12px;
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 100px);
+    max-height: calc(100vh - 20px);
     overflow-y: auto;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease, min-width 0.3s ease;
 }
@@ -550,30 +551,28 @@ body {
     background: #ef4444;
 }
 
-/* Floating Air-Glass Corner Chat HUD */
+/* Floating Air-Glass Corner Chat HUD - Borderless, Clean & Transparent */
 .floating-corner-chat {
     position: fixed;
-    bottom: 20px;
-    right: 24px;
-    width: 290px;
-    max-height: 290px;
-    background: rgba(10, 12, 16, 0.65);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    bottom: 16px;
+    right: 20px;
+    width: 280px;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
     outline: none !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-    border-radius: 16px;
+    box-shadow: none !important;
     display: flex;
     flex-direction: column;
-    padding: 8px 12px;
+    padding: 0 !important;
     gap: 6px;
     z-index: 50;
     transition: all 0.25s ease;
 }
 
 .floating-corner-chat:hover {
-    background: rgba(10, 12, 16, 0.85);
+    background: transparent !important;
 }
 
 .chat-header-bar {
@@ -647,18 +646,15 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-right: 4px;
-    min-height: 70px;
-    max-height: 140px;
+    gap: 4px;
+    padding: 0 2px;
+    min-height: 0;
+    max-height: 130px;
 }
 
 .air-chat-messages::-webkit-scrollbar {
-    width: 3px;
-}
-.air-chat-messages::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
+    width: 0px;
+    display: none;
 }
 
 .air-msg, .chat-msg {

@@ -1043,6 +1043,12 @@ class ChessApp {
         msg.className = `chat-msg ${type}`;
         msg.textContent = text;
         box.appendChild(msg);
+
+        // Keep up to 5 messages visible
+        while (box.children.length > 5) {
+            box.removeChild(box.firstChild);
+        }
+
         box.scrollTop = box.scrollHeight;
     }
 
