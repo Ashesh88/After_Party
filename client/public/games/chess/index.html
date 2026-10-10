@@ -30,6 +30,11 @@
     <!-- UI Overlay Layer -->
     <div class="ui-overlay">
         
+        <!-- Floating Settings Gear Button (Right below Play Friend, Icon Only) -->
+        <button class="floating-settings-icon-btn interactive" id="btn-open-settings" title="Match Settings">
+            <i class="fa-solid fa-gear"></i>
+        </button>
+
         <!-- Turn Status Indicator Banner & Captured Pieces HUD -->
         <div class="top-dock-wrapper interactive">
             <div class="status-banner">
@@ -52,15 +57,17 @@
             </div>
         </div>
 
-        <!-- Mobile Floating Quick-Access Symbols (Profiles & Video Call) -->
+        <!-- Mobile Floating Dual Player Clocks (White/You on Left & Black/Friend/AI on Right) -->
         <div class="mobile-hud-triggers interactive">
-            <button class="mobile-hud-btn mobile-hud-btn-left" id="btn-mobile-profiles" title="Player Profiles & Clock">
-                <i class="fa-solid fa-user-clock"></i>
-                <span id="mobile-clock-badge" class="mobile-hud-timer">10:00</span>
+            <button class="mobile-hud-btn mobile-hud-btn-left active-turn" id="btn-mobile-timer-w" title="White Player Clock & Profiles">
+                <i class="fa-solid fa-user"></i>
+                <span class="mobile-clock-prefix">W:</span>
+                <span id="mobile-clock-white" class="mobile-hud-timer">10:00</span>
             </button>
-            <button class="mobile-hud-btn mobile-hud-btn-right" id="btn-mobile-video" title="Match Settings">
-                <i class="fa-solid fa-gear"></i>
-                <span class="mobile-hud-label">Settings</span>
+            <button class="mobile-hud-btn mobile-hud-btn-right" id="btn-mobile-timer-b" title="Black Player (Friend/AI) Clock & Profiles">
+                <i class="fa-solid fa-robot" id="mobile-opp-icon"></i>
+                <span class="mobile-clock-prefix">B:</span>
+                <span id="mobile-clock-black" class="mobile-hud-timer">10:00</span>
             </button>
         </div>
 

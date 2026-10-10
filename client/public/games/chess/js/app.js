@@ -528,8 +528,9 @@ class ChessApp {
         }
 
         // Mobile Drawer Toggles & Backdrop Handlers
-        const btnMobileProfiles = document.getElementById('btn-mobile-profiles');
-        const btnMobileVideo = document.getElementById('btn-mobile-video');
+        const btnTimerW = document.getElementById('btn-mobile-timer-w') || document.getElementById('btn-mobile-profiles');
+        const btnTimerB = document.getElementById('btn-mobile-timer-b');
+        const btnOpenSettings = document.getElementById('btn-open-settings') || document.getElementById('btn-mobile-video');
         const btnCloseLeft = document.getElementById('btn-close-left-sidebar');
         const btnCloseRight = document.getElementById('btn-close-right-sidebar');
         const sidebarBackdrop = document.getElementById('sidebar-backdrop');
@@ -542,16 +543,18 @@ class ChessApp {
             if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
         };
 
-        if (btnMobileProfiles) {
-            btnMobileProfiles.addEventListener('click', () => {
-                if (sidebarRight) sidebarRight.classList.remove('mobile-open');
-                const isOpen = sidebarLeft?.classList.toggle('mobile-open');
-                if (sidebarBackdrop) sidebarBackdrop.classList.toggle('active', !!isOpen);
-            });
-        }
+        [btnTimerW, btnTimerB].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    if (sidebarRight) sidebarRight.classList.remove('mobile-open');
+                    const isOpen = sidebarLeft?.classList.toggle('mobile-open');
+                    if (sidebarBackdrop) sidebarBackdrop.classList.toggle('active', !!isOpen);
+                });
+            }
+        });
 
-        if (btnMobileVideo) {
-            btnMobileVideo.addEventListener('click', () => {
+        if (btnOpenSettings) {
+            btnOpenSettings.addEventListener('click', () => {
                 if (sidebarLeft) sidebarLeft.classList.remove('mobile-open');
                 const isOpen = sidebarRight?.classList.toggle('mobile-open');
                 if (sidebarBackdrop) sidebarBackdrop.classList.toggle('active', !!isOpen);
@@ -1057,20 +1060,29 @@ class ChessApp {
 
         const wEl = document.getElementById('timer-white');
         const bEl = document.getElementById('timer-black');
-        const mobileBadge = document.getElementById('mobile-clock-badge');
+        const mobileClockW = document.getElementById('mobile-clock-white') || document.getElementById('mobile-clock-badge');
+        const mobileClockB = document.getElementById('mobile-clock-black');
 
         if (this.timeControl === 0) {
             if (wEl) wEl.textContent = '∞';
             if (bEl) bEl.textContent = '∞';
-            if (mobileBadge) mobileBadge.textContent = '∞';
+            if (mobileClockW) mobileClockW.textContent = '∞';
+            if (mobileClockB) mobileClockB.textContent = '∞';
         } else {
-            if (wEl) wEl.textContent = fmt(this.timers.w);
-            if (bEl) bEl.textContent = fmt(this.timers.b);
-            if (mobileBadge) {
-                const currentTurn = this.chess.turn();
-                mobileBadge.textContent = fmt(this.timers[currentTurn]);
-            }
+            const whiteStr = fmt(this.timers.w);
+            const blackStr = fmt(this.timers.b);
+            if (wEl) wEl.textContent = whiteStr;
+            if (bEl) bEl.textContent = blackStr;
+            if (mobileClockW) mobileClockW.textContent = whiteStr;
+            if (mobileClockB) mobileClockB.textContent = blackStr;
         }
+
+        // Highlight active turn timer badge on mobile
+        const currentTurn = this.chess ? this.chess.turn() : 'w';
+        const btnTimerW = document.getElementById('btn-mobile-timer-w') || document.getElementById('btn-mobile-profiles');
+        const btnTimerB = document.getElementById('btn-mobile-timer-b');
+        if (btnTimerW) btnTimerW.classList.toggle('active-turn', this.isMatchStarted && currentTurn === 'w');
+        if (btnTimerB) btnTimerB.classList.toggle('active-turn', this.isMatchStarted && currentTurn === 'b');
     }
 
     // UI Updates
@@ -1087,6 +1099,13 @@ class ChessApp {
         const cardB = document.getElementById('card-black');
         if (cardW) cardW.classList.toggle('active-turn', this.isMatchStarted && turn === 'w');
         if (cardB) cardB.classList.toggle('active-turn', this.isMatchStarted && turn === 'b');
+
+        const oppIcon = document.getElementById('mobile-opp-icon');
+        if (oppIcon) {
+            oppIcon.className = this.gameMode === 'online' ? 'fa-solid fa-user-group' : 'fa-solid fa-robot';
+        }
+
+        this.updateTimerDisplay();
     }
 
     updateHistoryUI() {
