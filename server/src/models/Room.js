@@ -95,6 +95,49 @@ const roomSchema = new mongoose.Schema(
         default: Date.now,
       },
     },
+    weeklyMemories: [
+      {
+        weekNumber: {
+          type: Number,
+          required: true,
+        },
+        year: {
+          type: Number,
+          required: true,
+        },
+        caption: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        imageUrl: {
+          type: String,
+          default: '',
+        },
+        prompt: {
+          type: String,
+          default: 'Best moment this week',
+        },
+        addedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        addedByName: {
+          type: String,
+          default: 'Partner',
+        },
+        likes: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+          },
+        ],
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );

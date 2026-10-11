@@ -37,6 +37,19 @@ export interface MoodTheme {
   history: MoodHistoryItem[];
 }
 
+export interface WeeklyMemory {
+  _id: string;
+  weekNumber: number;
+  year: number;
+  caption: string;
+  imageUrl?: string;
+  prompt: string;
+  addedBy?: string;
+  addedByName?: string;
+  likes?: string[];
+  createdAt: string;
+}
+
 export interface Room {
   _id: string;
   inviteCode: string;
@@ -54,6 +67,7 @@ export interface Room {
     updatedByName?: string;
     updatedAt?: string;
   };
+  weeklyMemories?: WeeklyMemory[];
   createdAt: string;
 }
 

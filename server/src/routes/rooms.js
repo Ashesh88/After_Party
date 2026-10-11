@@ -496,4 +496,99 @@ router.patch('/settings', async (req, res, next) => {
   }
 });
 
+// GET /api/rooms/memories (Get weekly memory wall)
+router.get('/memories', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const room = await Room.findById(user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    res.json({ memories: room.weeklyMemories || [] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/rooms/memories (Add a new weekly memory)
+router.post('/memories', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const room = await Room.findById(user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    const { caption, imageUrl, prompt } = req.body;
+    if (!caption || !caption.trim()) {
+      return res.status(400).json({ message: 'Memory caption is required' });
+    }
+
+    // Calculate current week number
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const weekNumber = Math.ceil((((now.getTime() - startOfYear.getTime()) / 86400000) + startOfYear.getDay() + 1) / 7);
+
+    const newMemory = {
+      weekNumber,
+      year: now.getFullYear(),
+      caption: caption.trim(),
+      imageUrl: imageUrl || '',
+      prompt: prompt || 'Weekly Highlight',
+      addedBy: user._id,
+      addedByName: user.displayName || 'Partner',
+      likes: [user._id],
+      createdAt: now,
+    };
+
+    room.weeklyMemories.unshift(newMemory);
+    await room.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`room:${room._id}`).emit('room:memory-added', { memory: newMemory });
+    }
+
+    res.status(201).json({ memory: newMemory, memories: room.weeklyMemories });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/rooms/memories/:id (Delete a weekly memory)
+router.delete('/memories/:id', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const room = await Room.findById(user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    room.weeklyMemories = room.weeklyMemories.filter(m => m._id.toString() !== req.params.id);
+    await room.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`room:${room._id}`).emit('room:memory-deleted', { memoryId: req.params.id });
+    }
+
+    res.json({ message: 'Memory removed successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
