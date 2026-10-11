@@ -1399,12 +1399,13 @@ class LuxuryDuelRacer3D {
             targetX = this.p1.laneX;
         }
 
-        this.camera.position.x += (targetX - this.camera.position.x) * 0.14;
-        this.camera.position.y += (targetY - this.camera.position.y) * 0.12;
+        this.camera.position.x += (targetX - this.camera.position.x) * 0.16;
+        this.camera.position.y += (targetY - this.camera.position.y) * 0.14;
         this.camera.position.z = targetZ;
 
-        const lookAheadZ = Math.max(this.p1.mesh.position.z, this.p2.mesh.position.z) + 18;
-        this.camera.lookAt((this.p1.laneX + this.p2.laneX) * 0.25, 1.3, lookAheadZ);
+        // Look directly ahead in car's heading direction
+        const lookAheadZ = this.p1.mesh.position.z + 18;
+        this.camera.lookAt(this.p1.laneX * 0.75, 1.35, lookAheadZ);
     }
 
     // 11. HOLOGRAPHIC GATE PULSING & CHECKPOINT PASSES
