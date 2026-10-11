@@ -18,7 +18,7 @@ export interface Friend {
   isOnline?: boolean;
 }
 
-export type MoodType = 'love' | 'horny' | 'angry' | 'just_friends';
+export type MoodType = 'love' | 'angry' | 'just_friends' | 'sad' | 'horny';
 
 export interface MoodHistoryItem {
   mood: MoodType;

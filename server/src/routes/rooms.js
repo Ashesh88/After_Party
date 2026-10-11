@@ -201,10 +201,10 @@ router.patch('/mood', async (req, res, next) => {
     }
 
     const { mood } = req.body;
-    const validMoods = ['love', 'horny', 'angry', 'just_friends'];
+    const validMoods = ['love', 'angry', 'just_friends', 'sad', 'horny'];
     if (!mood || !validMoods.includes(mood)) {
       return res.status(400).json({ 
-        message: 'Invalid mood theme. Choose from: love, horny, angry, just_friends' 
+        message: 'Invalid mood theme. Choose from: love, angry, just_friends, sad' 
       });
     }
 

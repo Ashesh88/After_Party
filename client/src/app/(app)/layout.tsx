@@ -6,6 +6,7 @@ import { useAuthStore } from '../../lib/store/authStore';
 
 import CallOverlay from '../../components/CallOverlay';
 import MoodThemeModal from '../../components/MoodThemeModal';
+import MoodAtmosphereOverlay from '../../components/MoodAtmosphereOverlay';
 import RoomInviteNotification from '../../components/RoomInviteNotification';
 import { useMoodStore } from '../../lib/store/moodStore';
 import { useGameStore } from '../../lib/store/gameStore';
@@ -41,6 +42,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Global Ambient Mood Glow Blobs */}
       <div className="ambient-glow-mood-primary -top-28 -left-24 pointer-events-none fixed z-0" />
       <div className="ambient-glow-mood-secondary top-72 -right-28 pointer-events-none fixed z-0" />
+
+      {/* Floating dynamic mood atmosphere particles */}
+      <MoodAtmosphereOverlay />
 
       <div className="relative z-10">{children}</div>
       <BottomNav />

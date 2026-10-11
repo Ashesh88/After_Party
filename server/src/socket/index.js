@@ -145,7 +145,7 @@ const setupSocket = (io) => {
     // Mood Theme
     socket.on('mood:set', async ({ mood }) => {
       try {
-        const validMoods = ['love', 'horny', 'angry', 'just_friends'];
+        const validMoods = ['love', 'angry', 'just_friends', 'sad', 'horny'];
         if (!mood || !validMoods.includes(mood)) return;
 
         const currentRoomId = getActiveRoomId();

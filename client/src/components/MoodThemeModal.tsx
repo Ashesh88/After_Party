@@ -2,24 +2,43 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Clock, Sparkles, User, Flame, Heart, AlertCircle, Users } from 'lucide-react';
+import { X, Check, Clock, Sparkles, User, Heart, Flame, Users, CloudRain, Send } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../lib/store/moodStore';
+import { useSocketStore } from '../lib/store/socketStore';
+import { useAuthStore } from '../lib/store/authStore';
+import { soundService } from '../lib/soundService';
 import { MoodType } from '../lib/types';
+import toast from 'react-hot-toast';
 
-const MOOD_ICONS: Record<MoodType, React.ReactNode> = {
-  love: <Heart size={20} className="text-pink-400 fill-pink-400/20" />,
-  horny: <Flame size={20} className="text-fuchsia-400 fill-fuchsia-400/20" />,
-  angry: <AlertCircle size={20} className="text-rose-400" />,
-  just_friends: <Users size={20} className="text-cyan-400" />,
+const MOOD_ICONS: Record<string, React.ReactNode> = {
+  love: <Heart size={18} className="text-pink-400 fill-pink-400/20" />,
+  angry: <Flame size={18} className="text-rose-400 fill-rose-400/20" />,
+  just_friends: <Users size={18} className="text-cyan-400" />,
+  sad: <CloudRain size={18} className="text-blue-400 fill-blue-400/20" />,
 };
 
 export default function MoodThemeModal() {
   const { moodTheme, isModalOpen, closeModal, setMood, isLoading } = useMoodStore();
+  const socket = useSocketStore((state) => state.socket);
+  const user = useAuthStore((state) => state.user);
 
   if (!isModalOpen) return null;
 
   const currentConfig = MOOD_CONFIG[moodTheme.current] || MOOD_CONFIG.love;
-  const moodList: MoodType[] = ['love', 'horny', 'angry', 'just_friends'];
+  const moodList: MoodType[] = ['love', 'angry', 'just_friends', 'sad'];
+
+  const handleSendNudge = () => {
+    soundService.playMoodNudge();
+    if (socket) {
+      socket.emit('mood:nudge', {
+        mood: currentConfig.id,
+        emoji: currentConfig.emoji,
+        text: currentConfig.actionToast,
+        senderName: user?.displayName || 'Partner',
+      });
+    }
+    toast.success(`Sent to partner: ${currentConfig.promptAction}!`);
+  };
 
   return (
     <AnimatePresence>
@@ -50,7 +69,7 @@ export default function MoodThemeModal() {
                 <Sparkles size={18} style={{ color: currentConfig.primaryColor }} />
               </div>
               <div>
-                <h2 className="text-lg font-extrabold text-white leading-tight">Couple Mood Theme</h2>
+                <h2 className="text-lg font-extrabold text-white leading-tight">Mood Theme</h2>
                 <p className="text-[11px] text-slate-400">Sync atmosphere across the entire app for both of you</p>
               </div>
             </div>
@@ -76,7 +95,7 @@ export default function MoodThemeModal() {
                     type="button"
                     disabled={isLoading}
                     onClick={() => setMood(moodKey)}
-                    className={`relative p-3.5 rounded-2xl border text-left transition-all group cursor-pointer active:scale-98 flex flex-col justify-between min-h-[92px] ${
+                    className={`relative p-3.5 rounded-2xl border text-left transition-all group cursor-pointer active:scale-98 flex flex-col justify-between min-h-[102px] ${
                       isActive
                         ? 'bg-gradient-to-br ' + config.gradientBg + ' border-2 shadow-lg shadow-black/40'
                         : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/10 hover:border-white/20'
@@ -85,8 +104,9 @@ export default function MoodThemeModal() {
                       borderColor: isActive ? config.primaryColor : undefined,
                     }}
                   >
-                    <div className="flex items-center justify-between w-full mb-1">
+                    <div className="flex items-center justify-between w-full mb-1.5">
                       <div className="flex items-center gap-2">
+                        <span className="text-base">{config.emoji}</span>
                         {MOOD_ICONS[moodKey]}
                         <span className="text-sm font-bold text-white tracking-wide">{config.label}</span>
                       </div>
@@ -107,54 +127,53 @@ export default function MoodThemeModal() {
                       )}
                     </div>
 
-                    <p className="text-[11px] text-slate-300 font-medium leading-relaxed">{config.subLabel}</p>
+                    <p className="text-[11px] text-slate-300 font-medium leading-relaxed mb-1">{config.subLabel}</p>
+
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: config.primaryColor }} />
+                      <span className="truncate">{config.vibe}</span>
+                    </div>
                   </button>
                 );
               })}
             </div>
 
-            {/* Current Active Mood Attribution Info Box */}
+            {/* Interactive Partner Action & Mood Aura Card */}
             <div
-              className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 bg-white/[0.02]"
+              className="p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/[0.02]"
               style={{
-                borderColor: `${currentConfig.primaryColor}35`,
+                borderColor: `${currentConfig.primaryColor}40`,
                 backgroundColor: `${currentConfig.primaryColor}0d`,
               }}
             >
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
-                  style={{
-                    backgroundColor: `${currentConfig.primaryColor}25`,
-                    borderColor: `${currentConfig.primaryColor}50`,
-                  }}
-                >
-                  <User size={15} style={{ color: currentConfig.primaryColor }} />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{currentConfig.emoji}</span>
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    {currentConfig.label} Aura Active
+                  </span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs text-slate-400 font-medium">Currently set by:</span>
-                    <strong className="text-xs font-bold text-white tracking-wide">
-                      {moodTheme.updatedByName || 'Partner'}
-                    </strong>
-                  </div>
-                  <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                    <Clock size={11} />
-                    <span>{formatRelativeTime(moodTheme.updatedAt)}</span>
-                  </div>
+                <p className="text-xs text-slate-300 italic font-medium">"{currentConfig.quote}"</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-0.5">
+                  <User size={12} />
+                  <span>Set by: <strong className="text-white">{moodTheme.updatedByName || 'Partner'}</strong></span>
+                  <span>•</span>
+                  <span>{formatRelativeTime(moodTheme.updatedAt)}</span>
                 </div>
               </div>
 
-              <div
-                className="px-2.5 py-1 rounded-xl text-[11px] font-bold border shrink-0"
+              <button
+                type="button"
+                onClick={handleSendNudge}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer text-white shrink-0"
                 style={{
-                  backgroundColor: `${currentConfig.primaryColor}20`,
-                  color: currentConfig.primaryColor,
-                  borderColor: `${currentConfig.primaryColor}40`,
+                  backgroundColor: currentConfig.primaryColor,
+                  boxShadow: `0 4px 15px ${currentConfig.glowColor}`,
                 }}
               >
-                {currentConfig.label}
-              </div>
+                <Send size={13} />
+                <span>{currentConfig.promptAction}</span>
+              </button>
             </div>
 
             {/* Mood History Timeline */}
@@ -170,7 +189,7 @@ export default function MoodThemeModal() {
               </div>
 
               {moodTheme.history && moodTheme.history.length > 0 ? (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {moodTheme.history.map((item, idx) => {
                     const itemConfig = MOOD_CONFIG[item.mood] || MOOD_CONFIG.love;
                     return (
@@ -188,13 +207,14 @@ export default function MoodThemeModal() {
                           </span>
                           <span className="text-slate-400 text-[11px]">set mood to</span>
                           <span
-                            className="font-bold text-[11px] px-1.5 py-0.5 rounded-md"
+                            className="font-bold text-[11px] px-1.5 py-0.5 rounded-md flex items-center gap-1"
                             style={{
                               backgroundColor: `${itemConfig.primaryColor}20`,
                               color: itemConfig.primaryColor,
                             }}
                           >
-                            {itemConfig.label}
+                            <span>{itemConfig.emoji}</span>
+                            <span>{itemConfig.label}</span>
                           </span>
                         </div>
 
@@ -215,7 +235,7 @@ export default function MoodThemeModal() {
 
           {/* Footer Note */}
           <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-            <span>Themes update instantly on your partner's screen ⚡</span>
+            <span>Atmosphere & sound update live on partner's screen ⚡</span>
             <button
               onClick={closeModal}
               className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold transition-all cursor-pointer active:scale-95"

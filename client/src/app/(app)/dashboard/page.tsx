@@ -467,33 +467,34 @@ export default function DashboardPage() {
               }}
             >
               {moodTheme.current === 'love' && <Heart size={20} className="text-pink-400 fill-pink-400/20" />}
-              {moodTheme.current === 'horny' && <Flame size={20} className="text-fuchsia-400 fill-fuchsia-400/20" />}
-              {moodTheme.current === 'angry' && <AlertCircle size={20} className="text-rose-400" />}
+              {moodTheme.current === 'angry' && <Flame size={20} className="text-rose-400 fill-rose-400/20" />}
               {moodTheme.current === 'just_friends' && <Users size={20} className="text-cyan-400" />}
+              {moodTheme.current === 'sad' && <span className="text-xl">🌧️</span>}
+              {moodTheme.current === 'horny' && <Flame size={20} className="text-fuchsia-400 fill-fuchsia-400/20" />}
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                  Couple Atmosphere
+                  Mood Theme
                 </span>
                 <span 
-                  className="px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase tracking-wider"
+                  className="px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase tracking-wider flex items-center gap-1"
                   style={{
                     backgroundColor: `${currentMoodConfig.primaryColor}20`,
                     color: currentMoodConfig.primaryColor,
                     borderColor: `${currentMoodConfig.primaryColor}40`,
                   }}
                 >
-                  {currentMoodConfig.label}
+                  <span>{currentMoodConfig.emoji}</span>
+                  <span>{currentMoodConfig.label}</span>
                 </span>
               </div>
 
               <div className="text-[11px] text-slate-300 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
-                <span>Set by:</span>
-                <strong className="text-white font-bold">{moodTheme.updatedByName || 'Partner'}</strong>
+                <span className="italic text-white/90">"{currentMoodConfig.quote}"</span>
                 <span className="text-slate-500">•</span>
-                <span className="text-slate-400">{formatRelativeTime(moodTheme.updatedAt)}</span>
+                <span>By <strong className="text-white">{moodTheme.updatedByName || 'Partner'}</strong> ({formatRelativeTime(moodTheme.updatedAt)})</span>
               </div>
             </div>
           </div>

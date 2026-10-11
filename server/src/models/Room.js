@@ -18,7 +18,7 @@ const roomSchema = new mongoose.Schema(
     moodTheme: {
       current: {
         type: String,
-        enum: ['love', 'horny', 'angry', 'just_friends'],
+        enum: ['love', 'horny', 'angry', 'just_friends', 'sad'],
         default: 'love',
       },
       updatedBy: {
@@ -37,7 +37,7 @@ const roomSchema = new mongoose.Schema(
         {
           mood: {
             type: String,
-            enum: ['love', 'horny', 'angry', 'just_friends'],
+            enum: ['love', 'horny', 'angry', 'just_friends', 'sad'],
             required: true,
           },
           setBy: {

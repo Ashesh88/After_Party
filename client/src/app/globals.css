@@ -93,7 +93,14 @@ html[data-mood="just_friends"] .ambient-glow-mood-primary {
   background: radial-gradient(circle, rgba(6, 182, 212, 0.4) 0%, rgba(6, 182, 212, 0) 70%);
 }
 html[data-mood="just_friends"] .ambient-glow-mood-secondary {
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0) 70%);
+}
+
+html[data-mood="sad"] .ambient-glow-mood-primary {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.45) 0%, rgba(59, 130, 246, 0) 70%);
+}
+html[data-mood="sad"] .ambient-glow-mood-secondary {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(99, 102, 241, 0) 70%);
 }
 
 @keyframes pulseBlob {

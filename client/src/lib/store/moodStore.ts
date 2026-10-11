@@ -2,49 +2,56 @@ import { create } from 'zustand';
 import api from '../api';
 import { MoodType, MoodTheme } from '../types';
 import toast from 'react-hot-toast';
+import { soundService } from '../soundService';
 
-export const MOOD_CONFIG: Record<
-  MoodType,
-  {
-    id: MoodType;
-    label: string;
-    subLabel: string;
-    primaryColor: string;
-    glowColor: string;
-    tagColor: string;
-    borderClass: string;
-    bgBadge: string;
-    gradientBg: string;
-  }
-> = {
+export interface MoodConfigItem {
+  id: MoodType;
+  label: string;
+  emoji: string;
+  subLabel: string;
+  vibe: string;
+  quote: string;
+  promptAction: string;
+  actionToast: string;
+  particleType: 'hearts' | 'embers' | 'stars' | 'rain';
+  primaryColor: string;
+  glowColor: string;
+  tagColor: string;
+  borderClass: string;
+  bgBadge: string;
+  gradientBg: string;
+}
+
+export const MOOD_CONFIG: Record<MoodType, MoodConfigItem> = {
   love: {
     id: 'love',
     label: 'Love',
+    emoji: '💖',
     subLabel: 'Sweet, affectionate & romantic atmosphere',
+    vibe: 'Sweet Romance & Soft Cuddles',
+    quote: 'You make my heart skip a beat 💕',
+    promptAction: 'Send Sweet Kiss 💋',
+    actionToast: 'sent you sweet kisses and romantic love! 💋💕',
+    particleType: 'hearts',
     primaryColor: '#f43f8e',
-    glowColor: 'rgba(244, 63, 142, 0.4)',
+    glowColor: 'rgba(244, 63, 142, 0.45)',
     tagColor: 'from-pink-500 via-rose-400 to-pink-600',
     borderClass: 'border-pink-500/40 hover:border-pink-500',
     bgBadge: 'bg-pink-500/20 text-pink-300 border-pink-500/40',
-    gradientBg: 'from-pink-500/20 via-rose-500/10 to-transparent',
-  },
-  horny: {
-    id: 'horny',
-    label: 'Horny',
-    subLabel: 'Spicy, seductive & naughty late-night energy',
-    primaryColor: '#d946ef',
-    glowColor: 'rgba(217, 70, 239, 0.4)',
-    tagColor: 'from-fuchsia-500 via-purple-500 to-pink-500',
-    borderClass: 'border-fuchsia-500/40 hover:border-fuchsia-500',
-    bgBadge: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40',
-    gradientBg: 'from-fuchsia-600/25 via-purple-900/15 to-transparent',
+    gradientBg: 'from-pink-500/25 via-rose-500/10 to-transparent',
   },
   angry: {
     id: 'angry',
-    label: 'Angry',
+    label: 'Anger',
+    emoji: '🔥',
     subLabel: 'Upset mood — needs pampering & sweet apologies',
+    vibe: 'Needs Extra Pampering & Gentle Apologies',
+    quote: 'Handle with extra love! Sweets & warm hugs needed 🥺',
+    promptAction: 'Send Apology Hug 🫂',
+    actionToast: 'sent you a tight apology hug & sweet treats 🍦🫂',
+    particleType: 'embers',
     primaryColor: '#ef4444',
-    glowColor: 'rgba(239, 68, 68, 0.4)',
+    glowColor: 'rgba(239, 68, 68, 0.45)',
     tagColor: 'from-red-500 via-amber-500 to-rose-600',
     borderClass: 'border-red-500/40 hover:border-red-500',
     bgBadge: 'bg-red-500/20 text-red-300 border-red-500/40',
@@ -53,13 +60,53 @@ export const MOOD_CONFIG: Record<
   just_friends: {
     id: 'just_friends',
     label: 'Just Friends',
+    emoji: '🎮',
     subLabel: 'Casual, relaxed & chill best buddies mode',
+    vibe: 'Chill Buddies, Pure Fun & Late-Night Gaming',
+    quote: 'Zero drama, pure fun & late night gaming banter 🕹️',
+    promptAction: 'Challenge to Arcade 🎯',
+    actionToast: 'challenges you to a friendly game duel! 🎮🏆',
+    particleType: 'stars',
     primaryColor: '#06b6d4',
-    glowColor: 'rgba(6, 182, 212, 0.4)',
+    glowColor: 'rgba(6, 182, 212, 0.45)',
     tagColor: 'from-cyan-500 via-teal-400 to-blue-500',
     borderClass: 'border-cyan-500/40 hover:border-cyan-500',
     bgBadge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
-    gradientBg: 'from-cyan-600/20 via-blue-600/10 to-transparent',
+    gradientBg: 'from-cyan-600/25 via-teal-600/15 to-transparent',
+  },
+  sad: {
+    id: 'sad',
+    label: 'Sad',
+    emoji: '🌧️',
+    subLabel: 'Feeling low — needs listening, warmth & comfort',
+    vibe: 'Gentle Blue Rain & Soft Silence. Needs Your Comfort',
+    quote: 'Feeling a bit low today. Please listen & stay close 💙',
+    promptAction: 'Send Warm Hug & Tea ☕🧸',
+    actionToast: 'wrapped you in a cozy warm blanket & sweet tea ☕🧸',
+    particleType: 'rain',
+    primaryColor: '#3b82f6',
+    glowColor: 'rgba(59, 130, 246, 0.45)',
+    tagColor: 'from-blue-500 via-indigo-400 to-sky-500',
+    borderClass: 'border-blue-500/40 hover:border-blue-500',
+    bgBadge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    gradientBg: 'from-blue-600/25 via-indigo-600/15 to-transparent',
+  },
+  horny: {
+    id: 'horny',
+    label: 'Spicy',
+    emoji: '✨',
+    subLabel: 'Romantic late-night vibe',
+    vibe: 'Late night warmth',
+    quote: 'Sweet late night vibe',
+    promptAction: 'Send Hug 🫂',
+    actionToast: 'sent love!',
+    particleType: 'hearts',
+    primaryColor: '#d946ef',
+    glowColor: 'rgba(217, 70, 239, 0.4)',
+    tagColor: 'from-fuchsia-500 via-purple-500 to-pink-500',
+    borderClass: 'border-fuchsia-500/40 hover:border-fuchsia-500',
+    bgBadge: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40',
+    gradientBg: 'from-fuchsia-600/25 via-purple-900/15 to-transparent',
   },
 };
 
@@ -116,7 +163,8 @@ export const useMoodStore = create<MoodStore>((set, get) => ({
         set({ moodTheme: res.data.moodTheme });
         applyMoodToDom(mood);
         const config = MOOD_CONFIG[mood];
-        toast.success(`Mood theme changed to ${config.label}! ✨`);
+        soundService.playMoodTheme(mood);
+        toast.success(`Mood theme set to ${config.label}! ${config.emoji}`);
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to update mood theme');
@@ -129,10 +177,12 @@ export const useMoodStore = create<MoodStore>((set, get) => ({
     if (data?.moodTheme) {
       set({ moodTheme: data.moodTheme });
       applyMoodToDom(data.moodTheme.current);
+      const mood = data.moodTheme.current;
+      soundService.playMoodTheme(mood);
       if (data.changedBy?.displayName) {
-        const config = MOOD_CONFIG[data.moodTheme.current];
-        toast(`Mood changed to ${config?.label || data.moodTheme.current} by ${data.changedBy.displayName}!`, {
-          icon: '✨',
+        const config = MOOD_CONFIG[mood];
+        toast(`Mood theme changed to ${config?.label || mood} ${config?.emoji || ''} by ${data.changedBy.displayName}!`, {
+          icon: config?.emoji || '✨',
         });
       }
     }
