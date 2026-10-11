@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
 import FriendsModal from '../../../components/FriendsModal';
-import WeeklyMemoryWall from '../../../components/WeeklyMemoryWall';
 
 const CUTE_AVATARS = [
   { id: 'cat', emoji: '🐱', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Angel&backgroundColor=ffb6c1', name: 'Pink Bot' },
@@ -607,9 +606,6 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-
-      {/* Weekly Memory Wall - Capture highlights every week */}
-      <WeeklyMemoryWall />
 
       {/* Widgets Grid - 4 Interactive Cards with Tactile Action Buttons */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
