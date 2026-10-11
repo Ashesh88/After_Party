@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../lib/store/authStore';
 import { useSocketStore } from '../../../lib/store/socketStore';
+import { useCallStore } from '../../../lib/store/callStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -12,9 +13,10 @@ import {
   Target, MapPin, CalendarHeart, User, ArrowRight,
   KeyRound, Copy, Check, Users,
   Flame, Heart, AlertCircle, Palette, ShieldCheck, CloudRain,
-  Calendar, Clock, Edit2, Plus, PartyPopper
+  Calendar, Clock, Edit2, Plus, PartyPopper, MessageCircleHeart, Phone, Video
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
+import { MoodType } from '../../../lib/types';
 import FriendsModal from '../../../components/FriendsModal';
 
 const CUTE_AVATARS = [
@@ -36,6 +38,8 @@ export default function DashboardPage() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [room, setRoom] = useState<any>(null);
+  const [partner, setPartner] = useState<any>(null);
+  const [partnerOnline, setPartnerOnline] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedMyId, setCopiedMyId] = useState(false);
   const [inviteInput, setInviteInput] = useState('');
@@ -81,7 +85,9 @@ export default function DashboardPage() {
   const setAuthRoom = useAuthStore((state: any) => state.setRoom);
   const socket = useSocketStore((state: any) => state.socket);
   const { moodTheme, openModal: openMoodModal } = useMoodStore();
-  const currentMoodConfig = MOOD_CONFIG[moodTheme.current] || MOOD_CONFIG.love;
+  const activeMood: MoodType = moodTheme?.current || 'love';
+  const currentMoodConfig = MOOD_CONFIG[activeMood] || MOOD_CONFIG.love;
+  const startCall = useCallStore((state: any) => state.startCall);
 
   const fetchRoom = async () => {
     try {
@@ -89,6 +95,14 @@ export default function DashboardPage() {
       const r = res.data.room;
       setRoom(r);
       setAuthRoom(r);
+
+      // Find partner
+      const members = r?.members || [];
+      const other = members.find((m: any) => m._id !== user?._id);
+      if (other) {
+        setPartner(other);
+      }
+
       if (r?.plannedEvent) {
         if (r.plannedEvent.title) setEventTitle(r.plannedEvent.title);
         if (r.plannedEvent.targetDate) {
@@ -100,12 +114,39 @@ export default function DashboardPage() {
     } catch {
       setRoom(null);
       setAuthRoom(null);
+      setPartner(null);
     }
   };
 
   useEffect(() => {
     fetchRoom();
-  }, []);
+  }, [user?._id]);
+
+  // Query live partner presence
+  useEffect(() => {
+    if (!socket || !partner?._id) return;
+
+    socket.emit('presence:query', [partner._id], (statusMap: Record<string, any>) => {
+      if (statusMap && statusMap[partner._id]) {
+        setPartnerOnline(Boolean(statusMap[partner._id].online));
+      }
+    });
+
+    const handleOnline = (data: { userId: string }) => {
+      if (data?.userId === partner._id) setPartnerOnline(true);
+    };
+    const handleOffline = (data: { userId: string }) => {
+      if (data?.userId === partner._id) setPartnerOnline(false);
+    };
+
+    socket.on('presence:online', handleOnline);
+    socket.on('presence:offline', handleOffline);
+
+    return () => {
+      socket.off('presence:online', handleOnline);
+      socket.off('presence:offline', handleOffline);
+    };
+  }, [socket, partner?._id]);
 
   // Listen for room changes
   useEffect(() => {
@@ -478,239 +519,183 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Mood Theme Card - Tactile & Interactive */}
-      <div 
-        onClick={openMoodModal}
-        className="relative p-4 sm:p-5 rounded-[28px] glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.008] active:scale-[0.99] overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
-        style={{
-          borderColor: `${currentMoodConfig.primaryColor}45`,
-          background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}18 0%, rgba(255, 255, 255, 0.02) 100%)`
-        }}
-      >
-        <div className="relative z-10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            <div 
-              className="w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] group-hover:scale-105 transition-transform shrink-0 relative overflow-hidden"
-              style={{
-                backgroundColor: `${currentMoodConfig.primaryColor}25`,
-                borderColor: `${currentMoodConfig.primaryColor}60`,
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              {moodTheme.current === 'love' && <Heart size={22} className="text-pink-400 fill-pink-400/20" />}
-              {moodTheme.current === 'angry' && <Flame size={22} className="text-rose-400 fill-rose-400/20" />}
-              {moodTheme.current === 'just_friends' && <Users size={22} className="text-cyan-400" />}
-              {moodTheme.current === 'sad' && <CloudRain size={22} className="text-blue-400 fill-blue-400/20" />}
-              {moodTheme.current === 'horny' && <Flame size={22} className="text-fuchsia-400 fill-fuchsia-400/20" />}
+      {/* Luxury Couple Hero Card (Partner Centerstage) */}
+      <div className="relative p-6 sm:p-7 rounded-[32px] glass-panel border border-pink-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.18)] bg-gradient-to-b from-[#140b1e]/90 via-[#0e0717]/95 to-[#08030d] overflow-hidden group">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-pink-500/20 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          {/* Partner Identity & Online Presence */}
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-[2.5px] bg-gradient-to-tr from-pink-500 via-rose-400 to-purple-600 shadow-[0_0_30px_rgba(244,63,142,0.45)] shrink-0">
+              <div className="w-full h-full rounded-full bg-[#0d0d18] overflow-hidden flex items-center justify-center font-bold text-white text-xl">
+                {partner?.avatar ? (
+                  <img src={partner.avatar} alt="partner" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{partner?.displayName?.charAt(0)?.toUpperCase() || 'P'}</span>
+                )}
+              </div>
+              <span
+                className={`absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border-2 border-[#0d0d18] ${
+                  partnerOnline ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-slate-500'
+                }`}
+              />
             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Mood Theme
-                </span>
-                <span 
-                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider flex items-center gap-1 shadow-sm"
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-black text-white truncate">
+                  {partner?.displayName || (room ? 'Partner' : 'No Partner Connected')}
+                </h2>
+                <button
+                  onClick={openMoodModal}
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all hover:scale-105"
                   style={{
                     backgroundColor: `${currentMoodConfig.primaryColor}25`,
                     color: currentMoodConfig.primaryColor,
                     borderColor: `${currentMoodConfig.primaryColor}50`,
                   }}
+                  title="Change Mood Theme"
                 >
+                  <Sparkles size={11} />
                   <span>{currentMoodConfig.label}</span>
-                </span>
+                </button>
               </div>
 
-              <div className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
-                <span className="italic text-white/95 font-semibold">"{currentMoodConfig.quote}"</span>
-                <span className="text-slate-500">•</span>
-                <span>By <strong className="text-white">{moodTheme.updatedByName || 'Partner'}</strong> ({formatRelativeTime(moodTheme.updatedAt)})</span>
+              <div className="flex items-center gap-2 text-xs font-medium">
+                {partnerOnline ? (
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span>Active now</span>
+                  </span>
+                ) : (
+                  <span className="text-slate-400">
+                    {partner ? 'Offline' : 'Invite your partner with room code'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              openMoodModal();
-            }}
-            className="px-4 py-2 rounded-xl text-xs font-black tracking-wide text-white transition-all shadow-[0_4px_18px_rgba(244,63,142,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:brightness-110 active:scale-95 flex items-center gap-2 cursor-pointer shrink-0"
-          >
-            <Palette size={14} className="text-white" />
-            <span>Customize</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Hero Countdown / Next Date Card - Sculpted Airport Flip-Clock Capsules */}
-      <div className="relative p-5 sm:p-6 md:p-7 rounded-[32px] overflow-hidden glass-panel border border-pink-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] group bg-gradient-to-b from-[#140b1e]/90 via-[#0e0717]/95 to-[#08030d]">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-pink-500/20 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 flex justify-between items-start gap-3 mb-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-500/25 text-pink-300 border border-pink-400/40 shadow-sm">
-                <CalendarHeart size={13} className="text-pink-300" />
-                <span>Next Planned Date</span>
-              </span>
-              {timeLeft.displayTarget && (
-                <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1 bg-white/[0.04] px-2.5 py-0.5 rounded-full border border-white/10">
-                  <Clock size={12} className="text-amber-400" />
-                  <span>{timeLeft.displayTarget}</span>
-                </span>
-              )}
-            </div>
-            <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white break-words line-clamp-2 drop-shadow-md">
-              {room?.plannedEvent?.title || eventTitle}
-            </h3>
-          </div>
-
-          <button
-            onClick={() => setShowEventModal(true)}
-            title="Edit Date, Time & Title"
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500/25 to-purple-500/25 hover:from-pink-500 hover:to-purple-600 border border-pink-400/40 text-pink-200 hover:text-white text-xs font-bold transition-all shadow-[0_4px_15px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0"
-          >
-            <Edit2 size={13} />
-            <span>Edit Event</span>
-          </button>
-        </div>
-
-        {timeLeft.isPast ? (
-          <div className="py-4 px-3 rounded-2xl bg-gradient-to-r from-pink-500/25 via-purple-500/25 to-pink-500/25 border border-pink-500/40 text-center animate-pulse shadow-lg">
-            <div className="flex items-center justify-center gap-2 text-pink-200 font-black text-sm sm:text-base">
-              <PartyPopper size={20} />
-              <span>It's Date Time! Enjoy your special moment together 🥂✨</span>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-4.5 pt-1 text-center">
-            {[
-              { val: timeLeft.days, label: 'Days' },
-              { val: timeLeft.hours, label: 'Hours' },
-              { val: timeLeft.mins, label: 'Mins' },
-              { val: timeLeft.secs, label: 'Secs' },
-            ].map((item, idx) => (
-              <div 
-                key={idx} 
-                className="relative p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-black/50 border border-white/[0.14] shadow-[0_12px_30px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.25)] overflow-hidden group"
+          {/* Quick Instant Call Triggers */}
+          {partner && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => startCall(socket, 'audio', partner, user)}
+                className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all shadow-md active:scale-95"
+                title="Voice Call Partner"
               >
-                <div className="text-2xl sm:text-4xl md:text-5xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-400 drop-shadow-[0_4px_10px_rgba(0,0,0,0.95)]">
-                  {item.val}
-                </div>
-                <div className="text-[9px] sm:text-[11px] font-black tracking-widest uppercase text-pink-300 mt-1">
-                  {item.label}
-                </div>
-              </div>
-            ))}
+                <Phone size={17} />
+              </button>
+              <button
+                onClick={() => startCall(socket, 'video', partner, user)}
+                className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/30 text-purple-400 flex items-center justify-center transition-all shadow-md active:scale-95"
+                title="Video Call Partner"
+              >
+                <Video size={17} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Sculpted Sleek Single-Line Countdown Pill */}
+        <div 
+          onClick={() => setShowEventModal(true)}
+          className="mt-5 p-3 sm:px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 flex items-center justify-between gap-3 cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 shrink-0">
+              <CalendarHeart size={16} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-bold text-white truncate block">
+                {room?.plannedEvent?.title || eventTitle}
+              </span>
+              <span className="text-[10px] text-pink-400 font-mono font-semibold">
+                {timeLeft.isPast ? "Event is Happening Now!" : `${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.mins}m remaining`}
+              </span>
+            </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 group-hover:text-pink-300 transition-colors shrink-0">
+            <span>Edit</span>
+            <Edit2 size={12} />
+          </div>
+        </div>
       </div>
 
-      {/* Widgets Grid - 4 Interactive Cards with Tactile Action Buttons */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
-        
-        {/* Watch Together */}
-        <Link 
-          href="/watch" 
-          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-pink-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
+      {/* Sexy 2x2 Clean Action Grid (Mockup Match) */}
+      <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:gap-5">
+        {/* Card 1: Chat */}
+        <Link
+          href="/chat"
+          className="relative p-5 sm:p-6 rounded-[28px] glass-panel hover:border-pink-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015] bg-[#0e0e1a]/80"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="flex justify-between items-start mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-pink-500/25 to-pink-500/10 border border-pink-400/40 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(244,63,142,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
-                <Clapperboard size={22} />
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                4K SYNC
-              </span>
+            <div className="w-12 h-12 rounded-2xl bg-pink-500/15 border border-pink-400/40 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(244,63,142,0.35)] mb-3">
+              <MessageCircleHeart size={22} />
             </div>
-            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-pink-200 transition-colors">Watch Together</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Synced YouTube & Movies</p>
+            <h3 className="font-extrabold text-white text-base sm:text-lg group-hover:text-pink-200 transition-colors">Chat</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Whispers & Voice Notes</p>
           </div>
-          
-          {/* Tactile Button Pill */}
-          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-rose-600 border border-white/10 group-hover:border-pink-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-            <span>Stream Now</span>
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-rose-600 border border-white/10 text-xs font-bold text-white transition-all flex items-center justify-between">
+            <span>Open Chat</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
 
-        {/* Couples Arcade */}
-        <Link 
-          href="/games" 
-          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-purple-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
+        {/* Card 2: Arcade Games */}
+        <Link
+          href="/games"
+          className="relative p-5 sm:p-6 rounded-[28px] glass-panel hover:border-purple-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015] bg-[#0e0e1a]/80"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="flex justify-between items-start mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-purple-500/25 to-purple-500/10 border border-purple-400/40 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(147,51,234,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
-                <Gamepad2 size={22} />
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                8+ GAMES
-              </span>
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(147,51,234,0.35)] mb-3">
+              <Gamepad2 size={22} />
             </div>
-            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-purple-200 transition-colors">Couples Arcade</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Chess, Pool, Ludo & Uno</p>
+            <h3 className="font-extrabold text-white text-base sm:text-lg group-hover:text-purple-200 transition-colors">Arcade Games</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Chess, Pool, Carrom & Ludo</p>
           </div>
-          
-          {/* Tactile Button Pill */}
-          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-500 border border-white/10 group-hover:border-purple-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-500 border border-white/10 text-xs font-bold text-white transition-all flex items-center justify-between">
             <span>Play Games</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
 
-        {/* Shared Goals */}
-        <Link 
-          href="/goals" 
-          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-emerald-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
+        {/* Card 3: Watch Party */}
+        <Link
+          href="/watch"
+          className="relative p-5 sm:p-6 rounded-[28px] glass-panel hover:border-pink-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015] bg-[#0e0e1a]/80"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="flex justify-between items-start mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
-                <Target size={22} />
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                70% DONE
-              </span>
+            <div className="w-12 h-12 rounded-2xl bg-pink-500/15 border border-pink-400/40 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(244,63,142,0.35)] mb-3">
+              <Clapperboard size={22} />
             </div>
-            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-emerald-200 transition-colors">Shared Goals</h3>
-            <div className="w-full h-2 bg-white/[0.08] rounded-full mt-2 overflow-hidden p-0.5 border border-white/5">
-              <div className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-emerald-400 rounded-full w-[70%] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-            </div>
+            <h3 className="font-extrabold text-white text-base sm:text-lg group-hover:text-pink-200 transition-colors">Watch Party</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Synced YouTube & Movies</p>
           </div>
-          
-          {/* Tactile Button Pill */}
-          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-emerald-500 group-hover:to-teal-600 border border-white/10 group-hover:border-emerald-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-            <span>View Goals</span>
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-rose-600 border border-white/10 text-xs font-bold text-white transition-all flex items-center justify-between">
+            <span>Watch Together</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
 
-        {/* Real-time Map */}
-        <Link 
-          href="/map" 
-          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-blue-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
+        {/* Card 4: Live Radar Map */}
+        <Link
+          href="/map"
+          className="relative p-5 sm:p-6 rounded-[28px] glass-panel hover:border-emerald-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015] bg-[#0e0e1a]/80"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="flex justify-between items-start mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500/25 to-blue-500/10 border border-blue-400/40 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(59,130,246,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
-                <MapPin size={22} />
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                LIVE GPS
-              </span>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.35)] mb-3">
+              <MapPin size={22} />
             </div>
-            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-blue-200 transition-colors">Real-time Map</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Distance & Live Radar</p>
+            <h3 className="font-extrabold text-white text-base sm:text-lg group-hover:text-emerald-200 transition-colors">Live Radar Map</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Proximity GPS & Distance</p>
           </div>
-          
-          {/* Tactile Button Pill */}
-          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-cyan-500 border border-white/10 group-hover:border-blue-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-emerald-500 group-hover:to-teal-600 border border-white/10 text-xs font-bold text-white transition-all flex items-center justify-between">
             <span>Explore Map</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
