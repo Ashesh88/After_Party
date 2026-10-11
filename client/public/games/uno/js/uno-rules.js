@@ -3,11 +3,11 @@
 
 const UNO_COLORS = ['red', 'blue', 'green', 'yellow'];
 const UNO_COLOR_HEX = {
-    red: 0xef4444,
-    blue: 0x3b82f6,
-    green: 0x10b981,
-    yellow: 0xf59e0b,
-    wild: 0x8b5cf6
+    red: 0xb91c1c,
+    blue: 0x1d4ed8,
+    green: 0x047857,
+    yellow: 0xd97706,
+    wild: 0x7c3aed
 };
 
 class UnoCard {

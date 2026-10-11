@@ -34,15 +34,16 @@ class Uno3DGame {
 
         // Interactive States
         this.hoveredCardMesh = null;
-        this.animatingCards = []; // Active tween animations
+        this.animatingCards = [];
         this.isProcessingMove = false;
         this.selectedWildCardId = null;
+        this.tiltStep = 0;
 
-        // Camera presets
+        // Camera presets (Constrained to player side)
         this.cameraModes = {
-            orbit: { pos: new THREE.Vector3(0, 9.2, 7.8), target: new THREE.Vector3(0, -0.4, 0.2) },
-            hand: { pos: new THREE.Vector3(0, 7.2, 6.0), target: new THREE.Vector3(0, -0.5, 0.4) },
-            top: { pos: new THREE.Vector3(0, 12.5, 1.2), target: new THREE.Vector3(0, 0, 0) }
+            orbit: { pos: new THREE.Vector3(0, 9.0, 7.6), target: new THREE.Vector3(0, -0.4, 0.2) },
+            hand: { pos: new THREE.Vector3(0, 7.2, 5.8), target: new THREE.Vector3(0, -0.5, 0.4) },
+            top: { pos: new THREE.Vector3(0, 12.0, 1.2), target: new THREE.Vector3(0, 0, 0) }
         };
         this.currentViewMode = 'orbit';
 
@@ -64,13 +65,19 @@ class Uno3DGame {
         this.rules.startNewGame();
         this.syncCards3D();
 
+        // If game started with bot turn (e.g. Reverse/Skip start)
+        if (this.rules.currentPlayer === 1 && this.mode === 'ai') {
+            setTimeout(() => this.checkBotTurn(), 800);
+        }
+
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
     }
 
     initThree() {
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.FogExp2(0x080914, 0.022);
+        // Warm mahogany / dark walnut background & fog
+        this.scene.fog = new THREE.FogExp2(0x0c0807, 0.022);
 
         this.camera = new THREE.PerspectiveCamera(
             window.innerWidth < 650 ? 54 : 45,
@@ -85,70 +92,72 @@ class Uno3DGame {
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.setClearColor(0x080914);
+        this.renderer.setClearColor(0x0c0807);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        // Soft warm diffuse ambient lighting without harsh white hotspots
+        const ambientLight = new THREE.AmbientLight(0xfff7ed, 0.95);
         this.scene.add(ambientLight);
 
-        const spotLight = new THREE.SpotLight(0xffffff, 1.4);
+        // Gentle warm overhead table spotlight
+        const spotLight = new THREE.SpotLight(0xffedd5, 0.65);
         spotLight.position.set(0, 14, 2);
         spotLight.angle = Math.PI / 3;
-        spotLight.penumbra = 0.5;
+        spotLight.penumbra = 0.6;
         spotLight.castShadow = true;
         spotLight.shadow.mapSize.width = 1024;
         spotLight.shadow.mapSize.height = 1024;
         this.scene.add(spotLight);
 
-        // OrbitControls for smooth background 3D table inspection
+        // OrbitControls strictly bounded so player cannot orbit behind opponent
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.08;
-        this.controls.maxPolarAngle = Math.PI / 2.15;
-        this.controls.minDistance = 5.0;
-        this.controls.maxDistance = 16.0;
+        this.controls.minAzimuthAngle = -Math.PI / 4.5; // Max 40 deg left
+        this.controls.maxAzimuthAngle = Math.PI / 4.5;  // Max 40 deg right
+        this.controls.minPolarAngle = Math.PI / 5;      // 36 deg from top
+        this.controls.maxPolarAngle = Math.PI / 2.3;    // 78 deg from top (never flips under table)
+        this.controls.minDistance = 5.2;
+        this.controls.maxDistance = 14.0;
         this.controls.target.copy(preset.target);
     }
 
     initTable() {
-        // Luxury Modern Gaming Table
+        // Luxury Walnut & Mahogany Brown Gaming Table
         this.tableGroup = new THREE.Group();
 
-        // 1. Table Felt Top (Rich midnight indigo table surface)
+        // 1. Table Felt Top (Rich warm walnut / dark cognac brown)
         const tableGeo = new THREE.CylinderGeometry(6.6, 6.6, 0.35, 64);
         const tableMat = new THREE.MeshStandardMaterial({
-            color: 0x11162b,
-            roughness: 0.75,
-            metalness: 0.1
+            color: 0x3d2011, // Rich Warm Walnut Brown
+            roughness: 0.85,
+            metalness: 0.05
         });
         const tableMesh = new THREE.Mesh(tableGeo, tableMat);
         tableMesh.position.y = -0.175;
         tableMesh.receiveShadow = true;
         this.tableGroup.add(tableMesh);
 
-        // 2. Glowing Neon Border Rim
-        const rimGeo = new THREE.TorusGeometry(6.7, 0.18, 16, 64);
+        // 2. Polished Deep Sheesham Wood Rim
+        const rimGeo = new THREE.TorusGeometry(6.7, 0.20, 16, 64);
         const rimMat = new THREE.MeshStandardMaterial({
-            color: 0x312e81,
-            emissive: 0x4338ca,
-            emissiveIntensity: 0.5,
-            roughness: 0.3,
-            metalness: 0.4
+            color: 0x221008, // Dark Sheesham Wood
+            roughness: 0.35,
+            metalness: 0.2
         });
         const rimMesh = new THREE.Mesh(rimGeo, rimMat);
         rimMesh.rotation.x = Math.PI / 2;
         rimMesh.position.y = 0.02;
         this.tableGroup.add(rimMesh);
 
-        // 3. Central Playfield Mat
+        // 3. Central Playfield Mat (Saddle Leather Brown)
         const playMatGeo = new THREE.CircleGeometry(3.6, 48);
         const playMatMat = new THREE.MeshStandardMaterial({
-            color: 0x181e38,
-            roughness: 0.85,
-            metalness: 0.05
+            color: 0x26140b, // Deep saddle brown leather mat
+            roughness: 0.9,
+            metalness: 0.02
         });
         const playMat = new THREE.Mesh(playMatGeo, playMatMat);
         playMat.rotation.x = -Math.PI / 2;
@@ -159,10 +168,10 @@ class Uno3DGame {
         // 4. Direction & Active Color Aura Ring
         const ringGeo = new THREE.RingGeometry(1.65, 1.85, 48);
         const ringMat = new THREE.MeshBasicMaterial({
-            color: 0xef4444,
+            color: 0xd97706,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.75
+            opacity: 0.65
         });
         this.colorGlowMesh = new THREE.Mesh(ringGeo, ringMat);
         this.colorGlowMesh.rotation.x = -Math.PI / 2;
@@ -202,7 +211,7 @@ class Uno3DGame {
         document.getElementById('btn-view-orbit')?.addEventListener('click', () => this.switchView('orbit'));
         document.getElementById('btn-view-hand')?.addEventListener('click', () => this.switchView('hand'));
         document.getElementById('btn-view-top')?.addEventListener('click', () => this.switchView('top'));
-        document.getElementById('btn-rotate-board')?.addEventListener('click', () => this.rotateViewAngle(Math.PI / 4));
+        document.getElementById('btn-rotate-board')?.addEventListener('click', () => this.rotateViewAngle());
         document.getElementById('btn-chat-toggle')?.addEventListener('click', () => {
             window.parent?.postMessage({ type: 'OPEN_CHAT_MODAL' }, '*');
         });
@@ -275,22 +284,23 @@ class Uno3DGame {
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-view-${mode}`)?.classList.add('active');
 
-        // Smooth camera tween
-        this.tweenCamera(preset.pos, preset.target, 550);
+        this.tweenCamera(preset.pos, preset.target, 500);
     }
 
-    rotateViewAngle(deltaAngle) {
-        const offset = this.camera.position.clone().sub(this.controls.target);
-        const radius = Math.sqrt(offset.x * offset.x + offset.z * offset.z);
-        const currentAngle = Math.atan2(offset.z, offset.x);
-        const targetAngle = currentAngle + deltaAngle;
+    // Dynamic tilt angle: toggles gently between center, left-angle, right-angle
+    // NEVER orbits 180 degrees behind opponent
+    rotateViewAngle() {
+        this.tiltStep = ((this.tiltStep || 0) + 1) % 3;
+        const angles = [0, -0.32, 0.32]; // 0, -18 deg, +18 deg
+        const targetAngle = angles[this.tiltStep];
 
+        const radius = 9.4;
         const targetPos = new THREE.Vector3(
-            Math.cos(targetAngle) * radius,
-            this.camera.position.y,
-            Math.sin(targetAngle) * radius
+            Math.sin(targetAngle) * radius,
+            8.6,
+            Math.cos(targetAngle) * radius
         );
-        this.tweenCamera(targetPos, this.controls.target, 400);
+        this.tweenCamera(targetPos, this.controls.target, 450);
     }
 
     tweenCamera(targetPos, targetLookAt, duration = 500) {
@@ -337,14 +347,12 @@ class Uno3DGame {
             if (this.hoveredCardMesh !== hitMesh) {
                 this.resetCardHover();
                 this.hoveredCardMesh = hitMesh;
-                // Lift card up on hover
-                hitMesh.position.y = (hitMesh.userData.baseY || 0) + 0.35;
-                hitMesh.position.z = (hitMesh.userData.baseZ || 0) + 0.2;
+                hitMesh.position.y = (hitMesh.userData.baseY || 0) + 0.32;
+                hitMesh.position.z = (hitMesh.userData.baseZ || 0) + 0.18;
                 document.body.style.cursor = 'pointer';
             }
         } else {
             this.resetCardHover();
-            // Check draw pile hover
             const drawIntersects = this.raycaster.intersectObjects(this.drawPileMeshes, false);
             if (drawIntersects.length > 0 && this.rules.currentPlayer === 0) {
                 document.body.style.cursor = 'pointer';
@@ -363,7 +371,8 @@ class Uno3DGame {
     }
 
     onPointerDown(e) {
-        if (e.button !== 0) return; // Left click only
+        // Support both mouse click (button 0) and touch tap
+        if (e.button !== undefined && e.button !== 0) return;
         if (this.isProcessingMove) return;
         if (this.rules.isGameOver) return;
 
@@ -375,7 +384,7 @@ class Uno3DGame {
 
         // 1. Check player hand clicks
         const cardIntersects = this.raycaster.intersectObjects(this.playerCardMeshes, false);
-        if (cardIntersects.length > 0 && this.rules.currentPlayer === 0) {
+        if (cardIntersects.length > 0) {
             const mesh = cardIntersects[0].object;
             const card = mesh.userData.card;
             if (card) {
@@ -407,10 +416,10 @@ class Uno3DGame {
         this.drawPileMeshes = [];
         this.discardMeshes = [];
 
-        // 1. Draw Pile (left stack: x = -1.3, z = 0)
+        // 1. Draw Pile (left stack: x = -1.25, z = 0)
         const drawStackCount = Math.min(Math.max(this.rules.deck.length, 3), 14);
         for (let i = 0; i < drawStackCount; i++) {
-            const mesh = this.textureFactory.createCardMesh(new UnoCard('deck', 'wild', 'wild'));
+            const mesh = this.textureFactory.createCardMesh(new UnoCard('deck', 'wild', 'wild'), true);
             mesh.rotation.x = Math.PI / 2; // Flat face-down
             mesh.rotation.y = 0;
             mesh.rotation.z = (Math.random() - 0.5) * 0.05;
@@ -425,7 +434,7 @@ class Uno3DGame {
             const discardCount = Math.min(this.rules.discardPile.length, 5);
             for (let i = 0; i < discardCount; i++) {
                 const card = (i === discardCount - 1) ? topCard : this.rules.discardPile[this.rules.discardPile.length - discardCount + i] || topCard;
-                const mesh = this.textureFactory.createCardMesh(card);
+                const mesh = this.textureFactory.createCardMesh(card, false);
                 mesh.rotation.x = -Math.PI / 2; // Flat face-up
                 mesh.rotation.z = ((i * 19) % 30 - 15) * Math.PI / 180;
                 mesh.position.set(1.25, 0.02 + i * 0.022, 0);
@@ -441,29 +450,36 @@ class Uno3DGame {
         const cardSpacing = Math.min(3.8 / Math.max(count, 5), 0.72);
 
         p1Cards.forEach((card, i) => {
-            const mesh = this.textureFactory.createCardMesh(card);
+            const mesh = this.textureFactory.createCardMesh(card, false);
             const centerOffset = i - (count - 1) / 2;
             const x = centerOffset * cardSpacing;
-            const y = 0.5 - Math.abs(centerOffset) * 0.04;
+            let y = 0.5 - Math.abs(centerOffset) * 0.04;
             const z = 3.65 - Math.abs(centerOffset) * 0.07;
             const rotZ = -centerOffset * (maxFanAngle / Math.max(count, 1));
 
+            // Elevate playable cards slightly (+0.18 units) so player instantly knows valid cards
+            const isPlayable = this.rules.isCardPlayable(card) && (this.rules.currentPlayer === 0);
+            if (isPlayable) {
+                y += 0.18;
+            }
+
             mesh.position.set(x, y, z);
-            mesh.rotation.set(-0.38, 0, rotZ); // Slightly tilted up towards camera
+            mesh.rotation.set(-0.38, 0, rotZ);
             mesh.userData.baseY = y;
             mesh.userData.baseZ = z;
+            mesh.userData.isPlayable = isPlayable;
 
             this.scene.add(mesh);
             this.playerCardMeshes.push(mesh);
         });
 
-        // 4. Opponent Hand (Top Arc - Face Down)
+        // 4. Opponent Hand (Always faces with back texture on both sides! Secrets guaranteed 100%)
         const p2Cards = this.rules.playersHands[1] || [];
         const oppCount = p2Cards.length;
         const oppSpacing = Math.min(3.4 / Math.max(oppCount, 5), 0.65);
 
         p2Cards.forEach((card, i) => {
-            const mesh = this.textureFactory.createCardMesh(card);
+            const mesh = this.textureFactory.createCardMesh(card, true); // isOpponent = true
             const centerOffset = i - (oppCount - 1) / 2;
             const x = centerOffset * oppSpacing;
             const y = 0.5 - Math.abs(centerOffset) * 0.03;
@@ -471,14 +487,14 @@ class Uno3DGame {
             const rotZ = centerOffset * 0.04;
 
             mesh.position.set(x, y, z);
-            mesh.rotation.set(Math.PI - 0.35, 0, rotZ); // Facing towards table / away from user
+            mesh.rotation.set(Math.PI - 0.35, 0, rotZ);
             this.scene.add(mesh);
             this.opponentCardMeshes.push(mesh);
         });
 
         // 5. Update Center Aura Ring Color
         if (this.colorGlowMesh && this.rules.activeColor) {
-            const hex = UNO_COLOR_HEX[this.rules.activeColor] || 0xef4444;
+            const hex = UNO_COLOR_HEX[this.rules.activeColor] || 0xb91c1c;
             this.colorGlowMesh.material.color.setHex(hex);
         }
     }
@@ -487,10 +503,18 @@ class Uno3DGame {
     // PLAYER ACTIONS
     // -------------------------------------------------------------
     handlePlayerPlayCard(card) {
+        if (this.rules.currentPlayer !== 0) {
+            this.updateBanner('Wait for your turn! Uno Bot is playing.');
+            return;
+        }
+
         if (!this.rules.isCardPlayable(card)) {
             this.audio.playPenalty();
             this.wiggleCardRefusal(card.id);
-            this.updateBanner('Card must match active color or number!');
+            const top = this.rules.getTopCard();
+            const colorName = (this.rules.activeColor || '').toUpperCase();
+            const valName = top ? top.getLabel() : '';
+            this.updateBanner(`Cannot play ${card.getLabel()}. Match color ${colorName} or value ${valName}!`);
             return;
         }
 
@@ -521,6 +545,7 @@ class Uno3DGame {
         const result = this.rules.playCard(playerIdx, cardId, chosenColor);
         if (!result.success) {
             this.isProcessingMove = false;
+            this.updateBanner('Cannot play card: ' + result.reason);
             return;
         }
 
@@ -539,12 +564,17 @@ class Uno3DGame {
         // Check if next turn is Bot
         setTimeout(() => {
             this.isProcessingMove = false;
-            this.checkBotTurn();
-        }, 600);
+            if (this.rules.currentPlayer === 1 && this.mode === 'ai') {
+                this.checkBotTurn();
+            }
+        }, 550);
     }
 
     handlePlayerDraw() {
-        if (this.isProcessingMove || this.rules.currentPlayer !== 0) return;
+        if (this.rules.currentPlayer !== 0) {
+            this.updateBanner('Wait for your turn! Uno Bot is thinking.');
+            return;
+        }
 
         this.isProcessingMove = true;
         this.audio.playCardDraw();
@@ -561,11 +591,11 @@ class Uno3DGame {
         }
 
         if (drawRes && drawRes.isPlayable) {
-            this.updateBanner('You drew a playable card! Play it or Pass.');
+            this.updateBanner('You drew a playable card! Click it to play, or tap PASS.');
             this.dom.btnPass.style.display = 'inline-flex';
             this.isProcessingMove = false;
         } else {
-            this.updateBanner('Card drawn was not playable. Turn passes.');
+            this.updateBanner('Card drawn cannot be played. Turn passes to Uno Bot.');
             setTimeout(() => {
                 this.rules.passTurn(0);
                 this.dom.btnPass.style.display = 'none';
@@ -642,9 +672,16 @@ class Uno3DGame {
     // BOT AI TURN EXECUTION
     // -------------------------------------------------------------
     checkBotTurn() {
-        if (this.rules.isGameOver) return;
-        if (this.rules.currentPlayer !== 1 || this.mode !== 'ai') return;
+        if (this.rules.isGameOver) {
+            this.isProcessingMove = false;
+            return;
+        }
+        if (this.rules.currentPlayer !== 1 || this.mode !== 'ai') {
+            this.isProcessingMove = false;
+            return;
+        }
 
+        this.isProcessingMove = true;
         this.updateBanner('Uno Bot is thinking...');
         this.dom.cardP2.classList.add('active-turn');
         this.dom.cardP1.classList.remove('active-turn');
@@ -662,6 +699,13 @@ class Uno3DGame {
                 this.rules.playCard(1, move.card.id, move.chosenColor);
                 this.audio.playCardPlay();
                 this.syncCards3D();
+
+                // If bot played Skip, Reverse (in 2p), Draw 2, or Wild 4, next player is Bot again!
+                if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
+                    setTimeout(() => this.checkBotTurn(), 850);
+                } else {
+                    this.isProcessingMove = false;
+                }
             } else {
                 // Bot draws
                 this.audio.playCardDraw();
@@ -671,12 +715,20 @@ class Uno3DGame {
                 if (drawRes && drawRes.isPlayable) {
                     // Bot plays drawn card
                     setTimeout(() => {
-                        this.rules.playCard(1, drawRes.card.id, 'blue');
+                        const botBest = this.rules.getBestBotMove(1);
+                        this.rules.playCard(1, drawRes.card.id, botBest.chosenColor || 'blue');
                         this.audio.playCardPlay();
                         this.syncCards3D();
-                    }, 500);
+
+                        if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
+                            setTimeout(() => this.checkBotTurn(), 850);
+                        } else {
+                            this.isProcessingMove = false;
+                        }
+                    }, 650);
                 } else {
                     this.rules.passTurn(1);
+                    this.isProcessingMove = false;
                 }
             }
         }, 900);
@@ -721,7 +773,10 @@ class Uno3DGame {
         if (isMyTurn) {
             this.dom.cardP1.classList.add('active-turn');
             this.dom.cardP2.classList.remove('active-turn');
-            this.updateBanner('Your Turn: Select a matching card or draw.');
+            const top = state.topCard;
+            const topVal = top ? top.getLabel() : '';
+            const topCol = (state.activeColor || '').toUpperCase();
+            this.updateBanner(`Your Turn: Play any ${topCol} card, or match ${topVal}, or tap DRAW.`);
         } else {
             this.dom.cardP2.classList.add('active-turn');
             this.dom.cardP1.classList.remove('active-turn');

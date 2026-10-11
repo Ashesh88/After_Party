@@ -7,13 +7,13 @@ class UnoCardTextureFactory {
         this.backTexture = null;
     }
 
-    // Colors matching official palette
+    // Colors matching deep official palette (dark, non-reflective, high contrast)
     getColorHex(colorName) {
         switch (colorName) {
-            case 'red': return '#dc2626';
-            case 'blue': return '#2563eb';
-            case 'green': return '#059669';
-            case 'yellow': return '#eab308';
+            case 'red': return '#b91c1c'; // Deep rich crimson
+            case 'blue': return '#1d4ed8'; // Deep royal cobalt blue
+            case 'green': return '#047857'; // Deep emerald forest green
+            case 'yellow': return '#d97706'; // Rich dark golden amber (never washed out)
             default: return '#18181b';
         }
     }
@@ -146,20 +146,24 @@ class UnoCardTextureFactory {
             this.drawReverseIcon(ctx, 0, 0, 72, baseColor);
         } else if (card.value === 'draw2') {
             ctx.font = 'italic 900 115px "Arial Black", Impact, sans-serif';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText('+2', 4, 10);
+            ctx.fillStyle = baseColor;
             ctx.fillText('+2', 0, 6);
         } else {
             // Number 0-9
             ctx.font = 'italic 900 155px "Arial Black", Impact, sans-serif';
-            // Subtle 3D shadow under number
-            ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.fillText(card.value, 4, 8);
+            // Crisp dark drop shadow under number for maximum readability
+            ctx.fillStyle = (card.color === 'yellow') ? '#78350f' : 'rgba(0,0,0,0.45)';
+            ctx.fillText(card.value, 5, 10);
 
             ctx.fillStyle = baseColor;
             ctx.fillText(card.value, 0, 4);
 
             // Underline for 6 and 9
             if (card.value === '6' || card.value === '9') {
-                ctx.fillRect(-45, 78, 90, 12);
+                ctx.fillStyle = (card.color === 'yellow') ? '#78350f' : baseColor;
+                ctx.fillRect(-45, 78, 90, 14);
             }
         }
 
@@ -174,7 +178,7 @@ class UnoCardTextureFactory {
         // 4-quadrant segmented color wheel in center
         const r = 160;
         const ry = 105;
-        const colors = ['#dc2626', '#2563eb', '#059669', '#eab308'];
+        const colors = ['#b91c1c', '#1d4ed8', '#047857', '#d97706'];
 
         // Red quadrant
         ctx.beginPath();
@@ -334,38 +338,42 @@ class UnoCardTextureFactory {
         ctx.closePath();
     }
 
-    // Create complete 3D Mesh for a Card
-    createCardMesh(card) {
+    // Create complete 3D Mesh for a Card (Matte finish, zero reflective glare)
+    // isOpponent=true guarantees opponent cards ALWAYS display card backs from all angles
+    createCardMesh(card, isOpponent = false) {
         const geom = new THREE.BoxGeometry(1.4, 2.1, 0.02);
 
         const edgeMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.4,
-            metalness: 0.1
+            color: 0xe2e8f0,
+            roughness: 0.9,
+            metalness: 0.0
         });
 
-        const frontTex = this.getFrontTexture(card);
         const backTex = this.getBackTexture();
-
-        const frontMat = new THREE.MeshStandardMaterial({
-            map: frontTex,
-            roughness: 0.3,
-            metalness: 0.08
-        });
-
         const backMat = new THREE.MeshStandardMaterial({
             map: backTex,
-            roughness: 0.3,
-            metalness: 0.08
+            roughness: 0.9, // Pure matte paper finish (no shiny glare)
+            metalness: 0.0
         });
 
+        let frontMat = backMat;
+        if (!isOpponent) {
+            const frontTex = this.getFrontTexture(card);
+            frontMat = new THREE.MeshStandardMaterial({
+                map: frontTex,
+                roughness: 0.9, // Pure matte paper finish (no shiny glare)
+                metalness: 0.0
+            });
+        }
+
         // Box materials: +X, -X, +Y, -Y, +Z (front), -Z (back)
+        // If isOpponent, BOTH front and back faces are backMat!
         const materials = [edgeMat, edgeMat, edgeMat, edgeMat, frontMat, backMat];
 
         const mesh = new THREE.Mesh(geom, materials);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        mesh.userData = { card, isCardMesh: true };
+        mesh.userData = { card, isCardMesh: true, isOpponent };
 
         return mesh;
     }
