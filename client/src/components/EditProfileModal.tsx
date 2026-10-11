@@ -80,23 +80,24 @@ export default function EditProfileModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.92, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.92, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full max-w-md rounded-[32px] glass-panel p-5 sm:p-6 shadow-2xl border border-pink-500/30 overflow-hidden bg-[#0c0d1a]/95 text-slate-100"
+          className="relative w-full max-w-sm sm:max-w-md rounded-[32px] p-5 sm:p-6 shadow-[0_25px_80px_rgba(0,0,0,0.95)] border border-white/20 bg-[#121324] text-slate-100 max-h-[88vh] flex flex-col my-auto"
+          style={{ backgroundColor: '#121324' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-purple-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 shadow-inner">
                 <User size={18} />
               </div>
               <div>
                 <h3 className="font-extrabold text-base text-white tracking-tight">Edit Profile</h3>
-                <p className="text-[11px] text-slate-400">Manage your identity and appearance</p>
+                <p className="text-[11px] text-slate-400">Change name & avatar</p>
               </div>
             </div>
             <button
@@ -107,7 +108,7 @@ export default function EditProfileModal({
             </button>
           </div>
 
-          <form onSubmit={handleSave} className="space-y-4.5 mt-4">
+          <form onSubmit={handleSave} className="space-y-3.5 mt-3.5 overflow-y-auto pr-1 flex-1">
             {/* User ID & Verified Badge Box */}
             <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -211,44 +212,19 @@ export default function EditProfileModal({
               </div>
             </div>
 
-            {/* Quick Mood Theme Switcher shortcut */}
-            {onOpenMoodModal && (
-              <div 
-                onClick={() => {
-                  onClose();
-                  onOpenMoodModal();
-                }}
-                className="p-3 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-transparent border border-purple-500/25 hover:border-pink-500/40 flex items-center justify-between cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div 
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shadow-inner"
-                    style={{ backgroundColor: `${currentMoodConfig.primaryColor}20`, borderColor: `${currentMoodConfig.primaryColor}40` }}
-                  >
-                    <Palette size={15} style={{ color: currentMoodConfig.primaryColor }} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block">Atmosphere Mood Theme</span>
-                    <span className="text-[10px] text-slate-400">Current: {currentMoodConfig.label}</span>
-                  </div>
-                </div>
-                <ChevronRight size={15} className="text-slate-400 group-hover:text-pink-300 group-hover:translate-x-0.5 transition-all" />
-              </div>
-            )}
-
             {/* Actions Buttons */}
-            <div className="flex gap-2.5 pt-2">
+            <div className="flex gap-2.5 pt-3 border-t border-white/[0.08] shrink-0">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 transition-colors cursor-pointer"
+                className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 transition-colors cursor-pointer active:scale-95"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 py-2.5 rounded-xl btn-sexy text-xs font-bold text-white shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                className="flex-1 py-3 rounded-2xl btn-sexy text-xs font-bold text-white shadow-lg disabled:opacity-50 transition-all cursor-pointer active:scale-95"
               >
                 {saving ? 'Saving...' : 'Save Profile'}
               </button>
