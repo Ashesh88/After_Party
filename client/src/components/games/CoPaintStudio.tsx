@@ -292,7 +292,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       sceneryPreset: 'blank', // Default clean blank sheet
       sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
-      frame: 'floral-daisy', // Real vintage daisy photo frame by default
+      frame: 'none', // 100% clean white page with NO frame by default
       canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
@@ -1600,7 +1600,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       sceneryPreset: 'blank',
       sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
-      frame: 'floral-daisy',
+      frame: 'none',
       canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
@@ -1719,10 +1719,19 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   };
 
   const handleSelectFrame = (frame: FrameType) => {
+    const fDef = PHOTO_FRAMES.find((f) => f.key === frame);
+    const targetRatio: CanvasRatio | null =
+      fDef?.orientation === 'landscape' ? '16:9' : fDef?.orientation === 'portrait' ? '3:4' : null;
+
     setPages((prev) => {
       const next = [...prev];
       const page = next[activePageIndex];
-      if (page) page.frame = frame;
+      if (page) {
+        page.frame = frame;
+        if (targetRatio) {
+          page.canvasRatio = targetRatio;
+        }
+      }
       return next;
     });
 
@@ -1732,6 +1741,13 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         actionType: 'set_frame',
         payload: { frame },
       });
+      if (targetRatio) {
+        socket.emit('paint:action', {
+          sessionCode,
+          actionType: 'set_ratio',
+          payload: { canvasRatio: targetRatio },
+        });
+      }
     }
   };
 
@@ -2084,9 +2100,63 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               <img
                 src={FRAME_IMAGE_MAP[currentPage.frame]}
                 alt="Photo Frame"
-                className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none"
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
                 style={{ zIndex: 15 }}
               />
+            )}
+
+            {/* Floating On-Canvas Scenery Quick Resize & Rotate Badge */}
+            {currentPage.sceneryPreset !== 'blank' && (
+              <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/50 backdrop-blur-md px-3 py-1.5 rounded-full shadow-2xl pointer-events-auto">
+                <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider pl-0.5">Scenery:</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustScenery({ scale: Math.max(0.4, (currentPage.sceneryAdjust?.scale ?? 1) - 0.1) });
+                  }}
+                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center transition-all cursor-pointer border border-slate-700"
+                  title="Make Scenery Smaller"
+                >
+                  -
+                </button>
+                <span className="text-[11px] font-mono font-black text-amber-300 px-1 min-w-[36px] text-center">
+                  {Math.round((currentPage.sceneryAdjust?.scale ?? 1) * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustScenery({ scale: Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 1) + 0.1) });
+                  }}
+                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center transition-all cursor-pointer border border-slate-700"
+                  title="Make Scenery Bigger"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustScenery({ rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360) });
+                  }}
+                  className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition-all cursor-pointer border border-slate-700 ml-1"
+                  title="Rotate Scenery Upright"
+                >
+                  Rotate
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustScenery({ scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 });
+                  }}
+                  className="px-2 py-0.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[10px] font-bold text-rose-300 transition-all cursor-pointer border border-rose-500/30 ml-0.5"
+                  title="Reset Scenery Size"
+                >
+                  Reset
+                </button>
+              </div>
             )}
 
             {/* Remote Friend's Cursor Indicator */}
