@@ -17,8 +17,8 @@ class CarromPieces3D {
 
     init() {
         this.textures = {
-            white: this.createPieceTexture('#faf6ee', '#8c7653', 'white'),
-            black: this.createPieceTexture('#201c18', '#63513d', 'black'),
+            white: this.createPieceTexture('#ffffff', '#4a331c', 'white'),
+            black: this.createPieceTexture('#181410', '#63513d', 'black'),
             queen: this.createQueenTexture(),
             striker: this.createStrikerTexture()
         };
@@ -37,29 +37,29 @@ class CarromPieces3D {
 
         // Smooth subtle gradient to give dished 3D curvature
         const grad = ctx.createRadialGradient(half, half, 40, half, half, 250);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
         grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.0)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.22)');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, 512, 512);
 
-        // Outer concentric carved rim groove
+        // Outer crisp bevel ring
         ctx.strokeStyle = grooveColor;
-        ctx.lineWidth = 14;
+        ctx.lineWidth = type === 'white' ? 16 : 14;
         ctx.beginPath();
-        ctx.arc(half, half, 205, 0, Math.PI * 2);
+        ctx.arc(half, half, 215, 0, Math.PI * 2);
         ctx.stroke();
 
         // Second inner carved groove
-        ctx.lineWidth = 10;
+        ctx.lineWidth = type === 'white' ? 12 : 10;
         ctx.beginPath();
-        ctx.arc(half, half, 140, 0, Math.PI * 2);
+        ctx.arc(half, half, 145, 0, Math.PI * 2);
         ctx.stroke();
 
         // Center shallow dimple
         ctx.fillStyle = grooveColor;
         ctx.beginPath();
-        ctx.arc(half, half, 38, 0, Math.PI * 2);
+        ctx.arc(half, half, 40, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = baseColor;
@@ -164,7 +164,7 @@ class CarromPieces3D {
         const geo = new THREE.CylinderGeometry(radius, radius, height, 32);
 
         // Matte non-glare wood and acrylic finishes
-        let sideColor = 0xf0e6d6;
+        let sideColor = type === 'white' ? 0xffffff : 0xf0e6d6;
         let roughness = 0.65;
         let metalness = 0.0;
 

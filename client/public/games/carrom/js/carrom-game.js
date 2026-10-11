@@ -69,23 +69,30 @@ class CarromGame {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
 
-        // OrbitControls
+        // OrbitControls with rock-solid touch stability (just like 8-ball pool)
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-        this.controls.maxPolarAngle = Math.PI / 2.15;
-        this.controls.minDistance = 25;
-        this.controls.maxDistance = 180;
+        this.controls.dampingFactor = 0.08;
+        this.controls.maxPolarAngle = Math.PI / 2.3;
+        this.controls.minPolarAngle = 0.20;
+        this.controls.minDistance = 35;
+        this.controls.maxDistance = 220;
+        this.controls.enablePan = false; // Never drift or slide table off-screen
         this.controls.enabled = false;
-        // Free Left Click for gameplay (aiming and striker movement). Right-click orbits.
+        // Desktop: Right-click orbits camera. Left-click is 100% reserved for striker & aiming
         this.controls.mouseButtons = {
             LEFT: null,
             MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.ROTATE
         };
+        // Mobile / Touchscreens: 1 finger is 100% dedicated to board interactions (striker sliding & aiming). 2 fingers pinch / orbit!
+        this.controls.touches = {
+            ONE: null,
+            TWO: THREE.TOUCH.DOLLY_ROTATE
+        };
 
-        // Glare-Free Warm Diffuse Studio Lighting (Eliminates harsh shiny specular washout)
-        const ambientLight = new THREE.AmbientLight(0xfff7ea, 1.05);
+        // Glare-Free Warm Diffuse Studio Lighting (Balanced levels so white pieces are crisp and never bleached)
+        const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.55);
         this.scene.add(ambientLight);
 
         // Soft main directional light
@@ -98,7 +105,7 @@ class CarromGame {
         this.scene.add(mainLight);
 
         // Soft fill light from opposite side
-        const fillLight = new THREE.DirectionalLight(0xf5ede0, 0.45);
+        const fillLight = new THREE.DirectionalLight(0xf5ede0, 0.35);
         fillLight.position.set(-25, 50, -35);
         this.scene.add(fillLight);
 
@@ -124,99 +131,302 @@ class CarromGame {
     }
 
     createAimGuide() {
-        // Dotted laser line for striker aim
-        const points = [new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0, 0.3, -35)];
-        const geo = new THREE.BufferGeometry().setFromPoints(points);
-        const mat = new THREE.LineDashedMaterial({
+        this.guidelineGroup = new THREE.Group();
+        this.scene.add(this.guidelineGroup);
+
+        // 1. Primary Striker Laser Line (Emerald dotted line to contact point)
+        const primaryPoints = [new THREE.Vector3(0, 0.28, 0), new THREE.Vector3(0, 0.28, -35)];
+        const primaryGeo = new THREE.BufferGeometry().setFromPoints(primaryPoints);
+        const primaryMat = new THREE.LineDashedMaterial({
             color: 0x10b981,
-            dashSize: 1.2,
-            gapSize: 0.8,
+            dashSize: 1.0,
+            gapSize: 0.6,
             linewidth: 2
         });
-        this.aimLine = new THREE.Line(geo, mat);
+        this.aimLine = new THREE.Line(primaryGeo, primaryMat);
         this.aimLine.computeLineDistances();
-        this.aimLine.visible = true;
-        this.scene.add(this.aimLine);
+        this.guidelineGroup.add(this.aimLine);
 
-        // Target Impact Ring
-        const ringGeo = new THREE.RingGeometry(1.2, 1.45, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide });
-        this.targetRing = new THREE.Mesh(ringGeo, ringMat);
-        this.targetRing.rotation.x = Math.PI / 2;
-        this.targetRing.position.y = 0.15;
-        this.targetRing.visible = false;
-        this.scene.add(this.targetRing);
+        // 2. Translucent Ghost Striker at Contact Point (like 8-ball pool ghost cue ball)
+        const ghostOuterGeo = new THREE.RingGeometry(1.6, 1.95, 32);
+        const ghostOuterMat = new THREE.MeshBasicMaterial({
+            color: 0x34d399,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.85
+        });
+        this.ghostStrikerMesh = new THREE.Mesh(ghostOuterGeo, ghostOuterMat);
+        this.ghostStrikerMesh.rotation.x = Math.PI / 2;
+        this.ghostStrikerMesh.position.y = 0.28;
+        this.ghostStrikerMesh.visible = false;
+        this.guidelineGroup.add(this.ghostStrikerMesh);
+
+        const ghostInnerGeo = new THREE.RingGeometry(0.7, 1.0, 32);
+        const ghostInnerMat = new THREE.MeshBasicMaterial({
+            color: 0x34d399,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.65
+        });
+        this.ghostInnerMesh = new THREE.Mesh(ghostInnerGeo, ghostInnerMat);
+        this.ghostInnerMesh.rotation.x = Math.PI / 2;
+        this.ghostInnerMesh.position.y = 0.28;
+        this.ghostInnerMesh.visible = false;
+        this.guidelineGroup.add(this.ghostInnerMesh);
+
+        // 3. Target Piece Predicted Path (Bright amber/gold line showing where struck goti will go)
+        const targetPoints = [new THREE.Vector3(0, 0.28, 0), new THREE.Vector3(0, 0.28, 1)];
+        const targetGeo = new THREE.BufferGeometry().setFromPoints(targetPoints);
+        const targetMat = new THREE.LineDashedMaterial({
+            color: 0xf59e0b,
+            dashSize: 1.0,
+            gapSize: 0.6,
+            linewidth: 2
+        });
+        this.targetPathLine = new THREE.Line(targetGeo, targetMat);
+        this.targetPathLine.visible = false;
+        this.guidelineGroup.add(this.targetPathLine);
+
+        // Target Piece End Ghost Ring
+        const targetRingGeo = new THREE.RingGeometry(1.15, 1.45, 32);
+        const targetRingMat = new THREE.MeshBasicMaterial({
+            color: 0xf59e0b,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.85
+        });
+        this.targetGhostRing = new THREE.Mesh(targetRingGeo, targetRingMat);
+        this.targetGhostRing.rotation.x = Math.PI / 2;
+        this.targetGhostRing.position.y = 0.28;
+        this.targetGhostRing.visible = false;
+        this.guidelineGroup.add(this.targetGhostRing);
+
+        // 4. Striker Tangent Deflection Line (Mint green line showing where striker deflects after impact)
+        const deflectPoints = [new THREE.Vector3(0, 0.28, 0), new THREE.Vector3(0, 0.28, 1)];
+        const deflectGeo = new THREE.BufferGeometry().setFromPoints(deflectPoints);
+        const deflectMat = new THREE.LineDashedMaterial({
+            color: 0x6ee7b7,
+            dashSize: 0.8,
+            gapSize: 0.6,
+            linewidth: 1.5
+        });
+        this.deflectPathLine = new THREE.Line(deflectGeo, deflectMat);
+        this.deflectPathLine.visible = false;
+        this.guidelineGroup.add(this.deflectPathLine);
+
+        // 5. Cushion Frame Wall Rebound Line (For bank shots when aiming towards the border cushion)
+        const cushionPoints = [new THREE.Vector3(0, 0.28, 0), new THREE.Vector3(0, 0.28, 1)];
+        const cushionGeo = new THREE.BufferGeometry().setFromPoints(cushionPoints);
+        const cushionMat = new THREE.LineDashedMaterial({
+            color: 0x10b981,
+            dashSize: 0.8,
+            gapSize: 0.6,
+            linewidth: 1.5
+        });
+        this.cushionBounceLine = new THREE.Line(cushionGeo, cushionMat);
+        this.cushionBounceLine.visible = false;
+        this.guidelineGroup.add(this.cushionBounceLine);
     }
 
     updateAimGuide() {
-        if (!this.aimLine || !this.piecesManager.striker) return;
+        if (!this.guidelineGroup || !this.piecesManager.striker) return;
 
         const striker = this.piecesManager.striker;
         if (striker.isPocketed || this.physics.isTableBusy()) {
-            this.aimLine.visible = false;
-            this.targetRing.visible = false;
+            this.guidelineGroup.visible = false;
             return;
         }
 
-        // Only show aim guide if it's your turn (or AI's turn during bot thought)
+        // Only show aim guide if it's current player's turn
         const isMyTurn = (this.mode === 'ai' && this.currentTurn === 'p1') ||
                          (this.mode === 'online' && this.currentTurn === this.myRole) ||
                          (this.mode === 'pass');
 
         if (!isMyTurn) {
-            this.aimLine.visible = false;
-            this.targetRing.visible = false;
+            this.guidelineGroup.visible = false;
             return;
         }
 
-        this.aimLine.visible = true;
+        this.guidelineGroup.visible = true;
 
-        const startX = striker.x;
-        const startZ = striker.z;
+        const sx = striker.x;
+        const sz = striker.z;
+        const Rs = striker.radius || 1.95;
 
-        // Angle in 3D: aimAngle is radians. Forward direction is (sin(a), 0, -cos(a))
+        // In 3D: aimAngle forward direction is (sin(aimAngle), 0, -cos(aimAngle))
         const dirX = Math.sin(this.aimAngle);
         const dirZ = -Math.cos(this.aimAngle);
 
-        // Raycast to find first piece or cushion hit
-        let hitDist = 55;
-        let hitPiece = null;
+        // 1. Raycast against active carrom pieces (like 8-ball pool)
+        let closestHit = null;
+        let minT = 100.0;
 
-        // Check piece intersections
-        this.piecesManager.pieces.forEach(p => {
-            if (p.isPocketed) return;
-            const toPx = p.x - startX;
-            const toPz = p.z - startZ;
-            const proj = toPx * dirX + toPz * dirZ;
-            if (proj > 0 && proj < hitDist) {
-                const perpX = toPx - proj * dirX;
-                const perpZ = toPz - proj * dirZ;
-                const distToRay = Math.hypot(perpX, perpZ);
-                if (distToRay < striker.radius + p.radius) {
-                    hitDist = proj;
-                    hitPiece = p;
+        for (const p of this.piecesManager.pieces) {
+            if (p.isPocketed) continue;
+            const Rp = p.radius || 1.45;
+            const combR = Rs + Rp;
+
+            const dx = p.x - sx;
+            const dz = p.z - sz;
+            const proj = dx * dirX + dz * dirZ;
+            if (proj <= 0) continue; // Behind striker
+
+            const h2 = (dx * dx + dz * dz) - (proj * proj);
+            const targetDist2 = combR * combR;
+            if (h2 < targetDist2) {
+                const offset = Math.sqrt(Math.max(0, targetDist2 - h2));
+                const t = proj - offset;
+                if (t > 0 && t < minT) {
+                    minT = t;
+                    closestHit = {
+                        piece: p,
+                        t: t,
+                        impX: sx + dirX * t,
+                        impZ: sz + dirZ * t
+                    };
                 }
             }
-        });
+        }
 
-        const endX = startX + dirX * hitDist;
-        const endZ = startZ + dirZ * hitDist;
+        // 2. Raycast against inner cushion frame wall (-35 to +35 playfield, wall at ±(35 - Rs))
+        const halfWall = 35.0 - Rs;
+        let wallT = 100.0;
+        let wallBounceX = 0;
+        let wallBounceZ = 0;
 
-        const positions = this.aimLine.geometry.attributes.position.array;
-        positions[0] = startX;
-        positions[1] = 0.25;
-        positions[2] = startZ;
-        positions[3] = endX;
-        positions[4] = 0.25;
-        positions[5] = endZ;
-        this.aimLine.geometry.attributes.position.needsUpdate = true;
-        this.aimLine.computeLineDistances();
+        if (dirX > 0.0001) {
+            const t = (halfWall - sx) / dirX;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = -dirX;
+                wallBounceZ = dirZ;
+            }
+        } else if (dirX < -0.0001) {
+            const t = (-halfWall - sx) / dirX;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = -dirX;
+                wallBounceZ = dirZ;
+            }
+        }
 
-        if (hitPiece) {
-            this.targetRing.position.set(hitPiece.x, 0.15, hitPiece.z);
-            this.targetRing.visible = true;
+        if (dirZ > 0.0001) {
+            const t = (halfWall - sz) / dirZ;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = (wallT === t) ? -dirX : dirX;
+                wallBounceZ = -dirZ;
+            }
+        } else if (dirZ < -0.0001) {
+            const t = (-halfWall - sz) / dirZ;
+            if (t > 0 && t < wallT) {
+                wallT = t;
+                wallBounceX = (wallT === t) ? -dirX : dirX;
+                wallBounceZ = -dirZ;
+            }
+        }
+
+        const yLevel = 0.28;
+
+        if (closestHit && closestHit.t < wallT) {
+            const impX = closestHit.impX;
+            const impZ = closestHit.impZ;
+            const targetPiece = closestHit.piece;
+
+            // 1. Primary Line: Striker to impact point
+            const pos = this.aimLine.geometry.attributes.position.array;
+            pos[0] = sx; pos[1] = yLevel; pos[2] = sz;
+            pos[3] = impX; pos[4] = yLevel; pos[5] = impZ;
+            this.aimLine.geometry.attributes.position.needsUpdate = true;
+            this.aimLine.computeLineDistances();
+            this.aimLine.visible = true;
+
+            // 2. Ghost Striker at impact point
+            this.ghostStrikerMesh.position.set(impX, yLevel, impZ);
+            this.ghostInnerMesh.position.set(impX, yLevel, impZ);
+            this.ghostStrikerMesh.visible = true;
+            this.ghostInnerMesh.visible = true;
+
+            // 3. Target Piece Predicted Path: shoots along impact normal
+            let nx = targetPiece.x - impX;
+            let nz = targetPiece.z - impZ;
+            const nLen = Math.hypot(nx, nz) || 1;
+            nx /= nLen;
+            nz /= nLen;
+
+            // Trajectory length scales smoothly with power
+            const targetLen = 12 + (this.shotPower || 0.65) * 16;
+            const targetEndX = targetPiece.x + nx * targetLen;
+            const targetEndZ = targetPiece.z + nz * targetLen;
+
+            const tPos = this.targetPathLine.geometry.attributes.position.array;
+            tPos[0] = targetPiece.x; tPos[1] = yLevel; tPos[2] = targetPiece.z;
+            tPos[3] = targetEndX; tPos[4] = yLevel; tPos[5] = targetEndZ;
+            this.targetPathLine.geometry.attributes.position.needsUpdate = true;
+            this.targetPathLine.computeLineDistances();
+            this.targetPathLine.visible = true;
+
+            this.targetGhostRing.position.set(targetEndX, yLevel, targetEndZ);
+            this.targetGhostRing.visible = true;
+
+            // 4. Striker Deflection Path: along tangent vector
+            const dot = dirX * nx + dirZ * nz;
+            let defX = dirX - dot * nx;
+            let defZ = dirZ - dot * nz;
+            const defLen = Math.hypot(defX, defZ);
+            if (defLen > 0.001) {
+                defX /= defLen;
+                defZ /= defLen;
+            } else {
+                defX = -nz;
+                defZ = nx;
+            }
+
+            const defDist = 8;
+            const defEndX = impX + defX * defDist;
+            const defEndZ = impZ + defZ * defDist;
+
+            const dPos = this.deflectPathLine.geometry.attributes.position.array;
+            dPos[0] = impX; dPos[1] = yLevel; dPos[2] = impZ;
+            dPos[3] = defEndX; dPos[4] = yLevel; dPos[5] = defEndZ;
+            this.deflectPathLine.geometry.attributes.position.needsUpdate = true;
+            this.deflectPathLine.computeLineDistances();
+            this.deflectPathLine.visible = true;
+
+            this.cushionBounceLine.visible = false;
+
         } else {
-            this.targetRing.visible = false;
+            // Striker hits cushion wall directly
+            const impX = sx + dirX * wallT;
+            const impZ = sz + dirZ * wallT;
+
+            const pos = this.aimLine.geometry.attributes.position.array;
+            pos[0] = sx; pos[1] = yLevel; pos[2] = sz;
+            pos[3] = impX; pos[4] = yLevel; pos[5] = impZ;
+            this.aimLine.geometry.attributes.position.needsUpdate = true;
+            this.aimLine.computeLineDistances();
+            this.aimLine.visible = true;
+
+            this.ghostStrikerMesh.position.set(impX, yLevel, impZ);
+            this.ghostInnerMesh.position.set(impX, yLevel, impZ);
+            this.ghostStrikerMesh.visible = true;
+            this.ghostInnerMesh.visible = true;
+
+            this.targetPathLine.visible = false;
+            this.targetGhostRing.visible = false;
+            this.deflectPathLine.visible = false;
+
+            // Show cushion wall bounce trajectory
+            const bounceLen = 12;
+            const bEndX = impX + wallBounceX * bounceLen;
+            const bEndZ = impZ + wallBounceZ * bounceLen;
+
+            const cbPos = this.cushionBounceLine.geometry.attributes.position.array;
+            cbPos[0] = impX; cbPos[1] = yLevel; cbPos[2] = impZ;
+            cbPos[3] = bEndX; cbPos[4] = yLevel; cbPos[5] = bEndZ;
+            this.cushionBounceLine.geometry.attributes.position.needsUpdate = true;
+            this.cushionBounceLine.computeLineDistances();
+            this.cushionBounceLine.visible = true;
         }
     }
 
@@ -267,9 +477,15 @@ class CarromGame {
             this.camera.up.set(0, 1, 0);
             if (this.controls) {
                 this.controls.enabled = true;
-                const orbitDist = isPortrait ? (boardExtent * 1.48) : (boardExtent * 1.12);
-                // Angled 3D bird's perspective (52 degrees elevation)
-                this.camera.position.set(0, orbitDist * 0.72, orbitDist * 0.74);
+                let orbitDist;
+                if (isPortrait) {
+                    const reqDist = (boardExtent * 1.35) / (2 * tanHalfFov * aspect);
+                    orbitDist = Math.max(105, reqDist);
+                } else {
+                    orbitDist = (boardExtent * 1.25) / (2 * tanHalfFov);
+                }
+                // Rock-solid 3D perspective angle matching 8-ball pool
+                this.camera.position.set(0, orbitDist * 0.70, orbitDist * 0.75);
                 this.camera.lookAt(0, 0, 0);
                 this.controls.target.set(0, 0, 0);
                 this.controls.update();
@@ -369,6 +585,7 @@ class CarromGame {
         striker.vz = -Math.cos(angle) * speed;
 
         this.turnPockets = [];
+        if (this.guidelineGroup) this.guidelineGroup.visible = false;
 
         // Watchdog safety timer: force table to stop if pieces micro-jitter past 3.6s
         if (this.shotWatchdog) clearTimeout(this.shotWatchdog);
@@ -830,16 +1047,22 @@ class CarromGame {
         const pt = this.getBoardPlaneIntersection(e);
         if (!pt) return;
 
-        const baselineZ = this.currentTurn === 'p1' ? 26.0 : -26.0;
+        // Pointer clicked/touched inside the playing field bounds
+        if (Math.abs(pt.x) <= 35 && Math.abs(pt.z) <= 35) {
+            // Temporarily disable OrbitControls so touch interaction never destabilizes or wobbles the 3D table on phones
+            if (this.controls) this.controls.enabled = false;
 
-        // If pointer clicked on or near the baseline (z within 8.5 units of baseline)
-        if (Math.abs(pt.z - baselineZ) < 8.5) {
-            this.isDraggingStriker = true;
-            this.updateStrikerPositionFromCoord(pt.x);
-        } else {
-            // Anywhere else on board: aiming
-            this.isAiming = true;
-            this.updateAimAngleFromCoord(pt.x, pt.z);
+            const baselineZ = this.currentTurn === 'p1' ? 26.0 : -26.0;
+
+            // If pointer clicked on or near the baseline (z within 8.5 units of baseline)
+            if (Math.abs(pt.z - baselineZ) < 8.5) {
+                this.isDraggingStriker = true;
+                this.updateStrikerPositionFromCoord(pt.x);
+            } else {
+                // Anywhere else on board: aiming
+                this.isAiming = true;
+                this.updateAimAngleFromCoord(pt.x, pt.z);
+            }
         }
     }
 
@@ -859,6 +1082,10 @@ class CarromGame {
     onPointerUp(e) {
         this.isDraggingStriker = false;
         this.isAiming = false;
+        // Restore OrbitControls if in orbit view so 2-finger gestures or right-clicks can orbit smoothly
+        if (this.controls && this.currentView === 'orbit') {
+            this.controls.enabled = true;
+        }
     }
 
     getBoardPlaneIntersection(e) {

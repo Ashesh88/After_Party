@@ -41,16 +41,16 @@ class CarromBoard3D {
         const size = 2048;
         const half = size / 2;
 
-        // 1. Natural Warm Blonde Maple/Birch Plywood (Matte, non-glare warm tones)
+        // 1. Natural Authentic Light Brown Wood Plywood Surface (Warm honey/teak tones so white gotis pop with maximum contrast)
         const grad = ctx.createRadialGradient(half, half, 150, half, half, size * 0.72);
-        grad.addColorStop(0, '#f0d9b5'); // Soft blonde maple center
-        grad.addColorStop(0.55, '#e4c495'); // Warm golden birch tone
-        grad.addColorStop(1, '#cca068'); // Warm amber border wood tone
+        grad.addColorStop(0, '#cda066'); // Warm light brown honey ply center
+        grad.addColorStop(0.55, '#be8f53'); // Rich light brown teak tone
+        grad.addColorStop(1, '#a8773d'); // Deep light brown outer wood border
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, size, size);
 
         // Natural fine wood grain fibers (soft diffuse matte texture)
-        ctx.fillStyle = 'rgba(110, 65, 20, 0.03)';
+        ctx.fillStyle = 'rgba(70, 38, 10, 0.05)';
         for (let i = 0; i < size; i += 5) {
             ctx.beginPath();
             ctx.ellipse(half + (Math.sin(i * 0.012) * 40), i, size * 0.88, 2.5 + Math.random() * 2, 0, 0, Math.PI * 2);
@@ -58,7 +58,7 @@ class CarromBoard3D {
         }
 
         // Additional subtle vertical wood pores
-        ctx.strokeStyle = 'rgba(90, 50, 15, 0.02)';
+        ctx.strokeStyle = 'rgba(60, 30, 8, 0.04)';
         ctx.lineWidth = 1.0;
         for (let x = 70; x < size - 70; x += 12) {
             if (Math.random() > 0.45) {
@@ -294,16 +294,16 @@ class CarromBoard3D {
         const boardGeo = new THREE.BoxGeometry(this.playWidth, 1.2, this.playHeight);
         const texture = this.generateBoardTexture();
 
-        // MATTE satin wood finish: high roughness (0.82), ZERO metalness = NO SHINE / NO HARSH GLARE!
+        // MATTE satin wood finish: high roughness (0.85), ZERO metalness = NO SHINE / NO HARSH GLARE!
         const topMat = new THREE.MeshStandardMaterial({
             map: texture,
-            roughness: 0.82,
+            roughness: 0.85,
             metalness: 0.0
         });
 
         const woodEdgeMat = new THREE.MeshStandardMaterial({
-            color: 0xcd9e6b,
-            roughness: 0.7,
+            color: 0xa8773d,
+            roughness: 0.8,
             metalness: 0.0
         });
 
