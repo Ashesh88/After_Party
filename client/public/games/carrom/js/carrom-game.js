@@ -79,13 +79,13 @@ class CarromGame {
         this.controls.maxDistance = 220;
         this.controls.enablePan = false; // Never drift or slide table off-screen
         this.controls.enabled = false;
-        // Desktop: Right-click orbits camera. Left-click is 100% reserved for striker & aiming
+        // Desktop & Laptop: Left-click and Right-click can rotate the camera outside the playing field!
         this.controls.mouseButtons = {
-            LEFT: null,
+            LEFT: THREE.MOUSE.ROTATE,
             MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.ROTATE
         };
-        // Mobile / Touchscreens: Swipe outside board to orbit 3D table, touch board to aim/move pieces
+        // Mobile & Touchscreens: 1-finger swipe rotates 3D table when outside playing field
         this.controls.touches = {
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -893,6 +893,9 @@ class CarromGame {
         document.getElementById('btn-view-top')?.addEventListener('click', () => this.setCameraView('top'));
         document.getElementById('btn-view-aim')?.addEventListener('click', () => this.setCameraView('aim'));
         document.getElementById('btn-view-orbit')?.addEventListener('click', () => this.setCameraView('orbit'));
+        document.getElementById('btn-rotate-board')?.addEventListener('click', () => {
+            this.rotateCameraByAngle(Math.PI / 4);
+        });
 
         // Baseline Striker Slider
         const baselineSlider = document.getElementById('slider-baseline');
@@ -902,13 +905,31 @@ class CarromGame {
             });
         }
 
-        // Aim Fine-Tune Buttons
-        document.getElementById('btn-aim-left')?.addEventListener('click', () => {
-            this.aimAngle -= 0.05;
-        });
-        document.getElementById('btn-aim-right')?.addEventListener('click', () => {
-            this.aimAngle += 0.05;
-        });
+        // Aim Fine-Tune Buttons (Click & Hold supported for buttery-smooth aim steering)
+        const setupHoldAim = (btnId, delta) => {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            let timer = null;
+            const step = () => {
+                this.aimAngle = Math.max(-1.40, Math.min(1.40, this.aimAngle + delta));
+            };
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                step();
+                timer = setInterval(step, 50);
+            });
+            const stop = () => {
+                if (timer) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+            };
+            btn.addEventListener('pointerup', stop);
+            btn.addEventListener('pointerleave', stop);
+            btn.addEventListener('pointercancel', stop);
+        };
+        setupHoldAim('btn-aim-left', -0.04);
+        setupHoldAim('btn-aim-right', 0.04);
 
         // Strike Power Range Slider
         const powerSlider = document.getElementById('slider-power');
@@ -1093,10 +1114,28 @@ class CarromGame {
         }
     }
 
+    rotateCameraByAngle(deltaRad) {
+        if (!this.camera || !this.controls) return;
+        const x = this.camera.position.x;
+        const z = this.camera.position.z;
+        const cos = Math.cos(deltaRad);
+        const sin = Math.sin(deltaRad);
+        this.camera.position.x = x * cos - z * sin;
+        this.camera.position.z = x * sin + z * cos;
+        this.camera.lookAt(0, 0, 0);
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
+    }
+
     getBoardPlaneIntersection(e) {
+        if (!this.renderer || !this.renderer.domElement) return null;
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
         const mouse = new THREE.Vector2(
-            (e.clientX / window.innerWidth) * 2 - 1,
-            -(e.clientY / window.innerHeight) * 2 + 1
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            -((clientY - rect.top) / rect.height) * 2 + 1
         );
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, this.camera);
@@ -1136,9 +1175,26 @@ class CarromGame {
     updateAimAngleFromCoord(targetX, targetZ) {
         if (!this.piecesManager.striker) return;
         const striker = this.piecesManager.striker;
+        const isP1 = this.currentTurn === 'p1';
+
         const dx = targetX - striker.x;
         const dz = targetZ - striker.z;
-        this.aimAngle = Math.atan2(dx, -dz);
+
+        let rawAngle;
+        if (isP1) {
+            // Forward is -dz (towards center). Clamp forward distance to at least 4.0 units so it NEVER flips backward!
+            const fwd = Math.max(4.0, -dz);
+            rawAngle = Math.atan2(dx, fwd);
+            // Clamp allowed forward aiming fan to realistic angle (-80° to +80°)
+            rawAngle = Math.max(-1.40, Math.min(1.40, rawAngle));
+        } else {
+            // Forward is +dz
+            const fwd = Math.max(4.0, dz);
+            rawAngle = Math.atan2(dx, -fwd);
+            rawAngle = Math.max(Math.PI - 1.40, Math.min(Math.PI + 1.40, rawAngle));
+        }
+
+        this.aimAngle = rawAngle;
     }
 
     handleParentMessage(e) {
