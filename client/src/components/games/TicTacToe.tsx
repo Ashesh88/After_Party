@@ -316,13 +316,13 @@ export default function TicTacToe({ onBack }: { onBack: () => void }) {
             <div className="flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-sm font-black animate-pulse">
                 <Trophy className="w-4 h-4 text-amber-400" />
-                <span>{winner === 'draw' ? "It's a Tie Game!" : `${winner === 'X' ? p1Name : p2Name} Wins! 👑`}</span>
+                <span>{winner === 'draw' ? "It's a Tie Game!" : `${winner === 'X' ? p1Name : p2Name} Wins!`}</span>
               </div>
               {winner !== 'draw' && (
                 <div className="text-[11px] font-bold text-pink-300 bg-pink-500/15 border border-pink-500/30 px-3 py-1 rounded-xl flex items-center gap-1">
                   <span>Loser owes: </span>
                   <span className="text-white font-extrabold">
-                    {typeof window !== 'undefined' ? localStorage.getItem('afterparty_arcade_stake') || '15-min massage 💆' : '15-min massage 💆'}
+                    {typeof window !== 'undefined' ? (localStorage.getItem('afterparty_arcade_stake') || '15-min massage').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g, '').trim() : '15-min massage'}
                   </span>
                 </div>
               )}

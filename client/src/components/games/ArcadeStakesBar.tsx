@@ -6,17 +6,22 @@ import { useSocketStore } from '../../lib/store/socketStore';
 import { useAuthStore } from '../../lib/store/authStore';
 import toast from 'react-hot-toast';
 
+const stripEmoji = (str: string) =>
+  str
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g, '')
+    .trim();
+
 const PRESET_STAKES = [
-  { id: 'dinner', label: '🍕 Loser buys dinner & sweet dessert 🍨', category: 'Food' },
-  { id: 'massage', label: '💆 Loser gives 15-min shoulder or back massage', category: 'Romantic' },
-  { id: 'breakfast', label: '☕ Loser serves breakfast in bed tomorrow 🥞', category: 'Romantic' },
-  { id: 'sing', label: '🎤 Loser sends a cute voice note singing a song 🎶', category: 'Fun' },
-  { id: 'love_letter', label: '💌 Loser writes a 50-word heartfelt love note', category: 'Romantic' },
-  { id: 'chores', label: '🧹 Loser does tonight’s dishes and chores', category: 'Daily' },
-  { id: 'boba', label: '🧋 Loser gets partner their favorite boba or drinks', category: 'Food' },
-  { id: 'photo', label: '📸 Loser poses for a goofy photo for the couple feed', category: 'Fun' },
-  { id: 'movie', label: '🍿 Loser lets partner pick the movie or show tonight', category: 'Fun' },
-  { id: 'servant', label: '👑 Loser is partner’s royal servant for 1 hour', category: 'Spicy' },
+  { id: 'dinner', label: 'Loser buys dinner & sweet dessert', category: 'Food' },
+  { id: 'massage', label: 'Loser gives 15-min shoulder or back massage', category: 'Romantic' },
+  { id: 'breakfast', label: 'Loser serves breakfast in bed tomorrow', category: 'Romantic' },
+  { id: 'sing', label: 'Loser sends a cute voice note singing a song', category: 'Fun' },
+  { id: 'love_letter', label: 'Loser writes a 50-word heartfelt love note', category: 'Romantic' },
+  { id: 'chores', label: 'Loser does tonight’s dishes and chores', category: 'Daily' },
+  { id: 'boba', label: 'Loser gets partner their favorite boba or drinks', category: 'Food' },
+  { id: 'photo', label: 'Loser poses for a goofy photo for the couple feed', category: 'Fun' },
+  { id: 'movie', label: 'Loser lets partner pick the movie or show tonight', category: 'Fun' },
+  { id: 'servant', label: 'Loser is partner’s royal servant for 1 hour', category: 'Spicy' },
 ];
 
 export default function ArcadeStakesBar() {
@@ -24,7 +29,7 @@ export default function ArcadeStakesBar() {
   const user = useAuthStore((state) => state.user);
   const room = useAuthStore((state) => state.room);
 
-  const [stake, setStake] = useState('🍕 Loser buys dinner & sweet dessert 🍨');
+  const [stake, setStake] = useState('Loser buys dinner & sweet dessert');
   const [modalOpen, setModalOpen] = useState(false);
   const [customStake, setCustomStake] = useState('');
   const [isAnnouncing, setIsAnnouncing] = useState(false);
@@ -34,7 +39,11 @@ export default function ArcadeStakesBar() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('afterparty_arcade_stake');
-      if (saved) setStake(saved);
+      if (saved) {
+        const clean = stripEmoji(saved);
+        setStake(clean || 'Loser buys dinner & sweet dessert');
+        localStorage.setItem('afterparty_arcade_stake', clean || 'Loser buys dinner & sweet dessert');
+      }
     } catch {}
   }, []);
 
@@ -44,14 +53,14 @@ export default function ArcadeStakesBar() {
 
     const handleStakeUpdate = (data: { stake: string; setBy: string; setterName?: string }) => {
       if (data?.stake) {
-        setStake(data.stake);
+        const clean = stripEmoji(data.stake);
+        setStake(clean);
         setIsSettled(false);
         try {
-          localStorage.setItem('afterparty_arcade_stake', data.stake);
+          localStorage.setItem('afterparty_arcade_stake', clean);
         } catch {}
         if (data.setBy !== user?._id) {
-          toast(`${data.setterName || 'Partner'} set match stake: ${data.stake}`, {
-            icon: '🔥',
+          toast.success(`${data.setterName || 'Partner'} set match stake: ${clean}`, {
             duration: 4000,
           });
         }
@@ -65,22 +74,23 @@ export default function ArcadeStakesBar() {
   }, [socket, user]);
 
   const updateStake = (newStake: string) => {
-    if (!newStake.trim()) return;
-    setStake(newStake.trim());
+    const clean = stripEmoji(newStake);
+    if (!clean) return;
+    setStake(clean);
     setIsSettled(false);
     try {
-      localStorage.setItem('afterparty_arcade_stake', newStake.trim());
+      localStorage.setItem('afterparty_arcade_stake', clean);
     } catch {}
 
     if (socket) {
       socket.emit('arcade:set-stake', {
-        stake: newStake.trim(),
+        stake: clean,
         setterName: user?.displayName || 'Partner',
       });
     }
 
     setModalOpen(false);
-    toast.success('Match stake updated! 🔥');
+    toast.success('Match stake updated');
   };
 
   const handleAnnounce = () => {
@@ -90,7 +100,7 @@ export default function ArcadeStakesBar() {
     }
 
     setIsAnnouncing(true);
-    const content = `🎮 Arcade Bet Placed: ${stake}! May the best partner win! 🏆🔥`;
+    const content = `Arcade Bet Placed: ${stake}! May the best partner win!`;
 
     // Emit to active room
     if (user?.roomId) {
@@ -113,16 +123,13 @@ export default function ArcadeStakesBar() {
 
     setTimeout(() => {
       setIsAnnouncing(false);
-      toast('Bet announced in chat 💕', { icon: '📢' });
+      toast.success('Bet announced in chat');
     }, 400);
   };
 
   const handleClaimSettled = () => {
     setIsSettled(true);
-    toast('🎉 Debt marked as fulfilled! You two are adorable 💖', {
-      icon: '✨',
-      duration: 3500,
-    });
+    toast.success('Debt marked as fulfilled');
   };
 
   return (
@@ -145,11 +152,11 @@ export default function ArcadeStakesBar() {
                 </span>
                 {isSettled ? (
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                    ✓ Settled
+                    Settled
                   </span>
                 ) : (
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold animate-pulse">
-                    🔥 Active Bet
+                    Active Bet
                   </span>
                 )}
               </div>
