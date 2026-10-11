@@ -6,6 +6,7 @@ import { useSocketStore } from '../lib/store/socketStore';
 import { soundService } from '../lib/soundService';
 import toast from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Heart, Flame, Users, CloudRain } from 'lucide-react';
 
 export default function MoodAtmosphereOverlay() {
   const moodTheme = useMoodStore((state) => state.moodTheme);
@@ -137,7 +138,19 @@ export default function MoodAtmosphereOverlay() {
               boxShadow: `0 10px 40px ${config.glowColor}`,
             }}
           >
-            <span className="text-3xl animate-bounce">{nudgeAlert.emoji}</span>
+            <div 
+              className="w-10 h-10 rounded-2xl flex items-center justify-center border shadow-lg shrink-0"
+              style={{
+                backgroundColor: `${config.primaryColor}25`,
+                borderColor: `${config.primaryColor}50`,
+              }}
+            >
+              {currentMood === 'love' && <Heart size={20} className="text-pink-400 fill-pink-400/20" />}
+              {currentMood === 'angry' && <Flame size={20} className="text-rose-400 fill-rose-400/20" />}
+              {currentMood === 'just_friends' && <Users size={20} className="text-cyan-400" />}
+              {currentMood === 'sad' && <CloudRain size={20} className="text-blue-400 fill-blue-400/20" />}
+              {currentMood === 'horny' && <Flame size={20} className="text-fuchsia-400 fill-fuchsia-400/20" />}
+            </div>
             <div>
               <p className="text-xs font-bold text-white">
                 <span style={{ color: config.primaryColor }}>{nudgeAlert.sender}</span> {nudgeAlert.text}

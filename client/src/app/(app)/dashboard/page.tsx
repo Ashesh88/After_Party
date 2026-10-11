@@ -11,7 +11,7 @@ import {
   LogOut, Edit3, Sparkles, Clapperboard, Gamepad2, 
   Target, MapPin, CalendarHeart, User, ArrowRight,
   KeyRound, Copy, Check, Users,
-  Flame, Heart, AlertCircle, Palette, ShieldCheck,
+  Flame, Heart, AlertCircle, Palette, ShieldCheck, CloudRain,
   Calendar, Clock, Edit2, Plus, PartyPopper
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
@@ -500,7 +500,7 @@ export default function DashboardPage() {
               {moodTheme.current === 'love' && <Heart size={22} className="text-pink-400 fill-pink-400/20" />}
               {moodTheme.current === 'angry' && <Flame size={22} className="text-rose-400 fill-rose-400/20" />}
               {moodTheme.current === 'just_friends' && <Users size={22} className="text-cyan-400" />}
-              {moodTheme.current === 'sad' && <span className="text-2xl">🌧️</span>}
+              {moodTheme.current === 'sad' && <CloudRain size={22} className="text-blue-400 fill-blue-400/20" />}
               {moodTheme.current === 'horny' && <Flame size={22} className="text-fuchsia-400 fill-fuchsia-400/20" />}
             </div>
 
@@ -517,7 +517,6 @@ export default function DashboardPage() {
                     borderColor: `${currentMoodConfig.primaryColor}50`,
                   }}
                 >
-                  <span>{currentMoodConfig.emoji}</span>
                   <span>{currentMoodConfig.label}</span>
                 </span>
               </div>

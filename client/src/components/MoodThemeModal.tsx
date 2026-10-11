@@ -105,9 +105,16 @@ export default function MoodThemeModal() {
                     }}
                   >
                     <div className="flex items-center justify-between w-full mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{config.emoji}</span>
-                        {MOOD_ICONS[moodKey]}
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm shrink-0"
+                          style={{
+                            backgroundColor: `${config.primaryColor}18`,
+                            borderColor: `${config.primaryColor}40`,
+                          }}
+                        >
+                          {MOOD_ICONS[moodKey]}
+                        </div>
                         <span className="text-sm font-bold text-white tracking-wide">{config.label}</span>
                       </div>
 
@@ -148,7 +155,15 @@ export default function MoodThemeModal() {
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{currentConfig.emoji}</span>
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center border shadow-sm shrink-0"
+                    style={{
+                      backgroundColor: `${currentConfig.primaryColor}25`,
+                      borderColor: `${currentConfig.primaryColor}50`,
+                    }}
+                  >
+                    {MOOD_ICONS[currentConfig.id]}
+                  </div>
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
                     {currentConfig.label} Aura Active
                   </span>
@@ -207,13 +222,13 @@ export default function MoodThemeModal() {
                           </span>
                           <span className="text-slate-400 text-[11px]">set mood to</span>
                           <span
-                            className="font-bold text-[11px] px-1.5 py-0.5 rounded-md flex items-center gap-1"
+                            className="font-bold text-[11px] px-2 py-0.5 rounded-md flex items-center gap-1.5"
                             style={{
                               backgroundColor: `${itemConfig.primaryColor}20`,
                               color: itemConfig.primaryColor,
                             }}
                           >
-                            <span>{itemConfig.emoji}</span>
+                            <span className="scale-75 origin-center shrink-0">{MOOD_ICONS[item.mood]}</span>
                             <span>{itemConfig.label}</span>
                           </span>
                         </div>
@@ -235,7 +250,7 @@ export default function MoodThemeModal() {
 
           {/* Footer Note */}
           <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-            <span>Atmosphere & sound update live on partner's screen ⚡</span>
+            <span>Atmosphere and audio update live on partner's screen</span>
             <button
               onClick={closeModal}
               className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold transition-all cursor-pointer active:scale-95"
