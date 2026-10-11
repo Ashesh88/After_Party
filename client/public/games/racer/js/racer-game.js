@@ -8,11 +8,12 @@ class LuxuryDuelRacer3D {
         this.container = document.getElementById('canvas-container');
         this.isBotMode = false;
 
-        // Read query params for names and invite connection code
+        // Read query params for names and partner status
         const params = new URLSearchParams(window.location.search);
         this.p1Name = params.get('p1') || 'You';
         this.p2Name = params.get('p2') || 'Friend';
         this.inviteCode = params.get('code') || 'RACE2P';
+        this.hasPartner = params.get('hasPartner') === 'true' || (this.p2Name !== 'Friend' && this.p2Name !== 'Partner' && this.p2Name !== '');
 
         // Track & Race Configuration
         this.trackLength = 4000; // 4000m grand sprint to checkered finish arch
@@ -958,9 +959,18 @@ class LuxuryDuelRacer3D {
         const btnBot = document.getElementById('btn-mode-bot');
         if (btn2p) {
             btn2p.addEventListener('click', () => {
+                if (!this.hasPartner) {
+                    // Alone in room: Prompt user and open the Connections / Friends list directly
+                    this.showToast('Opening Connections to invite your partner... 💕', '👥');
+                    window.parent.postMessage({ type: 'OPEN_FRIENDS_MODAL' }, '*');
+                    return;
+                }
+
+                // Partner is already in room: start 2P real-time multiplayer duel
                 this.isBotMode = false;
                 btn2p.classList.add('active');
                 if (btnBot) btnBot.classList.remove('active');
+                this.showToast(`2P Duel: ${this.p1Name} vs ${this.p2Name}! 🏎️`, '⚡');
                 this.restartRace();
             });
         }
@@ -969,63 +979,8 @@ class LuxuryDuelRacer3D {
                 this.isBotMode = true;
                 btnBot.classList.add('active');
                 if (btn2p) btn2p.classList.remove('active');
+                this.showToast('AI Bot Mode Activated! 🤖', '🎮');
                 this.restartRace();
-            });
-        }
-
-        // Invite Connection Modal
-        const btnInvite = document.getElementById('btn-invite');
-        const modalInvite = document.getElementById('modal-invite');
-        const btnCloseInvite = document.getElementById('btn-close-invite');
-        const inviteCodeVal = document.getElementById('invite-code-val');
-        const btnCopyInvite = document.getElementById('btn-copy-invite');
-        const copyBtnText = document.getElementById('copy-btn-text');
-        const btnShareInvite = document.getElementById('btn-share-invite');
-
-        if (inviteCodeVal) {
-            inviteCodeVal.textContent = this.inviteCode;
-        }
-
-        if (btnInvite && modalInvite) {
-            btnInvite.addEventListener('click', () => {
-                modalInvite.classList.add('open');
-            });
-        }
-
-        if (btnCloseInvite && modalInvite) {
-            btnCloseInvite.addEventListener('click', () => {
-                modalInvite.classList.remove('open');
-            });
-        }
-
-        if (btnCopyInvite) {
-            btnCopyInvite.addEventListener('click', () => {
-                navigator.clipboard.writeText(this.inviteCode).then(() => {
-                    if (copyBtnText) copyBtnText.textContent = 'Copied!';
-                    this.showToast('Room code copied to clipboard! 📋', '✨');
-                    setTimeout(() => {
-                        if (copyBtnText) copyBtnText.textContent = 'Copy';
-                    }, 2000);
-                }).catch(() => {
-                    this.showToast(`Code: ${this.inviteCode}`);
-                });
-            });
-        }
-
-        if (btnShareInvite) {
-            btnShareInvite.addEventListener('click', () => {
-                const shareText = `Join me for a 4000m Turbo 3D Racer duel in After Party! Room Code: ${this.inviteCode}`;
-                if (navigator.share) {
-                    navigator.share({
-                        title: 'After Party - Turbo 3D Racer',
-                        text: shareText,
-                        url: window.location.origin
-                    }).catch(() => {});
-                } else {
-                    navigator.clipboard.writeText(shareText).then(() => {
-                        this.showToast('Invite link copied! Share with your partner 💕', '🚀');
-                    });
-                }
             });
         }
 
@@ -1733,8 +1688,9 @@ class LuxuryDuelRacer3D {
                 this.handleRaceFinish();
             }
 
-            // Sync Broadcast to Partner (every 3 frames)
-            if (Math.random() < 0.3) {
+            // Precise 25Hz Multiplayer Sync Broadcast to Partner (every 40ms)
+            if (!this.lastSyncTime || currentTime - this.lastSyncTime >= 40) {
+                this.lastSyncTime = currentTime;
                 window.parent.postMessage({
                     type: 'RACE_SYNC',
                     payload: {

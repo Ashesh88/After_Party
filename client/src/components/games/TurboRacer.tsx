@@ -1,23 +1,33 @@
 'use client';
 import { ArrowLeft, Maximize2, RotateCcw } from 'lucide-react';
-import { useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../lib/store/authStore';
 import { useSocketStore } from '../../lib/store/socketStore';
+import FriendsModal from '../FriendsModal';
 
 export default function TurboRacer({ onBack }: { onBack: () => void }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const user = useAuthStore((state) => state.user);
   const room = useAuthStore((state) => state.room);
   const socket = useSocketStore((state) => state.socket);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
 
   const partner = room?.participants?.find((p) => p._id !== user?._id);
+  const hasPartner = Boolean(partner);
   const partnerName = partner?.displayName || 'Friend';
   const userName = user?.displayName || 'You';
 
   useEffect(() => {
     // Listen for race events from iframe and broadcast to partner via socket
     const handleWindowMessage = (e: MessageEvent) => {
-      if (!e.data || !socket) return;
+      if (!e.data) return;
+
+      if (e.data.type === 'OPEN_FRIENDS_MODAL') {
+        setShowFriendsModal(true);
+        return;
+      }
+
+      if (!socket) return;
 
       if (e.data.type === 'RACE_SYNC') {
         socket.emit('racer:sync', e.data.payload);
@@ -133,12 +143,19 @@ export default function TurboRacer({ onBack }: { onBack: () => void }) {
       <div className="relative flex-1 w-full h-full overflow-hidden bg-[#08070d]">
         <iframe
           ref={iframeRef}
-          src={`/games/racer/index.html?p1=${encodeURIComponent(userName)}&p2=${encodeURIComponent(partnerName)}&code=${encodeURIComponent(room?.inviteCode || '')}`}
+          src={`/games/racer/index.html?p1=${encodeURIComponent(userName)}&p2=${encodeURIComponent(partnerName)}&code=${encodeURIComponent(room?.inviteCode || '')}&hasPartner=${hasPartner}`}
           className="w-full h-full border-none bg-[#08070d]"
           allow="fullscreen; autoplay; clipboard-write"
           title="Turbo 3D Racer"
         />
       </div>
+
+      {/* Connection & Friends Modal triggered directly from 2P button */}
+      <FriendsModal
+        isOpen={showFriendsModal}
+        onClose={() => setShowFriendsModal(false)}
+        currentRoomCode={room?.inviteCode}
+      />
     </div>
   );
 }
