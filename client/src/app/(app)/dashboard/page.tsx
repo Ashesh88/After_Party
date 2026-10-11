@@ -348,161 +348,171 @@ export default function DashboardPage() {
       <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple top-64 -right-28 pointer-events-none" />
 
-      {/* Header Profile - Modern Clean SaaS Architecture */}
-      <header className="relative p-4 sm:p-5 rounded-3xl glass-panel z-10 border border-white/10 shadow-xl space-y-3.5">
+      {/* Header Profile - Luxury Modern Architecture with Rich Detailing */}
+      <header className="relative p-5 sm:p-6 rounded-[32px] glass-panel z-10 border border-white/[0.14] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.18)] space-y-4 overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/[0.04] via-transparent to-purple-500/[0.04] pointer-events-none" />
+
         {/* Top Profile Row */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Avatar with edit overlay */}
+        <div className="flex items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-3.5 min-w-0">
+            {/* Avatar with luxury glowing rotating ring */}
             <button 
               onClick={() => setShowAvatarModal(true)}
               title="Change Profile Avatar"
-              className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 p-[2px] shadow-md group hover:scale-105 transition-transform cursor-pointer shrink-0"
+              className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-400 to-purple-600 p-[2.5px] shadow-[0_0_25px_rgba(244,63,142,0.5)] group hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
             >
-              <div className="w-full h-full rounded-[14px] bg-[#0c0c17] flex items-center justify-center overflow-hidden">
+              <div className="w-full h-full rounded-[13px] bg-[#0c0c17] flex items-center justify-center overflow-hidden">
                 {user?.avatar ? (
-                  <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  <img src={user.avatar} alt="avatar" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                 ) : (
-                  <User size={20} className="text-pink-400" />
+                  <User size={22} className="text-pink-400" />
                 )}
               </div>
-              <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-pink-500 text-[9px] flex items-center justify-center border-2 border-[#080811] text-white">
-                <Edit3 size={9} />
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 text-[10px] flex items-center justify-center border-2 border-[#080811] text-white shadow-md">
+                <Edit3 size={10} />
               </span>
             </button>
 
-            {/* Greeting & Name */}
+            {/* Greeting & Name with High-End Detailing */}
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Online</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider uppercase text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Online</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-semibold hidden sm:inline">• Room Active</span>
               </div>
-              <h1 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
-                {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400">{user?.displayName}</span>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight truncate">
+                {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-300 drop-shadow-[0_2px_10px_rgba(244,63,142,0.3)]">{user?.displayName}</span>
               </h1>
             </div>
           </div>
 
-          {/* Action Icons Cluster */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* Action Buttons Cluster - Sculpted 3D Jewel Glass Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Palette Button */}
             <button
               onClick={openMoodModal}
               title={`Mood Theme: ${currentMoodConfig.label}`}
-              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border flex items-center justify-center transition-all cursor-pointer shadow-sm group"
-              style={{
-                borderColor: `${currentMoodConfig.primaryColor}50`,
-                backgroundColor: `${currentMoodConfig.primaryColor}15`,
-              }}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-purple-500/25 to-pink-500/15 hover:from-purple-500/40 hover:to-pink-500/30 border border-pink-400/40 hover:border-pink-300 shadow-[0_4px_16px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.35)] flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
-              <Palette size={15} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
+              <Palette size={17} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 group-hover:rotate-12 transition-transform drop-shadow" />
             </button>
 
+            {/* Room Settings Key Button */}
             <button
               onClick={() => setShowRoomModal(true)}
               title="Room Settings"
-              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-pink-400 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-amber-500/20 to-pink-500/15 hover:from-amber-500/35 hover:to-pink-500/30 border border-amber-400/40 hover:border-amber-300 shadow-[0_4px_16px_rgba(245,158,11,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-amber-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
-              <KeyRound size={15} className="group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
+              <KeyRound size={17} className="group-hover:scale-110 group-hover:-rotate-12 transition-transform drop-shadow" />
             </button>
 
+            {/* Logout Button */}
             <button
               onClick={handleLogout}
               title="Sign Out"
-              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 flex items-center justify-center transition-all cursor-pointer shadow-sm group"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-rose-500/20 to-red-500/10 hover:from-rose-500/35 hover:to-red-500/25 border border-rose-500/35 hover:border-rose-400 shadow-[0_4px_16px_rgba(244,63,94,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-rose-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
-              <LogOut size={15} className="group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
+              <LogOut size={17} className="group-hover:scale-110 group-hover:translate-x-0.5 transition-transform drop-shadow" />
             </button>
           </div>
         </div>
 
-        {/* Bottom Metadata & Navigation Pills */}
-        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-white/[0.06]">
-          {/* User ID Badge */}
+        {/* Bottom Metadata & Interactive Badges */}
+        <div className="flex items-center gap-2.5 flex-wrap pt-2 border-t border-white/[0.08] relative z-10">
+          {/* User ID Pill Badge */}
           <button
             type="button"
             onClick={handleCopyMyId}
             title="Click to copy your unique User ID"
-            className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent hover:from-cyan-500/25 border border-cyan-400/40 hover:border-cyan-300 text-cyan-200 text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-all shadow-[0_2px_12px_rgba(6,182,212,0.2),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95"
           >
-            <ShieldCheck size={12} className="text-cyan-400" />
-            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-sans">User ID:</span>
+            <ShieldCheck size={13} className="text-cyan-400" />
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-sans font-bold">User ID:</span>
             <span>{user?.friendId || '...'}</span>
-            {copiedMyId ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-slate-400" />}
+            {copiedMyId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} className="text-slate-400" />}
           </button>
 
-          {/* Room Pill */}
+          {/* Room Code Pill Badge */}
           {room?.inviteCode ? (
             <button
               onClick={handleCopyCode}
               title="Click to copy Room Code"
-              className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-pink-500/15 border border-white/10 hover:border-pink-500/30 text-[11px] font-medium text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500/20 via-purple-500/15 to-transparent hover:from-pink-500/30 border border-pink-400/40 hover:border-pink-300 text-xs font-medium text-white shadow-[0_2px_12px_rgba(244,63,142,0.25),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
-              <KeyRound size={11} className="text-pink-400" />
-              <span className="text-[9px] text-slate-400 uppercase font-sans">Room:</span>
-              <span className="font-mono font-bold text-pink-300">{room.inviteCode}</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-300 font-bold">
-                {room.members?.length || 1}
+              <KeyRound size={12} className="text-pink-400" />
+              <span className="text-[10px] text-slate-400 uppercase font-sans font-bold">Room:</span>
+              <span className="font-mono font-bold text-pink-300 tracking-wider">{room.inviteCode}</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/30 text-pink-200 font-extrabold flex items-center gap-1 border border-pink-400/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>{room.members?.length || 1}</span>
               </span>
-              {copiedCode ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-slate-400" />}
+              {copiedCode ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} className="text-slate-400" />}
             </button>
           ) : (
             <button
               onClick={() => setShowRoomModal(true)}
-              className="px-2.5 py-1 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-[11px] font-bold text-pink-300 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_4px_15px_rgba(244,63,142,0.3)] active:scale-95"
             >
-              <KeyRound size={11} />
+              <KeyRound size={12} />
               <span>Create Room</span>
             </button>
           )}
 
-          {/* Connections Pill */}
+          {/* Connections Pill Button */}
           <button
             type="button"
             onClick={() => setShowFriendsModal(true)}
-            className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/30 text-slate-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ml-auto"
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 via-teal-500/15 to-emerald-500/15 hover:from-cyan-500/30 hover:to-emerald-500/25 border border-cyan-400/40 hover:border-cyan-300 text-white text-xs font-extrabold flex items-center gap-2 shadow-[0_2px_12px_rgba(6,182,212,0.3),inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 transition-all cursor-pointer ml-auto"
           >
-            <Users size={12} className="text-cyan-400" />
+            <Users size={14} className="text-cyan-300" />
             <span>Connections</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           </button>
         </div>
       </header>
 
-      {/* Couple Mood Atmosphere Card */}
+      {/* Mood Theme Card - Tactile & Interactive */}
       <div 
         onClick={openMoodModal}
-        className="relative p-4 sm:p-5 rounded-3xl glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.01] active:scale-[0.99] overflow-hidden shadow-xl"
+        className="relative p-4 sm:p-5 rounded-[28px] glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.008] active:scale-[0.99] overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
         style={{
-          borderColor: `${currentMoodConfig.primaryColor}35`,
-          background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}12 0%, rgba(255, 255, 255, 0.02) 100%)`
+          borderColor: `${currentMoodConfig.primaryColor}45`,
+          background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}18 0%, rgba(255, 255, 255, 0.02) 100%)`
         }}
       >
         <div className="relative z-10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <div 
-              className="w-11 h-11 rounded-2xl flex items-center justify-center border shadow-md group-hover:scale-105 transition-transform shrink-0"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] group-hover:scale-105 transition-transform shrink-0 relative overflow-hidden"
               style={{
                 backgroundColor: `${currentMoodConfig.primaryColor}25`,
-                borderColor: `${currentMoodConfig.primaryColor}55`,
+                borderColor: `${currentMoodConfig.primaryColor}60`,
               }}
             >
-              {moodTheme.current === 'love' && <Heart size={20} className="text-pink-400 fill-pink-400/20" />}
-              {moodTheme.current === 'angry' && <Flame size={20} className="text-rose-400 fill-rose-400/20" />}
-              {moodTheme.current === 'just_friends' && <Users size={20} className="text-cyan-400" />}
-              {moodTheme.current === 'sad' && <span className="text-xl">🌧️</span>}
-              {moodTheme.current === 'horny' && <Flame size={20} className="text-fuchsia-400 fill-fuchsia-400/20" />}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
+              {moodTheme.current === 'love' && <Heart size={22} className="text-pink-400 fill-pink-400/20" />}
+              {moodTheme.current === 'angry' && <Flame size={22} className="text-rose-400 fill-rose-400/20" />}
+              {moodTheme.current === 'just_friends' && <Users size={22} className="text-cyan-400" />}
+              {moodTheme.current === 'sad' && <span className="text-2xl">🌧️</span>}
+              {moodTheme.current === 'horny' && <Flame size={22} className="text-fuchsia-400 fill-fuchsia-400/20" />}
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Mood Theme
                 </span>
                 <span 
-                  className="px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase tracking-wider flex items-center gap-1"
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider flex items-center gap-1 shadow-sm"
                   style={{
-                    backgroundColor: `${currentMoodConfig.primaryColor}20`,
+                    backgroundColor: `${currentMoodConfig.primaryColor}25`,
                     color: currentMoodConfig.primaryColor,
-                    borderColor: `${currentMoodConfig.primaryColor}40`,
+                    borderColor: `${currentMoodConfig.primaryColor}50`,
                   }}
                 >
                   <span>{currentMoodConfig.emoji}</span>
@@ -510,8 +520,8 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              <div className="text-[11px] text-slate-300 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
-                <span className="italic text-white/90">"{currentMoodConfig.quote}"</span>
+              <div className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
+                <span className="italic text-white/95 font-semibold">"{currentMoodConfig.quote}"</span>
                 <span className="text-slate-500">•</span>
                 <span>By <strong className="text-white">{moodTheme.updatedByName || 'Partner'}</strong> ({formatRelativeTime(moodTheme.updatedAt)})</span>
               </div>
@@ -524,38 +534,33 @@ export default function DashboardPage() {
               e.stopPropagation();
               openMoodModal();
             }}
-            className="px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95"
-            style={{
-              backgroundColor: `${currentMoodConfig.primaryColor}20`,
-              borderColor: `${currentMoodConfig.primaryColor}50`,
-              color: '#ffffff',
-            }}
+            className="px-4 py-2 rounded-xl text-xs font-black tracking-wide text-white transition-all shadow-[0_4px_18px_rgba(244,63,142,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:brightness-110 active:scale-95 flex items-center gap-2 cursor-pointer shrink-0"
           >
-            <Palette size={13} style={{ color: currentMoodConfig.primaryColor }} />
+            <Palette size={14} className="text-white" />
             <span>Customize</span>
           </button>
         </div>
       </div>
 
-      {/* Hero Countdown / Next Date Card - Fully Editable with Date & Time */}
-      <div className="relative p-5 sm:p-6 md:p-7 rounded-[32px] overflow-hidden glass-panel border border-pink-500/25 shadow-xl group">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+      {/* Hero Countdown / Next Date Card - Sculpted Airport Flip-Clock Capsules */}
+      <div className="relative p-5 sm:p-6 md:p-7 rounded-[32px] overflow-hidden glass-panel border border-pink-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] group bg-gradient-to-b from-[#140b1e]/90 via-[#0e0717]/95 to-[#08030d]">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-pink-500/20 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex justify-between items-start gap-3 mb-4">
+        <div className="relative z-10 flex justify-between items-start gap-3 mb-5">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                <CalendarHeart size={12} className="text-pink-300" />
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-500/25 text-pink-300 border border-pink-400/40 shadow-sm">
+                <CalendarHeart size={13} className="text-pink-300" />
                 <span>Next Planned Date</span>
               </span>
               {timeLeft.displayTarget && (
-                <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                  <Clock size={11} className="text-slate-400" />
+                <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1 bg-white/[0.04] px-2.5 py-0.5 rounded-full border border-white/10">
+                  <Clock size={12} className="text-amber-400" />
                   <span>{timeLeft.displayTarget}</span>
                 </span>
               )}
             </div>
-            <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white mt-1.5 truncate">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white truncate drop-shadow-md">
               {room?.plannedEvent?.title || eventTitle}
             </h3>
           </div>
@@ -563,33 +568,38 @@ export default function DashboardPage() {
           <button
             onClick={() => setShowEventModal(true)}
             title="Edit Date, Time & Title"
-            className="px-3 py-1.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-pink-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500/25 to-purple-500/25 hover:from-pink-500 hover:to-purple-600 border border-pink-400/40 text-pink-200 hover:text-white text-xs font-bold transition-all shadow-[0_4px_15px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0"
           >
-            <Edit2 size={12} />
+            <Edit2 size={13} />
             <span>Edit Event</span>
           </button>
         </div>
 
         {timeLeft.isPast ? (
-          <div className="py-4 px-3 rounded-2xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-pink-500/20 border border-pink-500/30 text-center animate-pulse">
-            <div className="flex items-center justify-center gap-2 text-pink-300 font-extrabold text-sm sm:text-base">
-              <PartyPopper size={18} />
+          <div className="py-4 px-3 rounded-2xl bg-gradient-to-r from-pink-500/25 via-purple-500/25 to-pink-500/25 border border-pink-500/40 text-center animate-pulse shadow-lg">
+            <div className="flex items-center justify-center gap-2 text-pink-200 font-black text-sm sm:text-base">
+              <PartyPopper size={20} />
               <span>It's Date Time! Enjoy your special moment together 🥂✨</span>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 pt-1 text-center">
+          <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-4.5 pt-1 text-center">
             {[
               { val: timeLeft.days, label: 'Days' },
               { val: timeLeft.hours, label: 'Hours' },
               { val: timeLeft.mins, label: 'Mins' },
               { val: timeLeft.secs, label: 'Secs' },
             ].map((item, idx) => (
-              <div key={idx} className="p-2.5 sm:p-3 md:p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-                <div className="text-xl sm:text-3xl md:text-4xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
+              <div 
+                key={idx} 
+                className="relative p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-black/50 border border-white/[0.14] shadow-[0_12px_30px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.25)] overflow-hidden group"
+              >
+                {/* Horizontal Flip-Board division line */}
+                <div className="absolute inset-x-0 top-1/2 h-[1px] bg-black/60 border-b border-white/[0.06] pointer-events-none" />
+                <div className="text-2xl sm:text-4xl md:text-5xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-400 drop-shadow-[0_4px_10px_rgba(0,0,0,0.95)]">
                   {item.val}
                 </div>
-                <div className="text-[9px] sm:text-[10px] md:text-xs font-bold tracking-widest uppercase text-slate-400 mt-0.5">
+                <div className="text-[9px] sm:text-[11px] font-black tracking-widest uppercase text-pink-300 mt-1">
                   {item.label}
                 </div>
               </div>
@@ -598,85 +608,112 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Widgets Grid - 2x2 on Mobile, 4-across on Desktop */}
+      {/* Widgets Grid - 4 Interactive Cards with Tactile Action Buttons */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
+        
+        {/* Watch Together */}
         <Link 
           href="/watch" 
-          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-pink-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
+          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-pink-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
         >
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="w-11 h-11 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(244,63,142,0.2)]">
-              <Clapperboard size={22} />
+            <div className="flex justify-between items-start mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-pink-500/25 to-pink-500/10 border border-pink-400/40 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(244,63,142,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                <Clapperboard size={22} />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                4K SYNC
+              </span>
             </div>
-            <h3 className="font-bold text-white text-sm sm:text-base">Watch Together</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Synced YouTube & Video</p>
+            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-pink-200 transition-colors">Watch Together</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Synced YouTube & Movies</p>
           </div>
-          <div className="mt-3 flex items-center text-xs font-semibold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform">
-            <span>Stream now</span>
-            <ArrowRight size={12} />
+          
+          {/* Tactile Button Pill */}
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-rose-600 border border-white/10 group-hover:border-pink-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <span>Stream Now</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
 
+        {/* Couples Arcade */}
         <Link 
           href="/games" 
-          className="relative p-4 sm:p-5 rounded-3xl glass-panel hover:border-purple-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
+          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-purple-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
         >
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(147,51,234,0.2)]">
-              <Gamepad2 size={22} />
+            <div className="flex justify-between items-start mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-purple-500/25 to-purple-500/10 border border-purple-400/40 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(147,51,234,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                <Gamepad2 size={22} />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                8+ GAMES
+              </span>
             </div>
-            <h3 className="font-bold text-white text-sm sm:text-base">Couples Arcade</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Chess, Ludo & Quizzes</p>
+            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-purple-200 transition-colors">Couples Arcade</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Chess, Pool, Ludo & Uno</p>
           </div>
-          <div className="mt-3 flex items-center text-xs font-semibold text-purple-400 gap-1 group-hover:translate-x-1 transition-transform">
-            <span>Play now</span>
-            <ArrowRight size={12} />
+          
+          {/* Tactile Button Pill */}
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-500 border border-white/10 group-hover:border-purple-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <span>Play Games</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
 
+        {/* Shared Goals */}
         <Link 
           href="/goals" 
-          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-emerald-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
+          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-emerald-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
         >
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="flex justify-between items-center mb-2.5">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                <Target size={20} />
+            <div className="flex justify-between items-start mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                <Target size={22} />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                70% Done
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                70% DONE
               </span>
             </div>
-            <h4 className="font-bold text-white text-sm sm:text-base">Shared Goals</h4>
-            <div className="w-full h-1.5 bg-white/[0.08] rounded-full mt-2.5 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500 w-[70%]" />
+            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-emerald-200 transition-colors">Shared Goals</h3>
+            <div className="w-full h-2 bg-white/[0.08] rounded-full mt-2 overflow-hidden p-0.5 border border-white/5">
+              <div className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-emerald-400 rounded-full w-[70%] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
             </div>
           </div>
-          <div className="mt-3 flex items-center text-xs font-semibold text-emerald-400 gap-1 group-hover:translate-x-1 transition-transform">
-            <span>View goals</span>
-            <ArrowRight size={12} />
+          
+          {/* Tactile Button Pill */}
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-emerald-500 group-hover:to-teal-600 border border-white/10 group-hover:border-emerald-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <span>View Goals</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
 
+        {/* Real-time Map */}
         <Link 
           href="/map" 
-          className="p-4 sm:p-5 rounded-3xl glass-panel hover:border-blue-500/40 transition-all duration-300 group overflow-hidden flex flex-col justify-between"
+          className="relative p-4 sm:p-5 rounded-[28px] glass-panel hover:border-blue-500/50 transition-all duration-300 group overflow-hidden flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:scale-[1.015]"
         >
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           <div>
-            <div className="flex justify-between items-center mb-2.5">
-              <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                <MapPin size={20} />
+            <div className="flex justify-between items-start mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500/25 to-blue-500/10 border border-blue-400/40 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(59,130,246,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                <MapPin size={22} />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                Live GPS
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                LIVE GPS
               </span>
             </div>
-            <h4 className="font-bold text-white text-sm sm:text-base">Real-time Map</h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">Distance & Presence</p>
+            <h3 className="font-extrabold text-white text-sm sm:text-base group-hover:text-blue-200 transition-colors">Real-time Map</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Distance & Live Radar</p>
           </div>
-          <div className="mt-3 flex items-center text-xs font-semibold text-blue-400 gap-1 group-hover:translate-x-1 transition-transform">
-            <span>Explore map</span>
-            <ArrowRight size={12} />
+          
+          {/* Tactile Button Pill */}
+          <div className="mt-4 w-full py-2 px-3 rounded-xl bg-white/[0.05] group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-cyan-500 border border-white/10 group-hover:border-blue-400/40 text-xs font-bold text-white transition-all duration-300 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <span>Explore Map</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
       </div>
