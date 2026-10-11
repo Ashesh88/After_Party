@@ -18,11 +18,24 @@ export function getNotificationPermissionStatus(): NotificationPermission | 'uns
   return Notification.permission;
 }
 
-export async function registerPushSubscription(userInitiated = false): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
+export async function registerPushSubscription(userInitiated = false): Promise<{ success: boolean; error?: string }> {
+  if (typeof window === 'undefined') {
+    return { success: false, error: 'Window not defined' };
+  }
+
+  // Check Secure Context (required by browsers for Service Workers & Web Push)
+  if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return { 
+      success: false, 
+      error: 'Web Push requires HTTPS or localhost. If testing over LAN/phone, please use HTTPS (e.g. ngrok).' 
+    };
+  }
+
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.warn('[Push] Service workers or PushManager not supported in this browser.');
-    return false;
+    return { 
+      success: false, 
+      error: 'Push notifications are not supported by this browser.' 
+    };
   }
 
   const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -35,38 +48,72 @@ export async function registerPushSubscription(userInitiated = false): Promise<b
     }
     
     if (permission !== 'granted') {
-      console.log('[Push] Notification permission status:', permission);
-      return false;
+      return { 
+        success: false, 
+        error: `Notification permission status: ${permission}. Please allow notifications in site settings.` 
+      };
     }
 
-    // Ensure service worker is registered
-    let registration = await navigator.serviceWorker.getRegistration();
-    if (!registration) {
+    // 1. Ensure service worker is registered
+    let registration: ServiceWorkerRegistration;
+    try {
       registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    } catch (swErr: any) {
+      return { 
+        success: false, 
+        error: `Service Worker registration failed: ${swErr?.message || swErr}` 
+      };
     }
-    await navigator.serviceWorker.ready;
 
-    let subscription = await registration.pushManager.getSubscription();
+    // Wait until ready
+    try {
+      await navigator.serviceWorker.ready;
+    } catch (e) {}
 
-    if (!subscription) {
+    // 2. Clear any stale subscription to avoid applicationServerKey mismatch errors
+    try {
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        await existingSub.unsubscribe();
+      }
+    } catch (unsubErr) {
+      console.warn('[Push] Error clearing existing subscription:', unsubErr);
+    }
+
+    // 3. Create fresh subscription with current VAPID key
+    let subscription: PushSubscription;
+    try {
       const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey,
       });
+    } catch (subErr: any) {
+      return { 
+        success: false, 
+        error: `PushManager subscribe failed: ${subErr?.message || subErr}` 
+      };
     }
 
-    if (subscription) {
+    // 4. Send subscription to server
+    try {
       await api.post('/push/subscribe', {
         subscription: subscription.toJSON(),
       });
       console.log('[Push] Push subscription synced with backend successfully.');
-      return true;
+      return { success: true };
+    } catch (apiErr: any) {
+      return { 
+        success: false, 
+        error: `Backend sync error: ${apiErr?.response?.data?.message || apiErr?.message || 'Server error'}` 
+      };
     }
-  } catch (error) {
-    console.error('[Push] Push registration error:', error);
+  } catch (error: any) {
+    return { 
+      success: false, 
+      error: error?.message || 'Unexpected error during push setup' 
+    };
   }
-  return false;
 }
 
 export async function testPushNotification(): Promise<{ success: boolean; message: string }> {

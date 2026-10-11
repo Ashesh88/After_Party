@@ -25,13 +25,12 @@ export default function PushNotificationBanner() {
   const handleEnablePush = async () => {
     setLoading(true);
     try {
-      const success = await registerPushSubscription(true);
+      const res = await registerPushSubscription(true);
       const newPerm = getNotificationPermissionStatus();
       setPermission(newPerm);
 
-      if (success || newPerm === 'granted') {
+      if (res.success) {
         toast.success('Offline notifications enabled! Sending test notification...');
-        // Send immediate test push to verify device push channel
         const testRes = await testPushNotification();
         if (testRes.success) {
           toast.success('Test notification sent! Check your device notifications.');
@@ -39,11 +38,11 @@ export default function PushNotificationBanner() {
         } else {
           toast.error(testRes.message);
         }
-      } else if (newPerm === 'denied') {
-        toast.error('Notification permission was blocked in browser settings. Please allow notifications.');
+      } else {
+        toast.error(res.error || 'Failed to enable push notifications');
       }
     } catch (err: any) {
-      toast.error('Could not enable notifications. Please check browser settings.');
+      toast.error(err?.message || 'Could not enable notifications. Please check browser settings.');
     } finally {
       setLoading(false);
     }
@@ -51,22 +50,28 @@ export default function PushNotificationBanner() {
 
   const handleTestNotification = async () => {
     setLoading(true);
-    toast('Sending notification in 3 seconds... Minimize or switch tab to test!', { icon: '⏳' });
-    setTimeout(async () => {
-      try {
-        const testRes = await testPushNotification();
-        if (testRes.success) {
-          toast.success('Notification dispatched! Check your screen/notification tray.');
-          setTested(true);
-        } else {
-          toast.error(testRes.message);
-        }
-      } catch (err: any) {
-        toast.error('Failed to trigger test notification');
-      } finally {
+    toast('Syncing device token & sending test alert...', { icon: '⏳' });
+    try {
+      // Ensure subscription is synced with backend first
+      const regRes = await registerPushSubscription(true);
+      if (!regRes.success) {
+        toast.error(regRes.error || 'Failed to sync push subscription on device');
         setLoading(false);
+        return;
       }
-    }, 3000);
+
+      const testRes = await testPushNotification();
+      if (testRes.success) {
+        toast.success('Test notification dispatched! Check your device notification tray.');
+        setTested(true);
+      } else {
+        toast.error(testRes.message);
+      }
+    } catch (err: any) {
+      toast.error('Failed to trigger test notification');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // If already granted, show discreet status & test button
