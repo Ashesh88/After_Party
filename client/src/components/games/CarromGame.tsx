@@ -16,6 +16,8 @@ import {
   VolumeX,
   Copy,
   Check,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -53,6 +55,14 @@ export default function CarromGame({ onBack }: CarromGameProps) {
   const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, boolean>>({});
   const [isMuted, setIsMuted] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Match Chat State
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: string; text: string; isMe: boolean }>>([
+    { id: '1', sender: 'System', text: 'Match chat is live! Say hi.', isMe: false }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const handleToggleMute = () => {
     const nextMuted = !isMuted;
@@ -225,6 +235,25 @@ export default function CarromGame({ onBack }: CarromGameProps) {
       toast.error('Opponent left the match.');
     };
 
+    // Remote in-game chat message
+    const handleRemoteChat = (data: { message: string; senderName?: string }) => {
+      setChatMessages((prev) => [
+        ...prev,
+        { id: Date.now().toString(), sender: data.senderName || 'Opponent', text: data.message, isMe: false }
+      ]);
+      if (!showChatModal) {
+        setUnreadChatCount((c) => c + 1);
+      }
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'CARROM_CHAT',
+          message: data.message,
+          senderName: data.senderName || 'Opponent',
+        },
+        '*'
+      );
+    };
+
     socket.on('game:invite_accepted', handleInviteAccepted);
     socket.on('game:invite_declined', handleInviteDeclined);
     socket.on('carrom:opponent_joined', handleOpponentJoined);
@@ -232,6 +261,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
     socket.on('carrom:sync_pieces', handleSyncPieces);
     socket.on('carrom:rematch', handleRematch);
     socket.on('carrom:opponent_left', handleOpponentLeft);
+    socket.on('carrom:chat', handleRemoteChat);
 
     return () => {
       socket.off('game:invite_accepted', handleInviteAccepted);
@@ -241,8 +271,9 @@ export default function CarromGame({ onBack }: CarromGameProps) {
       socket.off('carrom:sync_pieces', handleSyncPieces);
       socket.off('carrom:rematch', handleRematch);
       socket.off('carrom:opponent_left', handleOpponentLeft);
+      socket.off('carrom:chat', handleRemoteChat);
     };
-  }, [socket, sessionCode, opponentName]);
+  }, [socket, sessionCode, opponentName, showChatModal]);
 
   // Window Message Event Listener (Communication from Iframe -> Parent)
   useEffect(() => {
@@ -274,6 +305,23 @@ export default function CarromGame({ onBack }: CarromGameProps) {
         }
       }
 
+      // In-game local chat sent from inside iframe
+      if (type === 'CARROM_LOCAL_CHAT') {
+        const text = event.data.text;
+        if (!text) return;
+        setChatMessages((prev) => [
+          ...prev,
+          { id: Date.now().toString(), sender: user?.displayName || 'You', text, isMe: true }
+        ]);
+        if (mode === 'online' && sessionCode && socket) {
+          socket.emit('carrom:chat', {
+            sessionCode,
+            message: text,
+            senderName: user?.displayName || 'Player',
+          });
+        }
+      }
+
       // Game over
       if (type === 'CARROM_GAME_OVER') {
         toast.success(`Game Finished! Winner: ${event.data.winner || 'Player'}`, { duration: 5000 });
@@ -282,7 +330,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [socket, sessionCode]);
+  }, [socket, sessionCode, mode, user]);
 
   // Start Online Match as Host
   const handleStartOnlineMatch = () => {
@@ -370,6 +418,63 @@ export default function CarromGame({ onBack }: CarromGameProps) {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  // Quick Chat reaction phrases (No emojis)
+  const QUICK_CHAT_PHRASES = ['Nice Shot!', 'Well Played!', 'Watch this Queen!', 'Unlucky bounce!', 'Good Game!', 'My Turn!'];
+
+  const handleSendChat = (textToSend?: string) => {
+    const text = (textToSend || chatInput).trim();
+    if (!text) return;
+
+    const myName = user?.displayName || 'You';
+    setChatMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), sender: myName, text, isMe: true }
+    ]);
+    setChatInput('');
+
+    // Relay to iframe
+    iframeRef.current?.contentWindow?.postMessage(
+      {
+        type: 'CARROM_CHAT',
+        message: text,
+        senderName: myName,
+      },
+      '*'
+    );
+
+    // If online, send via socket
+    if (mode === 'online' && sessionCode && socket) {
+      socket.emit('carrom:chat', {
+        sessionCode,
+        message: text,
+        senderName: myName,
+      });
+    } else if (mode === 'ai') {
+      setTimeout(() => {
+        const botPhrases = [
+          'Nice shot!',
+          'My turn now!',
+          'Good strike!',
+          'Well played!',
+          'Watch out for the Queen!'
+        ];
+        const botReply = botPhrases[Math.floor(Math.random() * botPhrases.length)];
+        setChatMessages((prev) => [
+          ...prev,
+          { id: Date.now().toString(), sender: 'Carrom Bot', text: botReply, isMe: false }
+        ]);
+        iframeRef.current?.contentWindow?.postMessage(
+          {
+            type: 'CARROM_CHAT',
+            message: botReply,
+            senderName: 'Carrom Bot',
+          },
+          '*'
+        );
+      }, 750);
+    }
+  };
+
   const filteredFriends = friendsList.filter((f) =>
     f.displayName.toLowerCase().includes(searchFilter.toLowerCase())
   );
@@ -435,6 +540,23 @@ export default function CarromGame({ onBack }: CarromGameProps) {
               <span className="hidden md:inline">Invite</span>
             </button>
           )}
+
+          {/* Match Chat Button */}
+          <button
+            onClick={() => {
+              setShowChatModal(true);
+              setUnreadChatCount(0);
+            }}
+            className="relative p-1.5 sm:p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
+            title="Chat"
+          >
+            <MessageSquare className="w-4 h-4 text-sky-400" />
+            {unreadChatCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-[9px] font-black flex items-center justify-center text-white">
+                {unreadChatCount}
+              </span>
+            )}
+          </button>
 
           <button
             onClick={handleToggleMute}
@@ -607,6 +729,88 @@ export default function CarromGame({ onBack }: CarromGameProps) {
                   })
                 )}
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Match Chat Modal */}
+        {showChatModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-[#120d1d] border border-sky-500/30 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[85vh]"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-sky-400" />
+                  <h3 className="font-extrabold text-white text-base">Match Chat</h3>
+                </div>
+                <button
+                  onClick={() => setShowChatModal(false)}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Quick Reactions Chips (Zero Emojis) */}
+              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {QUICK_CHAT_PHRASES.map((phrase) => (
+                  <button
+                    key={phrase}
+                    onClick={() => handleSendChat(phrase)}
+                    className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-[11px] font-bold text-slate-300 hover:text-amber-300 whitespace-nowrap transition-all cursor-pointer"
+                  >
+                    {phrase}
+                  </button>
+                ))}
+              </div>
+
+              {/* Chat Message Thread */}
+              <div className="mt-3 flex-1 overflow-y-auto space-y-2 pr-1 max-h-72 min-h-[160px] flex flex-col">
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${
+                      msg.isMe
+                        ? 'self-end bg-gradient-to-r from-amber-500 to-rose-500 text-white font-medium rounded-br-none shadow-md'
+                        : 'self-start bg-white/[0.08] text-slate-200 border border-white/10 rounded-bl-none'
+                    }`}
+                  >
+                    <span className="text-[10px] block opacity-70 font-semibold mb-0.5">
+                      {msg.sender}
+                    </span>
+                    <span>{msg.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Text Input Bar */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendChat();
+                }}
+                className="mt-3 flex items-center gap-2 pt-2 border-t border-white/10"
+              >
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  className="flex-1 bg-white/[0.06] border border-white/10 rounded-xl py-2 px-3 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400 transition-colors"
+                />
+                <button
+                  type="submit"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition-all cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send</span>
+                </button>
+              </form>
             </motion.div>
           </div>
         )}

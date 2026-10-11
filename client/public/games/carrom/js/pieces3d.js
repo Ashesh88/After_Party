@@ -25,7 +25,7 @@ class CarromPieces3D {
     }
 
     // Canvas procedural textures for piece caps
-    createPieceTexture(baseColor, accentColor, type) {
+    createPieceTexture(baseColor, grooveColor, type) {
         const canvas = document.createElement('canvas');
         canvas.width = 512;
         canvas.height = 512;
@@ -35,27 +35,36 @@ class CarromPieces3D {
         ctx.fillStyle = baseColor;
         ctx.fillRect(0, 0, 512, 512);
 
-        // Concentric carved grooves
-        ctx.strokeStyle = accentColor;
+        // Smooth subtle gradient to give dished 3D curvature
+        const grad = ctx.createRadialGradient(half, half, 40, half, half, 250);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.0)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Outer concentric carved rim groove
+        ctx.strokeStyle = grooveColor;
         ctx.lineWidth = 14;
         ctx.beginPath();
-        ctx.arc(half, half, 210, 0, Math.PI * 2);
+        ctx.arc(half, half, 205, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.lineWidth = 8;
+        // Second inner carved groove
+        ctx.lineWidth = 10;
         ctx.beginPath();
-        ctx.arc(half, half, 150, 0, Math.PI * 2);
+        ctx.arc(half, half, 140, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.lineWidth = 12;
+        // Center shallow dimple
+        ctx.fillStyle = grooveColor;
         ctx.beginPath();
-        ctx.arc(half, half, 80, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(half, half, 38, 0, Math.PI * 2);
+        ctx.fill();
 
-        // Center dot
-        ctx.fillStyle = accentColor;
+        ctx.fillStyle = baseColor;
         ctx.beginPath();
-        ctx.arc(half, half, 26, 0, Math.PI * 2);
+        ctx.arc(half, half, 22, 0, Math.PI * 2);
         ctx.fill();
 
         return new THREE.CanvasTexture(canvas);
@@ -68,33 +77,38 @@ class CarromPieces3D {
         const ctx = canvas.getContext('2d');
         const half = 256;
 
-        ctx.fillStyle = '#b91c1c'; // Royal Crimson Red
+        // Rich Carrom Crimson Red
+        ctx.fillStyle = '#ba1e28';
         ctx.fillRect(0, 0, 512, 512);
 
-        // Gold royal rings
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 16;
+        const grad = ctx.createRadialGradient(half, half, 40, half, half, 250);
+        grad.addColorStop(0, 'rgba(255, 200, 200, 0.25)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Gold carved outer ring
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 12;
         ctx.beginPath();
-        ctx.arc(half, half, 215, 0, Math.PI * 2);
+        ctx.arc(half, half, 205, 0, Math.PI * 2);
         ctx.stroke();
 
+        // Inner fine gold ring
         ctx.lineWidth = 8;
         ctx.beginPath();
         ctx.arc(half, half, 140, 0, Math.PI * 2);
         ctx.stroke();
 
-        // 8-Pointed Star of the Queen
-        ctx.fillStyle = '#fef08a';
+        // Center gold crest
+        ctx.fillStyle = '#f59e0b';
         ctx.beginPath();
-        for (let i = 0; i < 16; i++) {
-            const r = i % 2 === 0 ? 80 : 38;
-            const a = (i * Math.PI) / 8;
-            const x = half + Math.cos(a) * r;
-            const y = half + Math.sin(a) * r;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
+        ctx.arc(half, half, 44, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ba1e28';
+        ctx.beginPath();
+        ctx.arc(half, half, 26, 0, Math.PI * 2);
         ctx.fill();
 
         return new THREE.CanvasTexture(canvas);
@@ -107,43 +121,53 @@ class CarromPieces3D {
         const ctx = canvas.getContext('2d');
         const half = 256;
 
-        // Ivory Acrylic with Iridescent Emerald Jewel Core
-        const grad = ctx.createRadialGradient(half, half, 30, half, half, 256);
-        grad.addColorStop(0, '#10b981'); // Emerald Glow
-        grad.addColorStop(0.35, '#064e3b');
-        grad.addColorStop(0.7, '#f8fafc'); // Glossy White Rim
-        grad.addColorStop(1, '#cbd5e1');
+        // Ivory white acrylic surface (matches reference photo)
+        ctx.fillStyle = '#fcfbf8';
+        ctx.fillRect(0, 0, 512, 512);
+
+        const grad = ctx.createRadialGradient(half, half, 50, half, half, 256);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.85, '#f4efe6');
+        grad.addColorStop(1, '#dfd5c4');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, 512, 512);
 
-        // Striker outer rings & crosshair ticks
-        ctx.strokeStyle = '#047857';
-        ctx.lineWidth = 10;
+        // Outer amber/golden rim
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 14;
         ctx.beginPath();
-        ctx.arc(half, half, 230, 0, Math.PI * 2);
+        ctx.arc(half, half, 225, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.strokeStyle = '#f59e0b'; // Gold border
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.arc(half, half, 180, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Center crosshair & crystal star
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(half, half, 32, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#059669';
         ctx.lineWidth = 6;
-        for (let i = 0; i < 4; i++) {
-            const a = (i * Math.PI) / 2;
+        ctx.beginPath();
+        ctx.arc(half, half, 195, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Authentic Endless Knot / Mandala crest in the center (from reference photo)
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 9;
+        ctx.lineJoin = 'round';
+
+        // 4 Interlocking rounded loops
+        const loopR = 52;
+        const offset = 48;
+        [
+            [-offset, -offset],
+            [offset, -offset],
+            [-offset, offset],
+            [offset, offset]
+        ].forEach(([lx, ly]) => {
             ctx.beginPath();
-            ctx.moveTo(half + Math.cos(a) * 40, half + Math.sin(a) * 40);
-            ctx.lineTo(half + Math.cos(a) * 160, half + Math.sin(a) * 160);
+            ctx.arc(half + lx, half + ly, loopR, 0, Math.PI * 2);
             ctx.stroke();
-        }
+        });
+
+        // Center medallion dot
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.arc(half, half, 22, 0, Math.PI * 2);
+        ctx.fill();
 
         return new THREE.CanvasTexture(canvas);
     }
@@ -155,21 +179,21 @@ class CarromPieces3D {
 
         const geo = new THREE.CylinderGeometry(radius, radius, height, 32);
 
-        let sideColor = 0xf5eedb;
-        let roughness = 0.25;
-        let metalness = 0.1;
+        let sideColor = 0xf2ede0;
+        let roughness = 0.32;
+        let metalness = 0.05;
 
         if (type === 'black') {
-            sideColor = 0x1f1914;
-            roughness = 0.35;
+            sideColor = 0x1b1612;
+            roughness = 0.4;
         } else if (type === 'queen') {
-            sideColor = 0x991b1b;
-            roughness = 0.2;
-            metalness = 0.2;
+            sideColor = 0x9e1a22;
+            roughness = 0.28;
+            metalness = 0.1;
         } else if (type === 'striker') {
-            sideColor = 0x059669;
-            roughness = 0.15;
-            metalness = 0.35;
+            sideColor = 0xf0ebe1;
+            roughness = 0.2;
+            metalness = 0.12;
         }
 
         const sideMat = new THREE.MeshStandardMaterial({

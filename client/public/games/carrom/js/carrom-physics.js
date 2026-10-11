@@ -7,10 +7,10 @@ class CarromPhysics {
         this.piecesManager = piecesManager;
 
         // Physics Constants
-        this.friction = 0.984; // Smooth carrom powder gliding friction
-        this.restitution = 0.90; // Piece-to-piece elastic bounce coefficient
-        this.cushionRestitution = 0.85; // Wooden bumper rebound elasticity
-        this.minVelocity = 0.05; // Velocity cutoff to prevent jitter
+        this.friction = 0.982; // Smooth carrom powder gliding friction
+        this.restitution = 0.88; // Piece-to-piece elastic bounce coefficient
+        this.cushionRestitution = 0.82; // Wooden bumper rebound elasticity
+        this.minVelocity = 0.08; // Velocity cutoff to prevent jitter
 
         // Boundaries (board play surface is -35 to +35)
         this.boundX = this.board.playWidth / 2; // 35.0
@@ -22,6 +22,24 @@ class CarromPhysics {
 
         this.hasMovementOccurred = false;
         this.wasMoving = false;
+    }
+
+    // Immediately stop all piece velocities
+    stopAll() {
+        if (this.piecesManager.striker) {
+            this.piecesManager.striker.vx = 0;
+            this.piecesManager.striker.vz = 0;
+        }
+        this.piecesManager.pieces.forEach(p => {
+            p.vx = 0;
+            p.vz = 0;
+        });
+        if (this.wasMoving) {
+            this.wasMoving = false;
+            if (this.onAllStopped) {
+                this.onAllStopped();
+            }
+        }
     }
 
     // Step physics forward by deltaTime
@@ -155,7 +173,8 @@ class CarromPhysics {
                         const rvz = b.vz - a.vz;
                         const velAlongNormal = rvx * nx + rvz * nz;
 
-                        if (velAlongNormal < 0) {
+                        // Only apply bounce impulse if relative velocity exceeds threshold (resting contact damping)
+                        if (velAlongNormal < -0.04) {
                             const impulse = (-(1 + this.restitution) * velAlongNormal) / (1 / a.mass + 1 / b.mass);
                             const ix = impulse * nx;
                             const iz = impulse * nz;
@@ -166,7 +185,7 @@ class CarromPhysics {
                             b.vz += iz / b.mass;
 
                             const relSpeed = Math.abs(velAlongNormal);
-                            if (relSpeed > 0.08 && window.CarromAudio) {
+                            if (relSpeed > 0.12 && window.CarromAudio) {
                                 window.CarromAudio.playWoodClack(Math.min(1.0, relSpeed / 2.5));
                             }
                         }

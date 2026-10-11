@@ -19,14 +19,17 @@
             <div class="top-status-row">
                 <span class="status-pill" id="status-banner">New Match: Position striker and aim</span>
                 <div class="view-toggle-mini">
-                    <button class="toggle-btn active view-btn" id="btn-view-top" title="Top Tactical View">
+                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top Tactical View">
                         <i class="fa-solid fa-table-cells-large"></i> Top
                     </button>
                     <button class="toggle-btn view-btn" id="btn-view-aim" title="Aim View (Behind Striker)">
                         <i class="fa-solid fa-crosshairs"></i> Aim
                     </button>
-                    <button class="toggle-btn view-btn" id="btn-view-orbit" title="Free 3D View">
+                    <button class="toggle-btn active view-btn" id="btn-view-orbit" title="Realistic 3D View">
                         <i class="fa-solid fa-cube"></i> 3D
+                    </button>
+                    <button class="toggle-btn chat-toggle-btn" id="btn-chat-toggle" title="Open Chat">
+                        <i class="fa-solid fa-comment-dots"></i> Chat
                     </button>
                 </div>
             </div>
@@ -51,6 +54,33 @@
                     <span class="player-score" id="score-p2">0 pts</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Floating Chat Toast Bubble -->
+        <div class="chat-toast-bubble" id="chat-toast-bubble"></div>
+
+        <!-- Floating Air-Glass In-Game Chat HUD -->
+        <div class="floating-corner-chat interactive closed" id="floating-chat">
+            <div class="air-chat-header">
+                <span><i class="fa-solid fa-comments"></i> Match Chat</span>
+                <button class="btn-close-chat" id="btn-close-chat" title="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="air-chat-messages" id="panel-chat-messages">
+                <div class="chat-msg system-msg">Match chat live. Tap quick phrases or type.</div>
+            </div>
+            <!-- Quick Phrases Bar (No Emojis) -->
+            <div class="air-chat-chips">
+                <button class="chip-btn" data-msg="Nice Shot!">Nice Shot!</button>
+                <button class="chip-btn" data-msg="Well Played!">Well Played!</button>
+                <button class="chip-btn" data-msg="Watch this Queen!">Watch this Queen!</button>
+                <button class="chip-btn" data-msg="Unlucky bounce!">Unlucky!</button>
+                <button class="chip-btn" data-msg="Good Game!">Good Game!</button>
+            </div>
+            <!-- Transparent Input Bar -->
+            <form class="air-chat-input-bar" id="panel-chat-form">
+                <input type="text" id="panel-chat-input" placeholder="Type a message..." autocomplete="off">
+                <button type="submit" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
         </div>
 
         <!-- Bottom Controls HUD (Baseline Position, Shot Power & Action) -->

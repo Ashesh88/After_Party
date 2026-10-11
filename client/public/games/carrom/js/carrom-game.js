@@ -4,7 +4,7 @@
 class CarromGame {
     constructor() {
         this.container = document.getElementById('canvas-container');
-        this.currentView = 'top'; // 'top', 'aim', 'orbit'
+        this.currentView = 'orbit'; // Default to realistic 3D perspective
         this.mode = 'ai'; // 'ai', 'online', 'pass'
 
         // Online Multi-player state
@@ -13,7 +13,7 @@ class CarromGame {
         this.myName = 'Player 1';
         this.opponentName = 'Opponent';
 
-        // Match Scores
+        // Match Scores & Rules
         this.scores = { p1: 0, p2: 0 };
         this.currentTurn = 'p1'; // 'p1' or 'p2'
         this.turnPockets = []; // Tracks pieces pocketed in current shot
@@ -26,6 +26,7 @@ class CarromGame {
         this.strikerX = 0;
         this.isAiming = false;
         this.isDraggingStriker = false;
+        this.shotWatchdog = null;
 
         this.initThree();
         this.setupEventListeners();
@@ -112,8 +113,8 @@ class CarromGame {
         this.physics.onPiecePocketed = (piece) => this.handlePiecePocketed(piece);
         this.physics.onAllStopped = () => this.handleShotComplete();
 
-        // Establish proper initial top-down camera view AFTER controls & scene are ready
-        this.setCameraView('top');
+        // Establish initial 3D camera view (User requested 3D by default)
+        this.setCameraView('orbit');
 
         // Render Loop
         this.clock = new THREE.Clock();
@@ -235,14 +236,11 @@ class CarromGame {
         let camHeight;
         if (isPortrait) {
             // In portrait phones, screen width is the main constraint.
-            // visibleWidth = 2 * d * tanHalfFov * aspect >= boardExtent * 1.16
             const dWidth = (boardExtent * 1.16) / (2 * tanHalfFov * aspect);
-            // Also ensure vertical height leaves plenty of clear room for top and bottom HUDs
             const dHeight = (boardExtent * 1.65) / (2 * tanHalfFov);
             camHeight = Math.max(dWidth, dHeight);
         } else {
-            // In landscape / desktop, screen height is the main constraint.
-            // Board occupies ~65% of screen height to clear top and bottom HUDs
+            // In landscape / desktop
             camHeight = (boardExtent / (2 * tanHalfFov)) * 1.55;
         }
 
@@ -268,8 +266,10 @@ class CarromGame {
             this.camera.up.set(0, 1, 0);
             if (this.controls) {
                 this.controls.enabled = true;
-                const orbitDist = isPortrait ? 120 : 85;
-                this.camera.position.set(0, orbitDist * 0.65, orbitDist * 0.85);
+                const orbitDist = isPortrait ? (boardExtent * 1.48) : (boardExtent * 1.12);
+                // Angled 3D bird's perspective (52 degrees elevation)
+                this.camera.position.set(0, orbitDist * 0.72, orbitDist * 0.74);
+                this.camera.lookAt(0, 0, 0);
                 this.controls.target.set(0, 0, 0);
                 this.controls.update();
             }
@@ -284,7 +284,7 @@ class CarromGame {
 
         this.piecesManager.setupInitialRack();
         this.updateHUD();
-        this.showStatus('Match Started: Position striker and take your aim.');
+        this.showStatus('Match live: Position striker on baseline to aim.');
 
         this.positionStrikerForTurn();
     }
@@ -301,7 +301,7 @@ class CarromGame {
         // P2 aims downwards (angle = PI)
         this.aimAngle = this.currentTurn === 'p1' ? 0 : Math.PI;
 
-        // Reset baseline slider to middle
+        // Reset baseline slider in UI
         const slider = document.getElementById('slider-baseline');
         if (slider) slider.value = 0;
 
@@ -359,12 +359,19 @@ class CarromGame {
         }
 
         // Calculate velocity vector
-        // Power scalar between 1.8 and 4.2
         const speed = 1.4 + power * 3.2;
         striker.vx = Math.sin(angle) * speed;
         striker.vz = -Math.cos(angle) * speed;
 
         this.turnPockets = [];
+
+        // Watchdog safety timer: force table to stop if pieces micro-jitter past 3.6s
+        if (this.shotWatchdog) clearTimeout(this.shotWatchdog);
+        this.shotWatchdog = setTimeout(() => {
+            if (this.physics.isTableBusy()) {
+                this.physics.stopAll();
+            }
+        }, 3600);
 
         // Audio
         if (window.CarromAudio) {
@@ -402,6 +409,12 @@ class CarromGame {
     }
 
     handleShotComplete() {
+        // Clear safety watchdog
+        if (this.shotWatchdog) {
+            clearTimeout(this.shotWatchdog);
+            this.shotWatchdog = null;
+        }
+
         let extraTurn = false;
         let strikerFoul = false;
         let legalPiecePocketed = false;
@@ -410,7 +423,6 @@ class CarromGame {
         const pocketedStriker = this.turnPockets.find(p => p.type === 'striker');
         if (pocketedStriker) {
             strikerFoul = true;
-            // Penalty: -5 points or return a piece to center
             if (this.scores[this.currentTurn] >= 5) {
                 this.scores[this.currentTurn] -= 5;
             }
@@ -486,6 +498,8 @@ class CarromGame {
         }
 
         this.updateHUD();
+
+        // ALWAYS immediately reset striker back to active player's baseline!
         this.positionStrikerForTurn();
 
         // Sync pieces state in multiplayer
@@ -512,16 +526,28 @@ class CarromGame {
     }
 
     triggerBotTurn() {
-        this.showStatus('Carrom Bot is calculating optimal angle and power...');
+        this.showStatus('Carrom Bot is taking aim...');
+        let attempts = 0;
 
-        setTimeout(() => {
-            if (this.currentTurn !== 'p2' || this.physics.isTableBusy()) return;
+        const executeBot = () => {
+            if (this.currentTurn !== 'p2') return;
+
+            // Wait if table is still in motion
+            if (this.physics.isTableBusy()) {
+                attempts++;
+                if (attempts < 8) {
+                    setTimeout(executeBot, 250);
+                    return;
+                } else {
+                    this.physics.stopAll();
+                }
+            }
 
             // Find all active unpocketed pieces
             const targets = this.piecesManager.pieces.filter(p => !p.isPocketed);
             if (targets.length === 0) return;
 
-            // Bot prefers Black pieces or Queen
+            // Bot prefers Queen or Black pieces
             let bestPiece = targets.find(p => p.type === 'queen');
             if (!bestPiece) {
                 bestPiece = targets.find(p => p.type === 'black') || targets[0];
@@ -550,8 +576,7 @@ class CarromGame {
 
             // Bot places striker on baseline at suitable X to get a clean line of sight
             let botX = Math.max(-18, Math.min(18, ghostX));
-            // Add slight human-like randomness (+-0.6)
-            botX += (Math.random() - 0.5) * 1.2;
+            botX += (Math.random() - 0.5) * 1.0;
 
             const baselineZ = -26.0;
             const shootDirX = ghostX - botX;
@@ -560,15 +585,29 @@ class CarromGame {
 
             // Power based on distance
             const targetDist = Math.hypot(shootDirX, shootDirZ);
-            const botPower = Math.min(0.95, Math.max(0.45, 0.4 + (targetDist / 70) * 0.4 + Math.random() * 0.15));
+            const botPower = Math.min(0.92, Math.max(0.48, 0.42 + (targetDist / 70) * 0.42 + (Math.random() - 0.5) * 0.1));
 
+            // Position striker on Bot's side
             this.strikerX = botX;
             this.aimAngle = targetAngle;
             this.shotPower = botPower;
 
-            // Execute bot strike
-            this.takeShot(botPower, targetAngle, botX);
-        }, 1200);
+            if (this.piecesManager.striker) {
+                this.piecesManager.striker.x = botX;
+                this.piecesManager.striker.z = baselineZ;
+                if (this.piecesManager.striker.mesh) {
+                    this.piecesManager.striker.mesh.position.set(botX, this.piecesManager.strikerHeight / 2, baselineZ);
+                }
+            }
+
+            // Brief delay so user sees Bot aim and position, then release shot
+            setTimeout(() => {
+                if (this.currentTurn !== 'p2') return;
+                this.takeShot(botPower, targetAngle, botX);
+            }, 650);
+        };
+
+        setTimeout(executeBot, 500);
     }
 
     handleGameOver() {
@@ -670,6 +709,33 @@ class CarromGame {
             this.startMatch();
         });
 
+        // In-Game Chat Drawer Toggle
+        const floatingChat = document.getElementById('floating-chat');
+        document.getElementById('btn-chat-toggle')?.addEventListener('click', () => {
+            floatingChat?.classList.toggle('closed');
+        });
+        document.getElementById('btn-close-chat')?.addEventListener('click', () => {
+            floatingChat?.classList.add('closed');
+        });
+
+        // Quick Reaction Phrase Chips
+        document.querySelectorAll('.chip-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const msg = btn.getAttribute('data-msg');
+                if (msg) this.sendChatMessage(msg);
+            });
+        });
+
+        // Chat Form Submit
+        document.getElementById('panel-chat-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('panel-chat-input');
+            if (input && input.value.trim()) {
+                this.sendChatMessage(input.value.trim());
+                input.value = '';
+            }
+        });
+
         // Canvas Direct Touch/Pointer Aiming
         this.container.addEventListener('pointerdown', (e) => this.onPointerDown(e));
         window.addEventListener('pointermove', (e) => this.onPointerMove(e));
@@ -677,6 +743,43 @@ class CarromGame {
 
         // Listen for PostMessage from Parent (Next.js CarromGame wrapper)
         window.addEventListener('message', (e) => this.handleParentMessage(e));
+    }
+
+    sendChatMessage(text) {
+        this.addMessageToChat(this.myName, text, true);
+        this.showChatToast(this.myName, text);
+
+        // Forward to parent Next.js wrapper (for socket broadcast)
+        window.parent.postMessage({
+            type: 'CARROM_LOCAL_CHAT',
+            text
+        }, '*');
+
+        // If in solo AI mode, Bot replies playfully
+        if (this.mode === 'ai') {
+            setTimeout(() => {
+                const botReplies = [
+                    'Nice shot!',
+                    'My turn now!',
+                    'Good strike!',
+                    'Well played!',
+                    'Watch out for the Queen!'
+                ];
+                const botMsg = botReplies[Math.floor(Math.random() * botReplies.length)];
+                this.addMessageToChat('Carrom Bot', botMsg, false);
+                this.showChatToast('Carrom Bot', botMsg);
+            }, 800);
+        }
+    }
+
+    addMessageToChat(sender, text, isMe) {
+        const container = document.getElementById('panel-chat-messages');
+        if (!container) return;
+        const msgEl = document.createElement('div');
+        msgEl.className = `chat-msg ${isMe ? 'me' : 'other'}`;
+        msgEl.textContent = `${sender}: ${text}`;
+        container.appendChild(msgEl);
+        container.scrollTop = container.scrollHeight;
     }
 
     onPointerDown(e) {
@@ -750,6 +853,9 @@ class CarromGame {
                 });
             }
             this.updateHUD();
+        } else if (data.type === 'CARROM_CHAT') {
+            this.addMessageToChat(data.senderName || 'Opponent', data.message, false);
+            this.showChatToast(data.senderName || 'Opponent', data.message);
         } else if (data.type === 'CARROM_TOGGLE_MUTE') {
             if (window.CarromAudio) {
                 window.CarromAudio.enabled = !data.muted;
@@ -757,6 +863,22 @@ class CarromGame {
         } else if (data.type === 'CARROM_RESTART') {
             this.startMatch();
         }
+    }
+
+    showChatToast(sender, message) {
+        let toast = document.getElementById('chat-toast-bubble');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'chat-toast-bubble';
+            toast.className = 'chat-toast-bubble';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = `${sender}: ${message}`;
+        toast.classList.add('visible');
+        if (this.chatToastTimeout) clearTimeout(this.chatToastTimeout);
+        this.chatToastTimeout = setTimeout(() => {
+            toast.classList.remove('visible');
+        }, 3200);
     }
 
     animate() {
