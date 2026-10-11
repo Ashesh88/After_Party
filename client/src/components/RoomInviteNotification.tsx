@@ -45,9 +45,22 @@ export default function RoomInviteNotification() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleRoomInvite = (data: InvitePayload) => {
+    const handleRoomInvite = (data: any) => {
       soundService.playMessageTone();
-      setCurrentInvite(data);
+      if (!data) return;
+      const normalized: InvitePayload = {
+        from: {
+          _id: data.from?._id || data.senderId || data.userId || '',
+          displayName: data.from?.displayName || data.inviterName || data.displayName || 'A connection',
+          avatar: data.from?.avatar || data.inviterAvatar || data.avatar,
+          friendId: data.from?.friendId || data.friendId,
+        },
+        room: {
+          _id: data.room?._id || data.roomId || '',
+          inviteCode: data.room?.inviteCode || data.inviteCode || '',
+        },
+      };
+      setCurrentInvite(normalized);
     };
 
     const handleGameInvite = (data: GameInvitePayload) => {
@@ -66,10 +79,16 @@ export default function RoomInviteNotification() {
 
   const handleAcceptRoom = async () => {
     if (!currentInvite) return;
+    const inviteCodeToUse = currentInvite.room?.inviteCode;
+    if (!inviteCodeToUse) {
+      toast.error('Invalid room invite');
+      setCurrentInvite(null);
+      return;
+    }
     setJoining(true);
     try {
       const res = await api.post('/rooms/join', {
-        inviteCode: currentInvite.room.inviteCode,
+        inviteCode: inviteCodeToUse,
       });
 
       setAuthRoom(res.data.room);
@@ -77,7 +96,7 @@ export default function RoomInviteNotification() {
         socket.emit('room:switch', { roomId: res.data.room._id });
       }
 
-      toast.success(`Joined ${currentInvite.from.displayName}'s party! 🎮`);
+      toast.success(`Joined ${currentInvite.from?.displayName || 'room'}! 🎮`);
       setCurrentInvite(null);
 
       window.dispatchEvent(new CustomEvent('room:changed', { detail: res.data.room }));
@@ -154,15 +173,15 @@ export default function RoomInviteNotification() {
               <div className="flex items-start justify-between gap-3 relative z-10">
                 <div className="flex items-center gap-3">
                   <div className="relative w-11 h-11 rounded-2xl overflow-hidden bg-black/50 border border-cyan-500/50 shrink-0">
-                    {currentInvite.from.avatar ? (
+                    {currentInvite.from?.avatar ? (
                       <img
                         src={currentInvite.from.avatar}
-                        alt={currentInvite.from.displayName}
+                        alt={currentInvite.from?.displayName || 'User'}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center font-bold text-xs uppercase text-cyan-300">
-                        {currentInvite.from.displayName.slice(0, 2)}
+                        {currentInvite.from?.displayName ? currentInvite.from.displayName.slice(0, 2) : 'AP'}
                       </div>
                     )}
                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0d0e1c]" />
@@ -176,10 +195,10 @@ export default function RoomInviteNotification() {
                       <Sparkles size={11} className="text-cyan-400" />
                     </div>
                     <h4 className="font-extrabold text-sm text-white leading-tight">
-                      {currentInvite.from.displayName}
+                      {currentInvite.from?.displayName || 'A connection'}
                     </h4>
                     <p className="text-[11px] text-slate-300">
-                      Invited you to Room <strong className="font-mono text-pink-300">{currentInvite.room.inviteCode}</strong>
+                      Invited you to Room <strong className="font-mono text-pink-300">{currentInvite.room?.inviteCode || '...'}</strong>
                     </p>
                   </div>
                 </div>

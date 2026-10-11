@@ -271,6 +271,16 @@ router.post('/invite', async (req, res, next) => {
     const io = req.app.get('io');
     if (io) {
       io.to(`user:${friendUserId}`).emit('room:invite', {
+        from: {
+          _id: user._id,
+          displayName: user.displayName,
+          avatar: user.avatar,
+          friendId: user.friendId,
+        },
+        room: {
+          _id: room._id.toString(),
+          inviteCode: room.inviteCode,
+        },
         roomId: room._id.toString(),
         inviteCode: room.inviteCode,
         inviterName: user.displayName,
