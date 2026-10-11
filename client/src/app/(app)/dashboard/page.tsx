@@ -382,7 +382,6 @@ export default function DashboardPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Online</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-semibold hidden sm:inline">• Room Active</span>
               </div>
               <h1 className="text-lg sm:text-2xl md:text-3xl font-black text-white tracking-tight truncate">
                 {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-300 drop-shadow-[0_2px_10px_rgba(244,63,142,0.3)]">{user?.displayName}</span>
@@ -400,16 +399,6 @@ export default function DashboardPage() {
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
               <Palette size={16} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 group-hover:rotate-12 transition-transform drop-shadow" />
-            </button>
-
-            {/* Room Settings Key Button */}
-            <button
-              onClick={() => setShowRoomModal(true)}
-              title="Room Settings"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-amber-500/20 to-pink-500/15 hover:from-amber-500/35 hover:to-pink-500/30 border border-amber-400/40 hover:border-amber-300 shadow-[0_4px_16px_rgba(245,158,11,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-amber-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              <KeyRound size={16} className="group-hover:scale-110 group-hover:-rotate-12 transition-transform drop-shadow" />
             </button>
 
             {/* Logout Button */}
@@ -464,71 +453,6 @@ export default function DashboardPage() {
           </button>
         </div>
       </header>
-
-      {/* Mood Theme Card - Tactile & Interactive */}
-      <div 
-        onClick={openMoodModal}
-        className="relative p-4 sm:p-5 rounded-[28px] glass-panel border transition-all duration-300 cursor-pointer group hover:scale-[1.008] active:scale-[0.99] overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
-        style={{
-          borderColor: `${currentMoodConfig.primaryColor}45`,
-          background: `linear-gradient(135deg, ${currentMoodConfig.primaryColor}18 0%, rgba(255, 255, 255, 0.02) 100%)`
-        }}
-      >
-        <div className="relative z-10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            <div 
-              className="w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] group-hover:scale-105 transition-transform shrink-0 relative overflow-hidden"
-              style={{
-                backgroundColor: `${currentMoodConfig.primaryColor}25`,
-                borderColor: `${currentMoodConfig.primaryColor}60`,
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              {moodTheme.current === 'love' && <Heart size={22} className="text-pink-400 fill-pink-400/20" />}
-              {moodTheme.current === 'angry' && <Flame size={22} className="text-rose-400 fill-rose-400/20" />}
-              {moodTheme.current === 'just_friends' && <Users size={22} className="text-cyan-400" />}
-              {moodTheme.current === 'sad' && <CloudRain size={22} className="text-blue-400 fill-blue-400/20" />}
-              {moodTheme.current === 'horny' && <Flame size={22} className="text-fuchsia-400 fill-fuchsia-400/20" />}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Mood Theme
-                </span>
-                <span 
-                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider flex items-center gap-1 shadow-sm"
-                  style={{
-                    backgroundColor: `${currentMoodConfig.primaryColor}25`,
-                    color: currentMoodConfig.primaryColor,
-                    borderColor: `${currentMoodConfig.primaryColor}50`,
-                  }}
-                >
-                  <span>{currentMoodConfig.label}</span>
-                </span>
-              </div>
-
-              <div className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
-                <span className="italic text-white/95 font-semibold">"{currentMoodConfig.quote}"</span>
-                <span className="text-slate-500">•</span>
-                <span>By <strong className="text-white">{moodTheme.updatedByName || 'Partner'}</strong> ({formatRelativeTime(moodTheme.updatedAt)})</span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              openMoodModal();
-            }}
-            className="px-4 py-2 rounded-xl text-xs font-black tracking-wide text-white transition-all shadow-[0_4px_18px_rgba(244,63,142,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:brightness-110 active:scale-95 flex items-center gap-2 cursor-pointer shrink-0"
-          >
-            <Palette size={14} className="text-white" />
-            <span>Customize</span>
-          </button>
-        </div>
-      </div>
 
       {/* Hero Countdown / Next Date Card - Sculpted Airport Flip-Clock Capsules */}
       <div className="relative p-5 sm:p-6 md:p-7 rounded-[32px] overflow-hidden glass-panel border border-pink-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] group bg-gradient-to-b from-[#140b1e]/90 via-[#0e0717]/95 to-[#08030d]">
