@@ -54,22 +54,40 @@ export async function registerPushSubscription(userInitiated = false): Promise<{
       };
     }
 
-    // 1. Ensure service worker is registered and updated to latest code
+    // 1. Ensure service worker is registered cleanly and safely recover from stale Vercel worker hashes
     let registration: ServiceWorkerRegistration;
     try {
-      registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      await registration.update();
+      const existing = await navigator.serviceWorker.getRegistration();
+      if (existing) {
+        try {
+          await existing.update();
+          registration = existing;
+        } catch (updateErr) {
+          console.warn('[Push] Existing worker update failed, unregistering stale worker:', updateErr);
+          await existing.unregister();
+          registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        }
+      } else {
+        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      }
     } catch (swErr: any) {
-      return { 
-        success: false, 
-        error: `Service Worker registration failed: ${swErr?.message || swErr}` 
-      };
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) {
+          await r.unregister();
+        }
+        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      } catch (retryErr: any) {
+        return { 
+          success: false, 
+          error: `Service Worker registration failed: ${retryErr?.message || retryErr}` 
+        };
+      }
     }
 
     // Wait until ready
     try {
       await navigator.serviceWorker.ready;
-      await registration.update();
     } catch (e) {}
 
     // 2. Clear any stale subscription to avoid applicationServerKey mismatch errors
