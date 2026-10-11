@@ -397,9 +397,6 @@ export default function UnoGame({ onBack }: UnoGameProps) {
             <span className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-amber-400 to-yellow-300">
               UNO Party
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
-              LIVE
-            </span>
           </div>
         </div>
 

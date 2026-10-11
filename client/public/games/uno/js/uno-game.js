@@ -529,9 +529,9 @@ class Uno3DGame {
             }
         }
 
-        // 3. Player Hand (High-Visibility Non-Sinking Elevation & Mobile Adaptive Fan)
-        // Card mesh height is 1.92. Elevating baseY to 1.05 ensures card bottom (y=0.15) stays
-        // comfortably above the table surface (y=0.0) without sinking into the table felt.
+        // 3. Player Hand - Multi-Tier Layout (1 Line <= 5 cards, 2 Lines 6-10 cards, 3 Lines > 10 cards)
+        // Group cards into sequential rows (Back, Middle, Front) with clean Y and Z stadium elevation,
+        // so cards NEVER jump between rows and NEVER clip through each other!
         const width = window.innerWidth;
         const height = window.innerHeight;
         const isMobile = width < 700 || (width / height) < 0.85;
@@ -539,54 +539,62 @@ class Uno3DGame {
         const p1Cards = this.rules.playersHands[0] || [];
         const count = p1Cards.length;
 
-        p1Cards.forEach((card, i) => {
-            const mesh = this.textureFactory.createCardMesh(card, false);
-            const isPlayable = this.rules.isCardPlayable(card, 0) && (this.rules.currentPlayer === 0);
+        // Partition cards into sequential tiers
+        let tiers = [];
+        if (count <= 5) {
+            tiers = [{ cards: p1Cards, y: 1.15, z: 3.65 }];
+        } else if (count <= 10) {
+            const row0Count = Math.ceil(count / 2);
+            tiers = [
+                { cards: p1Cards.slice(0, row0Count), y: 1.55, z: 3.00 },
+                { cards: p1Cards.slice(row0Count), y: 0.95, z: 3.90 }
+            ];
+        } else {
+            const row0Count = Math.ceil(count / 3);
+            const remaining = count - row0Count;
+            const row1Count = Math.ceil(remaining / 2);
+            tiers = [
+                { cards: p1Cards.slice(0, row0Count), y: 1.85, z: 2.50 },
+                { cards: p1Cards.slice(row0Count, row0Count + row1Count), y: 1.30, z: 3.35 },
+                { cards: p1Cards.slice(row0Count + row1Count), y: 0.75, z: 4.20 }
+            ];
+        }
 
-            let x, y, z, rotZ;
+        tiers.forEach((tier) => {
+            const tierCards = tier.cards;
+            const tierCount = tierCards.length;
+            const maxSpread = isMobile ? 3.4 : 5.8;
+            const spacing = Math.min(maxSpread / Math.max(tierCount - 1, 1), isMobile ? 0.62 : 1.10);
 
-            if (count <= 7) {
-                // Wide single arc with responsive bounds
-                const maxSpread = isMobile ? 3.3 : 6.4;
-                const spacing = Math.min(maxSpread / Math.max(count - 1, 1), isMobile ? 0.60 : 1.15);
-                const centerOffset = i - (count - 1) / 2;
-                x = centerOffset * spacing;
-                y = 1.05 - Math.abs(centerOffset) * 0.025;
-                z = 3.65 - Math.abs(centerOffset) * 0.05;
-                rotZ = -centerOffset * (isMobile ? 0.045 : 0.035);
-            } else {
-                // Multi-card staggered tiers: Back row (even cards) & Front row (odd cards)
-                const isBackRow = (i % 2 === 0);
-                const rowCount = isBackRow ? Math.ceil(count / 2) : Math.floor(count / 2);
-                const rowIdx = Math.floor(i / 2);
-                const centerOffset = rowIdx - (rowCount - 1) / 2;
-                const maxSpread = isMobile ? 3.3 : 6.8;
-                const spacing = Math.min(maxSpread / Math.max(rowCount - 1, 1), isMobile ? 0.58 : 1.15);
+            tierCards.forEach((card, j) => {
+                const mesh = this.textureFactory.createCardMesh(card, false);
+                const isPlayable = this.rules.isCardPlayable(card, 0) && (this.rules.currentPlayer === 0);
 
-                x = centerOffset * spacing + (isBackRow ? -0.15 : 0.15);
-                y = isBackRow ? 1.35 : 1.05;
-                z = isBackRow ? 3.35 : 3.80;
-                rotZ = -centerOffset * (isMobile ? 0.04 : 0.03);
-            }
+                const centerOffset = j - (tierCount - 1) / 2;
+                const x = centerOffset * spacing;
+                // Tiny Z micro-stagger within row so cards sit cleanly on top of each other without polygon clipping
+                let y = tier.y - Math.abs(centerOffset) * 0.015;
+                let z = tier.z + j * 0.018;
+                const rotZ = -centerOffset * 0.02;
 
-            // Elevate and bring forward playable cards (+0.25 units)
-            if (isPlayable) {
-                y += 0.25;
-                z -= 0.10;
-            }
+                if (isPlayable) {
+                    y += 0.28;
+                    z += 0.04;
+                }
 
-            mesh.position.set(x, y, z);
-            mesh.rotation.set(-0.36, 0, rotZ);
-            mesh.userData.baseY = y;
-            mesh.userData.baseZ = z;
-            mesh.userData.isPlayable = isPlayable;
-            mesh.userData.card = card;
+                mesh.position.set(x, y, z);
+                mesh.rotation.set(-0.30, 0, rotZ);
+                mesh.userData.baseY = y;
+                mesh.userData.baseZ = z;
+                mesh.userData.isPlayable = isPlayable;
+                mesh.userData.card = card;
 
-            this.scene.add(mesh);
-            this.playerCardMeshes.push(mesh);
+                this.scene.add(mesh);
+                this.playerCardMeshes.push(mesh);
+            });
         });
 
-        // 4. Opponent Hand (Elevated above table, dual-face back texture guarantees no peeking)
+        // 4. Opponent Hand (Dual-face back texture guarantees no peeking)
         const p2Cards = this.rules.playersHands[1] || [];
         const oppCount = p2Cards.length;
         const oppMaxSpread = isMobile ? 3.2 : 5.0;
@@ -597,11 +605,11 @@ class Uno3DGame {
             const centerOffset = i - (oppCount - 1) / 2;
             const x = centerOffset * oppSpacing;
             const y = 1.05 - Math.abs(centerOffset) * 0.02;
-            const z = -3.4 + Math.abs(centerOffset) * 0.05;
-            const rotZ = centerOffset * (isMobile ? 0.045 : 0.035);
+            const z = -3.4 + Math.abs(centerOffset) * 0.05 + i * 0.01;
+            const rotZ = centerOffset * (isMobile ? 0.035 : 0.025);
 
             mesh.position.set(x, y, z);
-            mesh.rotation.set(Math.PI - 0.35, 0, rotZ);
+            mesh.rotation.set(Math.PI - 0.30, 0, rotZ);
             this.scene.add(mesh);
             this.opponentCardMeshes.push(mesh);
         });
@@ -706,6 +714,11 @@ class Uno3DGame {
             return;
         }
 
+        if (playerIdx === 0 && this.dom.btnPass) {
+            this.dom.btnPass.style.display = 'none';
+            this.dom.btnPass.classList.remove('pulsing');
+        }
+
         this.audio.playCardPlay();
         this.syncCards3D();
 
@@ -798,18 +811,19 @@ class Uno3DGame {
         if (playableAfterDraw.length > 0) {
             const cardName = drawRes && drawRes.card ? drawRes.card.getLabel() : 'Card';
             this.updateBanner(`You drew ${cardName}. Play any matching card, or tap PASS.`);
-            if (this.dom.btnPass) this.dom.btnPass.style.display = 'inline-flex';
+            if (this.dom.btnPass) {
+                this.dom.btnPass.style.display = 'inline-flex';
+                this.dom.btnPass.classList.remove('pulsing');
+            }
             this.isProcessingMove = false;
         } else {
             const cardName = drawRes && drawRes.card ? drawRes.card.getLabel() : 'Card';
-            this.updateBanner(`Card drawn (${cardName}) cannot be played. No matching cards. Passing turn...`);
-            if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
-            setTimeout(() => {
-                this.rules.passTurn(0);
-                this.syncCards3D();
-                this.isProcessingMove = false;
-                this.checkBotTurn();
-            }, 900);
+            this.updateBanner(`Card drawn (${cardName}) cannot be played. Tap PASS to end your turn.`);
+            if (this.dom.btnPass) {
+                this.dom.btnPass.style.display = 'inline-flex';
+                this.dom.btnPass.classList.add('pulsing');
+            }
+            this.isProcessingMove = false;
         }
     }
 
@@ -825,7 +839,10 @@ class Uno3DGame {
             this.autoDrawTimeout = null;
         }
 
-        if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
+        if (this.dom.btnPass) {
+            this.dom.btnPass.style.display = 'none';
+            this.dom.btnPass.classList.remove('pulsing');
+        }
         this.rules.passTurn(0);
         this.syncCards3D();
         this.checkBotTurn();
@@ -1059,26 +1076,25 @@ class Uno3DGame {
 
             if (state.hasDrawnThisTurn) {
                 if (this.dom.btnPass) this.dom.btnPass.style.display = 'inline-flex';
-                this.updateBanner(`You drew a card. Play any matching card, or tap PASS.`);
+                if (this.dom.btnDraw) this.dom.btnDraw.classList.remove('pulsing');
+                const playableCards = this.rules.getPlayableCards(0);
+                if (playableCards.length > 0) {
+                    this.updateBanner(`You drew a card. Play any matching card, or tap PASS.`);
+                    if (this.dom.btnPass) this.dom.btnPass.classList.remove('pulsing');
+                } else {
+                    this.updateBanner(`Drawn card cannot be played. Tap PASS to end your turn.`);
+                    if (this.dom.btnPass) this.dom.btnPass.classList.add('pulsing');
+                }
             } else {
-                if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
+                if (this.dom.btnPass) {
+                    this.dom.btnPass.style.display = 'none';
+                    this.dom.btnPass.classList.remove('pulsing');
+                }
                 const playableCards = this.rules.getPlayableCards(0);
                 if (playableCards.length === 0) {
-                    this.updateBanner(`No matching card (${topCol} or ${topVal}). Auto-drawing 1 card...`);
+                    this.updateBanner(`No matching card (${topCol} or ${topVal}). Tap DRAW pile to draw a card.`);
                     if (this.dom.btnDraw) this.dom.btnDraw.classList.add('pulsing');
-                    if (!this.autoDrawTimeout && !this.isProcessingMove && !state.isGameOver) {
-                        this.autoDrawTimeout = setTimeout(() => {
-                            this.autoDrawTimeout = null;
-                            if (this.rules.currentPlayer === 0 && !this.rules.hasDrawnThisTurn && !this.rules.isGameOver) {
-                                this.handlePlayerDraw();
-                            }
-                        }, 750);
-                    }
                 } else {
-                    if (this.autoDrawTimeout) {
-                        clearTimeout(this.autoDrawTimeout);
-                        this.autoDrawTimeout = null;
-                    }
                     if (this.dom.btnDraw) this.dom.btnDraw.classList.remove('pulsing');
                     this.updateBanner(`Your Turn: Play any ${topCol} card, or match ${topVal}, or tap Draw.`);
                 }
@@ -1090,7 +1106,10 @@ class Uno3DGame {
             }
             this.dom.cardP2.classList.add('active-turn');
             this.dom.cardP1.classList.remove('active-turn');
-            if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
+            if (this.dom.btnPass) {
+                this.dom.btnPass.style.display = 'none';
+                this.dom.btnPass.classList.remove('pulsing');
+            }
             if (this.dom.btnDraw) this.dom.btnDraw.classList.remove('pulsing');
         }
 
