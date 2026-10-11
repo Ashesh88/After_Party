@@ -54,6 +54,27 @@ export default function DashboardPage() {
     displayTarget: '',
   });
 
+  // Dynamic Real-time greeting based on current local hour
+  const [greeting, setGreeting] = useState('Welcome');
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) {
+        setGreeting('Good morning');
+      } else if (hour >= 12 && hour < 17) {
+        setGreeting('Good afternoon');
+      } else if (hour >= 17 && hour < 22) {
+        setGreeting('Good evening');
+      } else {
+        setGreeting('Good night');
+      }
+    };
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: { logout: () => void }) => state.logout);
   const updateAvatar = useAuthStore((state: any) => state.updateAvatar);
@@ -320,8 +341,6 @@ export default function DashboardPage() {
     toast.success('Signed out');
     router.push('/login');
   };
-
-  const greeting = "Good evening";
 
   return (
     <div className="relative min-h-screen p-3.5 sm:p-6 md:p-8 lg:p-10 w-full max-w-md sm:max-w-xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto space-y-5 pb-32">
