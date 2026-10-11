@@ -14,6 +14,8 @@ import HeartbeatOverlay from '../../components/HeartbeatOverlay';
 import { useMoodStore } from '../../lib/store/moodStore';
 import { useGameStore } from '../../lib/store/gameStore';
 
+import { registerPushSubscription } from '../../lib/pushSubscription';
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { connectSocket, disconnectSocket, socket } = useSocketStore();
@@ -28,14 +30,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     fetchMood();
     if (token) {
       connectSocket(token);
+      registerPushSubscription().catch(() => {});
     }
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
-    }
-    return () => {
-      disconnectSocket();
-    };
-  }, [token, connectSocket, disconnectSocket, fetchMe, fetchMood]);
+  }, [token, connectSocket, fetchMe, fetchMood]);
 
   useEffect(() => {
     if (!socket) return;

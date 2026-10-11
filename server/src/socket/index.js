@@ -4,6 +4,7 @@ const Message = require('../models/Message');
 const User = require('../models/User');
 const Room = require('../models/Room');
 const ticTacToe = require('../games/ticTacToe');
+const pushService = require('../services/pushService');
 
 const onlineUsers = new Set();
 const activeLocations = new Map(); // roomId -> Map(userId -> locationPayload)
@@ -430,7 +431,7 @@ const setupSocket = (io) => {
     });
 
     // WebRTC Call Signaling (Prioritize direct user channel, fallback to room broadcast)
-    socket.on('webrtc:call-user', ({ callType, callerName, callerAvatar, targetUserId }) => {
+    socket.on('webrtc:call-user', async ({ callType, callerName, callerAvatar, targetUserId }) => {
       const payload = {
         callerId: userId,
         callerName,
@@ -439,10 +440,34 @@ const setupSocket = (io) => {
       };
       if (targetUserId && targetUserId.toString() !== userId.toString()) {
         io.to(`user:${targetUserId}`).emit('webrtc:incoming-call', payload);
+        // Dispatch Web Push notification so recipient receives alert even if site is closed
+        User.findById(targetUserId).then((targetUser) => {
+          if (targetUser) {
+            pushService.sendPushToUser(targetUser, {
+              title: `${callerName || 'Your friend'} is calling!`,
+              body: `Incoming ${callType || 'video'} call. Tap to answer.`,
+              icon: callerAvatar || '/icon-192x192.png',
+              data: { url: '/chat', type: 'call' },
+              tag: 'incoming-call',
+              requireInteraction: true,
+            });
+          }
+        }).catch(() => {});
       } else {
         const currentChannel = getActiveRoomChannel();
         if (currentChannel) {
           socket.to(currentChannel).emit('webrtc:incoming-call', payload);
+          const activeRoomId = getActiveRoomId();
+          if (activeRoomId) {
+            pushService.sendPushToRoom(activeRoomId, {
+              title: `${callerName || 'Your friend'} is calling!`,
+              body: `Incoming ${callType || 'video'} call. Tap to answer.`,
+              icon: callerAvatar || '/icon-192x192.png',
+              data: { url: '/chat', type: 'call' },
+              tag: 'incoming-call',
+              requireInteraction: true,
+            }).catch(() => {});
+          }
         }
       }
     });
@@ -698,7 +723,7 @@ const setupSocket = (io) => {
     });
 
     // Direct Friend Game Challenge / Invite Handlers
-    socket.on('game:invite', (data) => {
+    socket.on('game:invite', async (data) => {
       const targetUserId = data?.targetUserId;
       if (!targetUserId) return;
       io.to(`user:${targetUserId}`).emit('game:invite:received', {
@@ -708,6 +733,20 @@ const setupSocket = (io) => {
         game: data.game || 'chess',
         sessionCode: data.sessionCode,
       });
+
+      // Dispatch Web Push notification so friend gets alerted even if site is closed
+      try {
+        const targetUser = await User.findById(targetUserId);
+        if (targetUser) {
+          pushService.sendPushToUser(targetUser, {
+            title: `Game Invite from ${data.senderName || 'Your Friend'}`,
+            body: `Challenged you to play ${(data.game || 'arcade').toUpperCase()}! Tap to join.`,
+            icon: data.senderAvatar || '/icon-192x192.png',
+            data: { url: '/games', type: 'game-invite' },
+            tag: 'game-invite',
+          });
+        }
+      } catch (err) {}
     });
 
     socket.on('game:invite:accept', (data) => {

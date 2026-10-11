@@ -2,6 +2,7 @@ const express = require('express');
 const auth = require('../middleware/auth');
 const Room = require('../models/Room');
 const User = require('../models/User');
+const pushService = require('../services/pushService');
 
 const router = express.Router();
 
@@ -303,6 +304,15 @@ router.post('/invite', async (req, res, next) => {
         inviterAvatar: user.avatar,
       });
     }
+
+    // Send Web Push notification so target user receives alert even if site is closed
+    pushService.sendPushToUser(targetUser, {
+      title: 'Room Invite',
+      body: `${user.displayName || 'Your friend'} invited you to join room ${room.inviteCode}! Tap to join.`,
+      icon: user.avatar || '/icon-192x192.png',
+      data: { url: `/room/setup?code=${room.inviteCode}`, type: 'room-invite' },
+      tag: 'room-invite',
+    }).catch(() => {});
 
     res.json({ message: `Invitation sent to ${targetUser.displayName}` });
   } catch (error) {
