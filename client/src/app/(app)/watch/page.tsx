@@ -41,6 +41,9 @@ export default function WatchPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [useProxy, setUseProxy] = useState(false);
+  const [theaterLights, setTheaterLights] = useState(true);
+  const [showCurtains, setShowCurtains] = useState(true);
+  const [popcornTossed, setPopcornTossed] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -417,48 +420,213 @@ export default function WatchPage() {
         </AnimatePresence>
       </header>
 
-      {/* Main Video Stage */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-4 py-2 sm:py-6 flex flex-col items-center justify-center relative z-10">
+      {/* Main Video Stage - Luxury Cinema Theater Experience */}
+      <main className={`flex-1 w-full mx-auto px-2 sm:px-4 py-2 sm:py-4 flex flex-col items-center justify-center relative z-10 transition-colors duration-700 ${theaterLights ? 'bg-black/95' : ''} ${mediaState ? 'max-w-6xl' : 'max-w-5xl'}`}>
         {mediaState ? (
-          <div className="w-full flex flex-col items-center gap-3">
-            <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black">
-              {mediaState.type === 'youtube' && (
-                <iframe
-                  src={`https://www.youtube.com/embed/${mediaState.src}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
-                  title="Couple Theater - YouTube"
-                  className="w-full h-full border-0 rounded-2xl sm:rounded-[32px]"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+          <div className="w-full flex flex-col items-center gap-3 relative">
+            {/* Projector Light Beam from Above */}
+            <div 
+              className={`absolute -top-16 left-1/2 -translate-x-1/2 w-full max-w-4xl h-72 pointer-events-none transition-opacity duration-1000 ${theaterLights ? 'opacity-85' : 'opacity-20'}`}
+              style={{
+                background: 'radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.22) 0%, rgba(244, 63, 142, 0.12) 35%, transparent 75%)',
+                filter: 'blur(25px)',
+              }}
+            />
+
+            {/* Theater Stage Frame with Curtains */}
+            <div className="w-full relative flex flex-col items-center shadow-[0_25px_60px_rgba(0,0,0,0.95)]">
+              
+              {/* Top Velvet Curtain Valance / Pelmet with Gold Trim */}
+              {showCurtains && (
+                <div className="w-full h-6 sm:h-9 z-20 flex items-center justify-between overflow-hidden shadow-2xl relative rounded-t-2xl sm:rounded-t-3xl border-b-2 border-amber-500/40 bg-gradient-to-r from-[#3f020c] via-[#750b20] to-[#3f020c]">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-400/25 via-transparent to-black/40 pointer-events-none" />
+                  <div className="w-full flex justify-between items-center px-3 sm:px-4 text-[9px] sm:text-[11px] font-black tracking-widest text-amber-300 uppercase select-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+                    <span className="flex items-center gap-1">★ VIP CINEMA</span>
+                    <span className="hidden sm:inline-flex items-center gap-1.5 text-amber-200/90 font-mono text-[10px]">
+                      DOLBY THEATER 4K • SYNCED LOUNGE
+                    </span>
+                    <span>HALL 1 ★</span>
+                  </div>
+                </div>
               )}
 
-              {mediaState.type === 'direct' && (
-                <video
-                  src={mediaState.src}
-                  controls
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-contain rounded-2xl sm:rounded-[32px] bg-black"
-                >
-                  Your browser does not support HTML5 video streaming.
-                </video>
-              )}
+              {/* Middle Section: Big Screen + Left & Right Curtains */}
+              <div className="w-full flex items-stretch relative">
+                {/* Left Velvet Curtain Column */}
+                {showCurtains && (
+                  <div className="w-3.5 sm:w-10 md:w-14 shrink-0 bg-gradient-to-r from-[#200107] via-[#5c0819] to-[#36020c] rounded-l-2xl sm:rounded-l-3xl shadow-[5px_0_15px_rgba(0,0,0,0.8)] z-20 relative overflow-hidden flex flex-col justify-between py-4 border-r border-amber-500/20">
+                    <div className="w-full h-full opacity-35 bg-[repeating-linear-gradient(90deg,_transparent,_transparent_8px,_rgba(0,0,0,0.5)_8px,_rgba(0,0,0,0.5)_16px)] pointer-events-none" />
+                  </div>
+                )}
 
-              {mediaState.type === 'embed' && (
-                <iframe
-                  key={`${mediaState.src}-${useProxy}`}
-                  src={
-                    useProxy
-                      ? `${apiOrigin}/api/watch/proxy?url=${encodeURIComponent(mediaState.src)}`
-                      : mediaState.src
-                  }
-                  title="Couple Theater - Web Stream"
-                  className="w-full h-full border-0 rounded-2xl sm:rounded-[32px] bg-black"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                  allowFullScreen
-                  referrerPolicy="no-referrer"
-                />
-              )}
+                {/* The Big Silver Screen */}
+                <div className="flex-1 aspect-video overflow-hidden relative bg-black shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(244,63,142,0.18)] border-2 border-slate-800/90 rounded-none sm:rounded-sm">
+                  {mediaState.type === 'youtube' && (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${mediaState.src}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
+                      title="Couple Theater - YouTube"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  )}
+
+                  {mediaState.type === 'direct' && (
+                    <video
+                      src={mediaState.src}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain bg-black"
+                    >
+                      Your browser does not support HTML5 video streaming.
+                    </video>
+                  )}
+
+                  {mediaState.type === 'embed' && (
+                    <iframe
+                      key={`${mediaState.src}-${useProxy}`}
+                      src={
+                        useProxy
+                          ? `${apiOrigin}/api/watch/proxy?url=${encodeURIComponent(mediaState.src)}`
+                          : mediaState.src
+                      }
+                      title="Couple Theater - Web Stream"
+                      className="w-full h-full border-0 bg-black"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                </div>
+
+                {/* Right Velvet Curtain Column */}
+                {showCurtains && (
+                  <div className="w-3.5 sm:w-10 md:w-14 shrink-0 bg-gradient-to-l from-[#200107] via-[#5c0819] to-[#36020c] rounded-r-2xl sm:rounded-r-3xl shadow-[-5px_0_15px_rgba(0,0,0,0.8)] z-20 relative overflow-hidden flex flex-col justify-between py-4 border-l border-amber-500/20">
+                    <div className="w-full h-full opacity-35 bg-[repeating-linear-gradient(90deg,_transparent,_transparent_8px,_rgba(0,0,0,0.5)_8px,_rgba(0,0,0,0.5)_16px)] pointer-events-none" />
+                  </div>
+                )}
+              </div>
+
+              {/* Polished Stage Reflection Floor & Aisle LED Runners */}
+              <div className="w-full h-3.5 sm:h-5 bg-gradient-to-b from-[#161624] to-[#080812] border-t border-white/10 flex justify-between items-center px-4 shadow-inner">
+                <div className="w-16 sm:w-28 h-1 rounded-full bg-amber-400/50 shadow-[0_0_10px_rgba(251,191,36,0.9)] animate-pulse" />
+                <div className="text-[8px] font-black tracking-widest text-slate-500 uppercase">STAGE FRONT</div>
+                <div className="w-16 sm:w-28 h-1 rounded-full bg-amber-400/50 shadow-[0_0_10px_rgba(251,191,36,0.9)] animate-pulse" />
+              </div>
+            </div>
+
+            {/* VIP Couple Theater Recliner Lounge (You & Partner in Front Row) */}
+            <div className="w-full max-w-xl p-3 sm:p-4 rounded-3xl bg-gradient-to-b from-[#1b0610]/90 to-[#0e0614]/95 border border-pink-500/30 shadow-[0_15px_45px_rgba(0,0,0,0.95)] backdrop-blur-xl relative z-20">
+              {/* Flying popcorn animation */}
+              <AnimatePresence>
+                {popcornTossed && (
+                  <motion.div
+                    initial={{ scale: 0.5, y: 15, opacity: 0 }}
+                    animate={{ scale: [1, 1.8, 1.4], y: [-10, -50, -15], opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute left-1/2 -top-12 -translate-x-1/2 text-3xl z-40 select-none pointer-events-none"
+                  >
+                    🍿🍿🍿
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                
+                {/* Seat 1: You */}
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-600 p-[2px] shadow-lg shadow-pink-500/25">
+                      <div className="w-full h-full rounded-[14px] bg-[#0c0c17] overflow-hidden flex items-center justify-center">
+                        {user?.avatar ? (
+                          <img src={user.avatar} alt="You" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-bold text-pink-400">You</span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Popcorn bucket icon badge */}
+                    <span className="absolute -bottom-1 -right-1 text-xs sm:text-sm bg-black/80 rounded-full p-0.5 shadow border border-white/10">
+                      🍿
+                    </span>
+                  </div>
+                  <div className="min-w-0 truncate">
+                    <span className="text-[9px] uppercase tracking-wider text-pink-400 font-extrabold block">Recliner A1</span>
+                    <p className="text-xs sm:text-sm font-bold text-white truncate">{user?.displayName || 'You'}</p>
+                  </div>
+                </div>
+
+                {/* Center Console: Cinema Hall Controls & Popcorn Toss */}
+                <div className="flex flex-col items-center gap-1.5 px-1 sm:px-2 shrink-0">
+                  <div className="flex items-center gap-1 sm:gap-1.5">
+                    {/* Toggle Dim Lights */}
+                    <button
+                      type="button"
+                      onClick={() => setTheaterLights(!theaterLights)}
+                      title={theaterLights ? "Dim Lights (Cinema Mode ON)" : "Brighten Lights"}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer border ${
+                        theaterLights
+                          ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                          : 'bg-white/10 border-white/20 text-slate-300'
+                      }`}
+                    >
+                      <span>💡</span>
+                      <span className="hidden sm:inline">{theaterLights ? 'Lights Dim' : 'Lights On'}</span>
+                    </button>
+
+                    {/* Share Popcorn button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPopcornTossed(true);
+                        sendReaction('🍿');
+                        setTimeout(() => setPopcornTossed(false), 2200);
+                      }}
+                      title="Share Popcorn with partner"
+                      className="px-2.5 py-1 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-[10px] font-bold text-pink-200 transition-all active:scale-95 cursor-pointer shadow-md flex items-center gap-1"
+                    >
+                      <span>🍿</span>
+                      <span className="hidden sm:inline">Share</span>
+                    </button>
+
+                    {/* Curtains Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setShowCurtains(!showCurtains)}
+                      title="Toggle Curtains"
+                      className="px-2 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-slate-300 transition-all active:scale-95 cursor-pointer"
+                    >
+                      <span>🎭</span>
+                    </button>
+                  </div>
+                  <span className="text-[9px] font-semibold text-slate-400">VIP Private Screen</span>
+                </div>
+
+                {/* Seat 2: Partner */}
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-1 justify-end text-right min-w-0">
+                  <div className="min-w-0 truncate">
+                    <span className="text-[9px] uppercase tracking-wider text-purple-400 font-extrabold block">Recliner A2</span>
+                    <p className="text-xs sm:text-sm font-bold text-white truncate">{partner?.displayName || 'Partner'}</p>
+                  </div>
+                  <div className="relative shrink-0">
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-600 p-[2px] shadow-lg shadow-purple-500/25">
+                      <div className="w-full h-full rounded-[14px] bg-[#0c0c17] overflow-hidden flex items-center justify-center">
+                        {partner?.avatar ? (
+                          <img src={partner.avatar} alt="Partner" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-bold text-purple-400">Partner</span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Drink cup icon badge */}
+                    <span className="absolute -bottom-1 -left-1 text-xs sm:text-sm bg-black/80 rounded-full p-0.5 shadow border border-white/10">
+                      🥤
+                    </span>
+                  </div>
+                </div>
+
+              </div>
             </div>
 
             {/* Unblock & Popout Assistant Bar for Web Streams */}
