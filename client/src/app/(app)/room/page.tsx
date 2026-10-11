@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Crown, Copy, Check, UserMinus, UserPlus, 
-  LogOut, ShieldAlert, Sparkles, Circle, Clock, RefreshCw, Send
+  LogOut, ShieldAlert, Sparkles, Circle, Clock, RefreshCw, Send,
+  Lock, Unlock, Edit3, Volume2, Mic
 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -48,6 +49,9 @@ export default function RoomPage() {
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [kickingId, setKickingId] = useState<string | null>(null);
   const [onlineStatusMap, setOnlineStatusMap] = useState<Record<string, { online: boolean; lastSeen?: string | Date }>>({});
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [inVoiceLounge, setInVoiceLounge] = useState(false);
 
   // Fetch current user's room
   const loadRoom = useCallback(async () => {
@@ -205,6 +209,47 @@ export default function RoomPage() {
     }
   };
 
+  // Toggle Room Lock
+  const handleToggleLock = async () => {
+    if (!room) return;
+    try {
+      const res = await api.patch('/rooms/settings', { isLocked: !room.isLocked });
+      setRoom(res.data.room);
+      setRoomInStore(res.data.room);
+      toast.success(res.data.room.isLocked ? 'Room locked. New joins disabled.' : 'Room unlocked.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to change lock state');
+    }
+  };
+
+  // Save Room Name
+  const handleSaveRoomName = async () => {
+    if (!newRoomName.trim() || !room) return;
+    try {
+      const res = await api.patch('/rooms/settings', { name: newRoomName.trim() });
+      setRoom(res.data.room);
+      setRoomInStore(res.data.room);
+      setIsEditingName(false);
+      toast.success('Room name updated!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update name');
+    }
+  };
+
+  // Toggle Casual Voice Lounge Walkie-Talkie
+  const handleToggleVoiceLounge = () => {
+    if (!socket) return;
+    if (inVoiceLounge) {
+      socket.emit('voice-lounge:leave');
+      setInVoiceLounge(false);
+      toast('Left Voice Lounge');
+    } else {
+      socket.emit('voice-lounge:join');
+      setInVoiceLounge(true);
+      toast.success('Joined Voice Lounge! Casual voice channel open.');
+    }
+  };
+
   // Leave room
   const handleLeaveRoom = async () => {
     if (!window.confirm('Are you sure you want to leave this room?')) {
@@ -279,25 +324,87 @@ export default function RoomPage() {
               <Users size={20} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-white tracking-tight">Room Hub</h1>
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newRoomName}
+                    onChange={(e) => setNewRoomName(e.target.value)}
+                    placeholder="Enter Room Name"
+                    className="bg-white/10 px-3 py-1 rounded-xl text-white text-base font-bold outline-none border border-pink-500/40"
+                  />
+                  <button
+                    onClick={handleSaveRoomName}
+                    className="px-2.5 py-1 rounded-lg btn-sexy text-white text-xs font-bold"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setIsEditingName(false)}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 text-slate-300 text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-extrabold text-white tracking-tight">
+                    {room.name || 'Room Hub'}
+                  </h1>
+                  {isHost && (
+                    <button
+                      onClick={() => {
+                        setNewRoomName(room.name || '');
+                        setIsEditingName(true);
+                      }}
+                      className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                      title="Edit Room Name"
+                    >
+                      <Edit3 size={15} />
+                    </button>
+                  )}
+                  {room.isLocked && (
+                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold">
+                      <Lock size={10} /> Locked
+                    </span>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-slate-400">Manage members, view presence, and invite connections</p>
             </div>
           </div>
         </div>
 
-        {/* Room Code Card */}
-        <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-2 sm:px-4">
-          <div className="text-left">
-            <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Room Code</div>
-            <div className="font-mono text-lg font-bold text-pink-400 tracking-widest">{room.inviteCode}</div>
+        {/* Room Code Card & Host Lock */}
+        <div className="flex items-center gap-2">
+          {isHost && (
+            <button
+              onClick={handleToggleLock}
+              className={`p-2.5 rounded-2xl border transition-all flex items-center gap-1.5 text-xs font-semibold ${
+                room.isLocked
+                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-300 shadow-[0_0_15px_rgba(244,63,142,0.3)]'
+                  : 'bg-white/[0.04] border-white/[0.08] text-slate-300 hover:bg-white/[0.08]'
+              }`}
+              title={room.isLocked ? 'Unlock Room (Allow joins)' : 'Lock Room (Block new joins)'}
+            >
+              {room.isLocked ? <Lock size={15} /> : <Unlock size={15} />}
+              <span className="hidden sm:inline">{room.isLocked ? 'Locked' : 'Unlocked'}</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-2 sm:px-4">
+            <div className="text-left">
+              <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Room Code</div>
+              <div className="font-mono text-lg font-bold text-pink-400 tracking-widest">{room.inviteCode}</div>
+            </div>
+            <button
+              onClick={handleCopyCode}
+              className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 transition-colors ml-2"
+              title="Copy room code"
+            >
+              {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+            </button>
           </div>
-          <button
-            onClick={handleCopyCode}
-            className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 transition-colors ml-2"
-            title="Copy room code"
-          >
-            {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-          </button>
         </div>
       </div>
 
@@ -441,6 +548,19 @@ export default function RoomPage() {
             <hr className="border-white/[0.08]" />
 
             <div className="space-y-2.5">
+              {/* Casual Voice Lounge Walkie-Talkie Toggle */}
+              <button
+                onClick={handleToggleVoiceLounge}
+                className={`w-full py-3 px-4 rounded-2xl border text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  inVoiceLounge
+                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                    : 'bg-white/[0.06] hover:bg-white/[0.1] border-white/10 text-white'
+                }`}
+              >
+                <Volume2 size={16} className={inVoiceLounge ? 'text-emerald-400 animate-pulse' : 'text-slate-400'} />
+                <span>{inVoiceLounge ? 'Connected to Voice Lounge' : 'Join Casual Voice Lounge'}</span>
+              </button>
+
               <button
                 onClick={openInviteModal}
                 className="w-full py-3 px-4 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white font-semibold text-xs transition-all flex items-center justify-center gap-2"

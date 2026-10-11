@@ -80,6 +80,10 @@ router.post('/join', async (req, res, next) => {
       return res.status(404).json({ message: 'Room not found with code: ' + inviteCode.trim().toUpperCase() });
     }
 
+    if (targetRoom.isLocked && !targetRoom.members.some(m => m.toString() === req.user.userId.toString())) {
+      return res.status(403).json({ message: 'This room is currently locked by the host' });
+    }
+
     const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -441,6 +445,52 @@ router.patch('/event', async (req, res, next) => {
     }
 
     res.json({ plannedEvent: room.plannedEvent, message: 'Event updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/rooms/settings (Update room name, locked status, wallpaper)
+router.patch('/settings', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
+      return res.status(404).json({ message: 'User is not in a room' });
+    }
+
+    const room = await Room.findById(user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    const isHost = (room.host || room.members[0])?.toString() === user._id.toString();
+    const { name, isLocked, wallpaper } = req.body;
+
+    if (typeof isLocked === 'boolean') {
+      if (!isHost) {
+        return res.status(403).json({ message: 'Only the host can lock or unlock the room' });
+      }
+      room.isLocked = isLocked;
+    }
+
+    if (name !== undefined && name.trim()) {
+      room.name = name.trim();
+    }
+
+    if (wallpaper !== undefined) {
+      room.wallpaper = wallpaper;
+    }
+
+    await room.save();
+    await room.populate('members', 'displayName email avatar friendId lastSeen');
+    await room.populate('host', 'displayName email avatar friendId lastSeen');
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`room:${room._id}`).emit('room:updated', { room });
+    }
+
+    res.json({ room, message: 'Room settings updated' });
   } catch (error) {
     next(error);
   }

@@ -130,13 +130,18 @@ const setupSocket = (io) => {
         const currentRoomId = getActiveRoomId();
         const currentChannel = getActiveRoomChannel();
 
-        if (!content || !content.trim() || !currentRoomId || !currentChannel) return;
+        const audioUrl = (typeof data === 'object' && data.audioUrl) ? data.audioUrl : null;
+        const audioDuration = (typeof data === 'object' && data.audioDuration) ? data.audioDuration : 0;
+
+        if ((!content || !content.trim()) && !audioUrl) return;
 
         const message = new Message({
           roomId: currentRoomId,
           senderId: userId,
           type,
-          content,
+          content: content || (type === 'audio' ? 'Voice note' : ''),
+          audioUrl,
+          audioDuration,
         });
         await message.save();
         await message.populate('senderId', 'displayName avatar');
@@ -148,13 +153,50 @@ const setupSocket = (io) => {
           senderId: userId,
           senderName: message.senderId?.displayName || 'Your partner',
           senderAvatar: message.senderId?.avatar || '',
-          content: content.length > 80 ? content.slice(0, 80) + '...' : content,
+          content: type === 'audio' ? 'Voice note' : (content.length > 80 ? content.slice(0, 80) + '...' : content),
           type,
           timestamp: message.createdAt,
           roomId: currentRoomId,
         });
       } catch (err) {
         console.error('chat:message error:', err);
+      }
+    });
+
+    // Touch: Heartbeat / Haptic pulse across screens
+    socket.on('touch:heartbeat', (data) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('touch:heartbeat', {
+          senderId: userId,
+          senderName: data?.senderName || 'Your partner',
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    // Room Voice Lounge (casual walkie-talkie audio streaming without full call)
+    socket.on('voice-lounge:join', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('voice-lounge:user-joined', { userId });
+      }
+    });
+
+    socket.on('voice-lounge:leave', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('voice-lounge:user-left', { userId });
+      }
+    });
+
+    socket.on('voice-lounge:signal', (data) => {
+      const targetUserId = data?.targetUserId;
+      if (targetUserId) {
+        io.to(`user:${targetUserId}`).emit('voice-lounge:signal', {
+          signal: data.signal,
+          senderId: userId,
+        });
       }
     });
 

@@ -10,7 +10,7 @@ import { useCallStore } from '../../../lib/store/callStore';
 import { soundService } from '../../../lib/soundService';
 import { 
   Send, CheckCheck, MessageCircleHeart, 
-  Flame, Lock, Phone, Video 
+  Flame, Lock, Phone, Video, Mic, Square, Play, Pause, Heart 
 } from 'lucide-react';
 
 export default function ChatPage() {
@@ -19,11 +19,18 @@ export default function ChatPage() {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [partner, setPartner] = useState<{ _id?: string; displayName: string; avatar?: string } | null>(null);
   const [vanishMode, setVanishMode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
   const socket = useSocketStore(state => state.socket);
   const user = useAuthStore(state => state.user);
   const startCall = useCallStore(state => state.startCall);
   const feedRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fetch partner info
   useEffect(() => {
@@ -127,6 +134,100 @@ export default function ChatPage() {
     if (socket) {
       socket.emit('chat:typing', { isTyping: e.target.value.length > 0 });
     }
+  };
+
+  // Start recording voice note
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result as string;
+          if (socket) {
+            socket.emit('chat:message', {
+              content: 'Voice note',
+              type: 'audio',
+              audioUrl: base64Audio,
+              audioDuration: recordingDuration,
+            });
+          }
+        };
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch {
+      toast.error('Microphone permission required for voice notes');
+    }
+  };
+
+  // Stop recording and send
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  // Cancel recording without sending
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+      clearInterval(recordingTimerRef.current);
+      audioChunksRef.current = [];
+      toast('Voice note discarded');
+    }
+  };
+
+  // Play audio voice note
+  const togglePlayAudio = (msgId: string, url: string) => {
+    if (playingAudioId === msgId) {
+      currentAudioRef.current?.pause();
+      setPlayingAudioId(null);
+      return;
+    }
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+    }
+
+    const audio = new Audio(url);
+    currentAudioRef.current = audio;
+    setPlayingAudioId(msgId);
+
+    audio.onended = () => {
+      setPlayingAudioId(null);
+    };
+    audio.play().catch(() => setPlayingAudioId(null));
+  };
+
+  // Send Heartbeat pulse to partner
+  const sendHeartbeat = () => {
+    if (!socket) return;
+    socket.emit('touch:heartbeat', { senderName: user?.displayName || 'Your partner' });
+    soundService.playHeartbeatTone();
+    toast.success('Heartbeat sent to partner! 💕');
   };
 
   const handleVanishChat = async () => {
@@ -293,7 +394,25 @@ export default function ChatPage() {
                         : 'glass-panel text-slate-100 rounded-tl-sm border-white/10'
                     }`}
                   >
-                    {msg.content}
+                    {msg.type === 'audio' && msg.audioUrl ? (
+                      <div className="flex items-center gap-3 py-1">
+                        <button
+                          type="button"
+                          onClick={() => togglePlayAudio(msg._id, msg.audioUrl!)}
+                          className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-transform active:scale-90"
+                        >
+                          {playingAudioId === msg._id ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+                        </button>
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold">Voice note</span>
+                          <span className="text-[9px] opacity-75 font-mono">
+                            {msg.audioDuration ? `${msg.audioDuration}s` : 'Audio snippet'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 px-1 font-mono">
                     <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -309,23 +428,71 @@ export default function ChatPage() {
 
         {/* Input Bar Pinned Inside Chat Container */}
         <div className="shrink-0 p-3 bg-[#0a0a14]/90 backdrop-blur-xl border-t border-white/[0.08] z-30">
-          <form onSubmit={handleSend} className="p-1 sm:p-1.5 rounded-full glass-panel border-white/[0.12] shadow-2xl flex items-center gap-2 w-full">
-            <input
-              type="text"
-              value={input}
-              onChange={handleTyping}
-              onKeyDown={handleKeyDown}
-              placeholder={vanishMode ? "Ghost whisper... 👻 (Enter to send)" : "Write a whisper to your love... (Enter to send)"}
-              className="flex-1 bg-transparent px-4 py-2 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none font-medium min-w-0"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full btn-sexy text-white flex items-center justify-center transition-all disabled:opacity-40 cursor-pointer shadow-lg shadow-pink-500/30 shrink-0 active:scale-95"
-            >
-              <Send size={15} />
-            </button>
-          </form>
+          {isRecording ? (
+            <div className="p-2 sm:p-2.5 rounded-full glass-panel border-pink-500/30 bg-pink-500/10 shadow-2xl flex items-center justify-between gap-3 w-full animate-pulse">
+              <div className="flex items-center gap-2.5 pl-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                <span className="text-xs font-bold text-white">Recording voice note...</span>
+                <span className="text-xs text-pink-300 font-mono font-bold">{recordingDuration}s</span>
+              </div>
+              <div className="flex items-center gap-2 pr-1">
+                <button
+                  type="button"
+                  onClick={cancelRecording}
+                  className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs font-medium text-slate-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  className="w-8 h-8 rounded-full btn-sexy text-white flex items-center justify-center transition-all shadow-md active:scale-95"
+                >
+                  <Send size={13} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSend} className="p-1 sm:p-1.5 rounded-full glass-panel border-white/[0.12] shadow-2xl flex items-center gap-1.5 sm:gap-2 w-full">
+              {/* Instant Heartbeat Touch Button */}
+              <button
+                type="button"
+                onClick={sendHeartbeat}
+                title="Send Instant Heartbeat to Partner"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/20 flex items-center justify-center transition-transform active:scale-90 shrink-0 ml-1"
+              >
+                <Heart size={15} fill="currentColor" />
+              </button>
+
+              <input
+                type="text"
+                value={input}
+                onChange={handleTyping}
+                onKeyDown={handleKeyDown}
+                placeholder={vanishMode ? "Ghost whisper... 👻 (Enter to send)" : "Write a whisper to your love... (Enter to send)"}
+                className="flex-1 bg-transparent px-2 sm:px-3 py-2 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none font-medium min-w-0"
+              />
+
+              {/* Voice Note Record Button */}
+              {!input.trim() ? (
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  title="Record Voice Note"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-pink-400 flex items-center justify-center transition-all cursor-pointer border border-white/10 shrink-0 active:scale-95"
+                >
+                  <Mic size={16} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full btn-sexy text-white flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-pink-500/30 shrink-0 active:scale-95"
+                >
+                  <Send size={15} />
+                </button>
+              )}
+            </form>
+          )}
         </div>
       </div>
     </div>

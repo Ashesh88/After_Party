@@ -40,6 +40,9 @@ export interface MoodTheme {
 export interface Room {
   _id: string;
   inviteCode: string;
+  name?: string;
+  isLocked?: boolean;
+  wallpaper?: string;
   participants?: User[];
   members?: User[];
   host?: User | string;
@@ -59,7 +62,10 @@ export interface Message {
   roomId: string;
   senderId: string;
   content: string;
-  type: 'text' | 'image' | 'emoji';
+  type: 'text' | 'image' | 'emoji' | 'audio';
+  imageUrl?: string;
+  audioUrl?: string;
+  audioDuration?: number;
   createdAt: string;
   seen: boolean;
 }

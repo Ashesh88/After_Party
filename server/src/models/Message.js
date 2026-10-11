@@ -14,7 +14,7 @@ const messageSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['text', 'image', 'emoji'],
+      enum: ['text', 'image', 'emoji', 'audio'],
       default: 'text',
     },
     content: {
@@ -22,6 +22,13 @@ const messageSchema = new mongoose.Schema(
     },
     imageUrl: {
       type: String,
+    },
+    audioUrl: {
+      type: String,
+    },
+    audioDuration: {
+      type: Number,
+      default: 0,
     },
     seen: {
       type: Boolean,

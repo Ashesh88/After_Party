@@ -94,6 +94,47 @@ router.post('/image', requireRoom, upload.single('image'), async (req, res, next
   }
 });
 
+// POST /api/messages/audio (voice note upload base64 or audio file)
+router.post('/audio', requireRoom, async (req, res, next) => {
+  try {
+    const { audioUrl, duration } = req.body;
+    if (!audioUrl) {
+      return res.status(400).json({ message: 'Audio data is required' });
+    }
+
+    const message = new Message({
+      roomId: req.user.roomId,
+      senderId: req.user.userId,
+      type: 'audio',
+      audioUrl,
+      audioDuration: Number(duration) || 0,
+      content: 'Voice note',
+    });
+
+    await message.save();
+    const populatedMessage = await Message.findById(message._id).populate('senderId', 'displayName avatar');
+
+    // Broadcast to room via socket if io instance is present
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`room:${req.user.roomId}`).emit('chat:message', populatedMessage);
+      io.to(`room:${req.user.roomId}`).emit('chat:notification', {
+        senderId: req.user.userId,
+        senderName: populatedMessage.senderId?.displayName || 'Your partner',
+        senderAvatar: populatedMessage.senderId?.avatar || '',
+        content: 'Sent you a voice note',
+        type: 'audio',
+        timestamp: populatedMessage.createdAt,
+        roomId: req.user.roomId,
+      });
+    }
+
+    res.status(201).json({ message: populatedMessage });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // PATCH /api/messages/:id/seen
 router.patch('/:id/seen', requireRoom, async (req, res, next) => {
   try {

@@ -20,6 +20,19 @@ const roomSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    name: {
+      type: String,
+      default: 'Couples Sanctuary',
+      trim: true,
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    wallpaper: {
+      type: String,
+      default: 'midnight',
+    },
     moodTheme: {
       current: {
         type: String,

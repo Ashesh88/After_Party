@@ -9,6 +9,7 @@ import MoodThemeModal from '../../components/MoodThemeModal';
 import MoodAtmosphereOverlay from '../../components/MoodAtmosphereOverlay';
 import RoomInviteNotification from '../../components/RoomInviteNotification';
 import MessageNotificationToast from '../../components/MessageNotificationToast';
+import HeartbeatOverlay from '../../components/HeartbeatOverlay';
 import { useMoodStore } from '../../lib/store/moodStore';
 import { useGameStore } from '../../lib/store/gameStore';
 
@@ -53,6 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <MoodThemeModal />
       <RoomInviteNotification />
       <MessageNotificationToast />
+      <HeartbeatOverlay />
     </div>
   );
 }
