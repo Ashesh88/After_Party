@@ -63,6 +63,7 @@ type FrameType =
   | 'rustic-wood'
   | 'antique-parchment'
   | 'red-ribbon'
+  | 'corkboard-wood'
   | 'minimal'
   | 'none';
 type SceneryPreset =
@@ -78,6 +79,15 @@ type SceneryPreset =
   | 'forest-stars'
   | 'desert-dunes';
 type CanvasRatio = 'fit' | '1:1' | '3:4' | '16:9';
+type PaperTextureType = 'none' | 'warm-ivory' | 'watercolor-grain' | 'burned-parchment' | 'corkboard' | 'botanical-scrapbook';
+
+interface SceneryAdjust {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+  rotation: number;
+}
 
 interface Point {
   x: number;
@@ -120,7 +130,9 @@ interface CanvasPage {
   id: string;
   title: string;
   pageColor: string;
+  paperTexture?: PaperTextureType;
   sceneryPreset: SceneryPreset;
+  sceneryAdjust?: SceneryAdjust;
   customSceneryUrl?: string | null;
   frame: FrameType;
   canvasRatio: CanvasRatio;
@@ -202,19 +214,38 @@ const FRAME_IMAGE_MAP: Record<string, string> = {
   'rustic-wood': '/frames/frame-rustic-wood.png',
   'antique-parchment': '/frames/frame-antique-parchment.png',
   'red-ribbon': '/frames/frame-red-ribbon.png',
+  'corkboard-wood': '/frames/frame-corkboard-wood.png',
 };
 
-const PHOTO_FRAMES: Array<{ key: FrameType; label: string }> = [
-  { key: 'floral-daisy', label: 'Vintage Daisy Meadow' },
-  { key: 'victorian-lace', label: 'Victorian Lace Filigree' },
-  { key: 'rose-garland', label: 'Rose Garland & Scroll' },
-  { key: 'peach-botanical', label: 'Peach Botanical Floral' },
-  { key: 'baroque-gold', label: 'Baroque Gilded Gold' },
-  { key: 'rustic-wood', label: 'Rustic Wood & Passepartout' },
-  { key: 'antique-parchment', label: 'Antique Ornate Parchment' },
-  { key: 'red-ribbon', label: 'Red Ribbon & Blossom' },
-  { key: 'minimal', label: 'Minimal Studio Border' },
-  { key: 'none', label: 'Frameless Clean' },
+const PHOTO_FRAMES: Array<{ key: FrameType; label: string; orientation: 'portrait' | 'landscape' | 'any' }> = [
+  { key: 'floral-daisy', label: 'Vintage Daisy Meadow (Vertical)', orientation: 'portrait' },
+  { key: 'victorian-lace', label: 'Victorian Lace Filigree (Vertical)', orientation: 'portrait' },
+  { key: 'rose-garland', label: 'Rose Garland & Scroll (Vertical)', orientation: 'portrait' },
+  { key: 'peach-botanical', label: 'Wildflower Deckle Border (Vertical)', orientation: 'portrait' },
+  { key: 'baroque-gold', label: 'Baroque Carved Scrollwork (Horizontal)', orientation: 'landscape' },
+  { key: 'rustic-wood', label: 'Rustic Wood Passepartout (Horizontal)', orientation: 'landscape' },
+  { key: 'antique-parchment', label: 'Delicate Crochet Lace (Horizontal)', orientation: 'landscape' },
+  { key: 'red-ribbon', label: 'Red Scalloped Piping (Horizontal)', orientation: 'landscape' },
+  { key: 'corkboard-wood', label: 'Pine Wood Cork Frame (Horizontal)', orientation: 'landscape' },
+  { key: 'minimal', label: 'Minimal Studio Border (Any)', orientation: 'any' },
+  { key: 'none', label: 'Frameless Clean (Any)', orientation: 'any' },
+];
+
+const PAPER_TEXTURE_MAP: Record<string, string> = {
+  'warm-ivory': '/paper/paper-warm-ivory.png',
+  'watercolor-grain': '/paper/paper-watercolor-grain.png',
+  'burned-parchment': '/paper/paper-burned-parchment.png',
+  'corkboard': '/paper/paper-corkboard.png',
+  'botanical-scrapbook': '/paper/paper-botanical-scrapbook.jpg',
+};
+
+const PAPER_TEXTURES: Array<{ key: PaperTextureType; label: string; orientation?: 'horizontal' | 'any' }> = [
+  { key: 'none', label: 'Plain Solid Color' },
+  { key: 'warm-ivory', label: 'Warm Ivory Paper' },
+  { key: 'watercolor-grain', label: 'Watercolor Cold-Press' },
+  { key: 'burned-parchment', label: 'Burned Scroll Parchment' },
+  { key: 'corkboard', label: 'Cork Pinboard' },
+  { key: 'botanical-scrapbook', label: 'Vintage Scrapbook' },
 ];
 
 export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
@@ -251,16 +282,18 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [shapeFilled, setShapeFilled] = useState<boolean>(false);
   const [selectedSticker, setSelectedSticker] = useState<string>('sun');
 
-  // Multi-Page Canvas Management (Default Clean Pure White Canvas)
+  // Multi-Page Canvas Management (Desktop default: horizontal 16:9, Mobile default: vertical 3:4)
   const [pages, setPages] = useState<CanvasPage[]>([
     {
       id: 'page-1',
       title: 'Page 1',
       pageColor: '#ffffff', // Default pure white page
+      paperTexture: 'none',
       sceneryPreset: 'blank', // Default clean blank sheet
+      sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'floral-daisy', // Real vintage daisy photo frame by default
-      canvasRatio: 'fit', // Responsive fit
+      canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
       stickers: [],
@@ -410,11 +443,34 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           if (page) page.pageColor = payload.pageColor;
           return next;
         });
+      } else if (actionType === 'set_paper_texture' && payload?.paperTexture) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) page.paperTexture = payload.paperTexture;
+          return next;
+        });
       } else if (actionType === 'set_scenery' && payload?.sceneryPreset) {
         setPages((prev) => {
           const next = [...prev];
           const page = next[activePageIndex];
           if (page) page.sceneryPreset = payload.sceneryPreset;
+          return next;
+        });
+      } else if (actionType === 'adjust_scenery' && payload?.sceneryAdjust) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) {
+            page.sceneryAdjust = {
+              scale: page.sceneryAdjust?.scale ?? 1,
+              offsetX: page.sceneryAdjust?.offsetX ?? 0,
+              offsetY: page.sceneryAdjust?.offsetY ?? 0,
+              opacity: page.sceneryAdjust?.opacity ?? 1,
+              rotation: page.sceneryAdjust?.rotation ?? 0,
+              ...payload.sceneryAdjust,
+            };
+          }
           return next;
         });
       } else if (actionType === 'set_frame' && payload?.frame) {
@@ -590,13 +646,30 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Fill Page Base Color (Default White or User Chosen)
-    ctx.fillStyle = currentPage.pageColor || '#ffffff';
-    ctx.fillRect(0, 0, width, height);
+    // 1. Fill Page Base Color or Paper Texture Image
+    if (currentPage.paperTexture && currentPage.paperTexture !== 'none' && PAPER_TEXTURE_MAP[currentPage.paperTexture]) {
+      const pSrc = PAPER_TEXTURE_MAP[currentPage.paperTexture];
+      const pImg = imageCacheRef.current.get(pSrc);
+      if (pImg && pImg.complete && pImg.naturalWidth > 0) {
+        ctx.drawImage(pImg, 0, 0, width, height);
+      } else {
+        const newImg = new Image();
+        newImg.src = pSrc;
+        newImg.onload = () => {
+          imageCacheRef.current.set(pSrc, newImg);
+          redrawBackgroundLayer();
+        };
+        ctx.fillStyle = currentPage.pageColor || '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+      }
+    } else {
+      ctx.fillStyle = currentPage.pageColor || '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // 2. Draw Prebuilt Scenery Coloring Line Art Outline
     drawSceneryLineArt(ctx, width, height, currentPage.sceneryPreset);
-  }, [currentPage.pageColor, currentPage.sceneryPreset]);
+  }, [currentPage.pageColor, currentPage.paperTexture, currentPage.sceneryPreset, currentPage.sceneryAdjust]);
 
   const redrawDrawingLayer = useCallback(() => {
     const drawCanvas = drawCanvasRef.current;
@@ -682,18 +755,24 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     if (preset === 'blank') return;
 
     ctx.save();
+    const adjust = currentPage.sceneryAdjust || { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 };
+    ctx.globalAlpha = Math.max(0.1, Math.min(1.0, adjust.opacity ?? 1.0));
 
     if (preset in SCENERY_IMAGE_MAP) {
       const src = SCENERY_IMAGE_MAP[preset];
       const img = imageCacheRef.current.get(src);
       if (img && img.complete && img.naturalWidth > 0) {
         const padding = 24;
-        const scale = Math.min((w - padding * 2) / img.naturalWidth, (h - padding * 2) / img.naturalHeight);
-        const dw = img.naturalWidth * scale;
-        const dh = img.naturalHeight * scale;
-        const dx = (w - dw) / 2;
-        const dy = (h - dh) / 2;
-        ctx.drawImage(img, dx, dy, dw, dh);
+        const baseScale = Math.min((w - padding * 2) / img.naturalWidth, (h - padding * 2) / img.naturalHeight);
+        const finalScale = baseScale * (adjust.scale ?? 1.0);
+        const dw = img.naturalWidth * finalScale;
+        const dh = img.naturalHeight * finalScale;
+
+        ctx.translate(w / 2 + (adjust.offsetX ?? 0), h / 2 + (adjust.offsetY ?? 0));
+        if (adjust.rotation) {
+          ctx.rotate((adjust.rotation * Math.PI) / 180);
+        }
+        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
       } else {
         const newImg = new Image();
         newImg.src = src;
@@ -705,6 +784,15 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       ctx.restore();
       return;
     }
+
+    // Apply scenery adjustment transforms to procedural sketches as well
+    ctx.translate(w / 2 + (adjust.offsetX ?? 0), h / 2 + (adjust.offsetY ?? 0));
+    if (adjust.rotation) {
+      ctx.rotate((adjust.rotation * Math.PI) / 180);
+    }
+    const procScale = adjust.scale ?? 1.0;
+    ctx.scale(procScale, procScale);
+    ctx.translate(-w / 2, -h / 2);
 
     ctx.strokeStyle = '#334155'; // Crisp dark slate line art
     ctx.lineWidth = 2.5;
@@ -1508,10 +1596,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       id: `page-${Date.now()}`,
       title: `Page ${newPageNum}`,
       pageColor: '#ffffff',
+      paperTexture: 'none',
       sceneryPreset: 'blank',
+      sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'floral-daisy',
-      canvasRatio: 'fit',
+      canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
       stickers: [],
@@ -1564,6 +1654,49 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         sessionCode,
         actionType: 'set_page_color',
         payload: { pageColor: color },
+      });
+    }
+  };
+
+  const handleSelectPaperTexture = (paper: PaperTextureType) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.paperTexture = paper;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_paper_texture',
+        payload: { paperTexture: paper },
+      });
+    }
+  };
+
+  const handleAdjustScenery = (partial: Partial<SceneryAdjust>) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.sceneryAdjust = {
+          scale: page.sceneryAdjust?.scale ?? 1,
+          offsetX: page.sceneryAdjust?.offsetX ?? 0,
+          offsetY: page.sceneryAdjust?.offsetY ?? 0,
+          opacity: page.sceneryAdjust?.opacity ?? 1,
+          rotation: page.sceneryAdjust?.rotation ?? 0,
+          ...partial,
+        };
+      }
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'adjust_scenery',
+        payload: { sceneryAdjust: partial },
       });
     }
   };
@@ -2098,83 +2231,205 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* PAGE TAB: Page Color & Canvas Size */}
+            {/* PAGE TAB: Paper Textures, Page Color & Orientation/Size */}
             {activeTab === 'page' && (
-              <div className="flex items-center gap-3 overflow-x-auto py-1 w-full justify-between sm:justify-start">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400 flex-none">Paper Color:</span>
-                  {PAGE_COLORS.map((pc) => (
+              <div className="flex flex-col gap-2 w-full py-1">
+                {/* 1. Authentic Paper Textures */}
+                <div className="flex items-center gap-2 overflow-x-auto py-0.5 no-scrollbar">
+                  <span className="text-[11px] font-bold text-amber-400 flex-none uppercase tracking-wider">Paper Texture:</span>
+                  {PAPER_TEXTURES.map((pt) => (
                     <button
-                      key={pc.color}
-                      onClick={() => handleSelectPageColor(pc.color)}
-                      title={pc.label}
-                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex-none border-2 transition-transform ${
-                        currentPage.pageColor === pc.color ? 'border-amber-400 scale-110 shadow-md' : 'border-slate-600'
-                      }`}
-                      style={{ backgroundColor: pc.color }}
-                    />
-                  ))}
-                  <input
-                    type="color"
-                    value={currentPage.pageColor}
-                    onChange={(e) => handleSelectPageColor(e.target.value)}
-                    className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 flex-none ml-1"
-                    title="Custom paper color"
-                  />
-                </div>
-
-                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none ml-2">
-                  <span className="text-[11px] font-bold text-slate-400 px-1">Size:</span>
-                  {[
-                    { key: 'fit', label: 'Fit' },
-                    { key: '1:1', label: '1:1' },
-                    { key: '3:4', label: '3:4' },
-                    { key: '16:9', label: '16:9' },
-                  ].map((sz) => (
-                    <button
-                      key={sz.key}
-                      onClick={() => handleSelectCanvasRatio(sz.key as CanvasRatio)}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
-                        currentPage.canvasRatio === sz.key
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'text-slate-300 hover:text-white'
+                      key={pt.key}
+                      onClick={() => handleSelectPaperTexture(pt.key)}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold flex-none transition-all ${
+                        (currentPage.paperTexture || 'none') === pt.key
+                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                          : 'bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60'
                       }`}
                     >
-                      {sz.label}
+                      {pt.label}
                     </button>
                   ))}
+                </div>
+
+                {/* 2. Paper Color Tint & Canvas Ratio / Orientation */}
+                <div className="flex items-center gap-3 overflow-x-auto py-0.5 justify-between sm:justify-start">
+                  <div className="flex items-center gap-1.5 flex-none">
+                    <span className="text-[11px] font-bold text-slate-400 flex-none">Base Tint:</span>
+                    {PAGE_COLORS.map((pc) => (
+                      <button
+                        key={pc.color}
+                        onClick={() => handleSelectPageColor(pc.color)}
+                        title={pc.label}
+                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-none border-2 transition-transform ${
+                          currentPage.pageColor === pc.color ? 'border-amber-400 scale-110 shadow-md' : 'border-slate-600'
+                        }`}
+                        style={{ backgroundColor: pc.color }}
+                      />
+                    ))}
+                    <input
+                      type="color"
+                      value={currentPage.pageColor}
+                      onChange={(e) => handleSelectPageColor(e.target.value)}
+                      className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 flex-none ml-1"
+                      title="Custom paper tint"
+                    />
+                  </div>
+
+                  {/* Orientation & Canvas Ratio */}
+                  <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none ml-2 border border-slate-700/50">
+                    <span className="text-[11px] font-bold text-slate-400 px-1">Layout:</span>
+                    {[
+                      { key: '16:9', label: 'Landscape (16:9 Desktop)' },
+                      { key: '3:4', label: 'Portrait (3:4 Mobile)' },
+                      { key: '1:1', label: 'Square (1:1)' },
+                      { key: 'fit', label: 'Auto Fit' },
+                    ].map((sz) => (
+                      <button
+                        key={sz.key}
+                        onClick={() => handleSelectCanvasRatio(sz.key as CanvasRatio)}
+                        className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
+                          currentPage.canvasRatio === sz.key
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {sz.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* SCENERY TAB: Prebuilt Scenery Outlines Ready for Coloring */}
+            {/* SCENERY TAB: Prebuilt Scenery Outlines with Transform & Position Controls */}
             {activeTab === 'scenery' && (
-              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
-                {[
-                  { key: 'blank', label: 'Blank Canvas' },
-                  { key: 'coffee-date', label: 'Romantic Cafe Date' },
-                  { key: 'mountain-cabin', label: 'Mountain Cabin River' },
-                  { key: 'capybara-halloween', label: 'Halloween Capybaras' },
-                  { key: 'rainy-frog', label: 'Cute Rainy Frog' },
-                  { key: 'elemental-touch', label: 'Fire & Water Elemental' },
-                  { key: 'balloon-house', label: 'Balloon Flying House' },
-                  { key: 'sunset-lake', label: 'Sunset Lake Sketch' },
-                  { key: 'beach-sunset', label: 'Tropical Beach Sketch' },
-                  { key: 'forest-stars', label: 'Forest Campfire Sketch' },
-                  { key: 'desert-dunes', label: 'Desert Dunes Sketch' },
-                ].map((s) => (
-                  <button
-                    key={s.key}
-                    onClick={() => handleSelectSceneryPreset(s.key as SceneryPreset)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
-                      currentPage.sceneryPreset === s.key
-                        ? 'bg-amber-500 text-slate-950'
-                        : 'bg-slate-800/80 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2 w-full py-1">
+                {/* 1. Scenery Presets Selector */}
+                <div className="flex items-center gap-2 overflow-x-auto py-0.5 no-scrollbar">
+                  {[
+                    { key: 'blank', label: 'Blank Canvas' },
+                    { key: 'coffee-date', label: 'Romantic Cafe Date (Vertical)' },
+                    { key: 'mountain-cabin', label: 'Mountain Cabin River (Horizontal)' },
+                    { key: 'capybara-halloween', label: 'Halloween Capybaras (Horizontal)' },
+                    { key: 'rainy-frog', label: 'Cute Rainy Frog (Square)' },
+                    { key: 'elemental-touch', label: 'Fire & Water Elemental (Square)' },
+                    { key: 'balloon-house', label: 'Balloon Flying House (Square)' },
+                    { key: 'sunset-lake', label: 'Sunset Lake Sketch (Horizontal)' },
+                    { key: 'beach-sunset', label: 'Tropical Beach Sketch (Horizontal)' },
+                    { key: 'forest-stars', label: 'Forest Campfire Sketch (Horizontal)' },
+                    { key: 'desert-dunes', label: 'Desert Dunes Sketch (Horizontal)' },
+                  ].map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => handleSelectSceneryPreset(s.key as SceneryPreset)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
+                        currentPage.sceneryPreset === s.key
+                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                          : 'bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 2. Adjust Scenery on Page (User Adjustment Controls) */}
+                {currentPage.sceneryPreset !== 'blank' && (
+                  <div className="flex items-center gap-3 overflow-x-auto py-1 px-2 rounded-xl bg-slate-800/60 border border-slate-700/60 no-scrollbar">
+                    <span className="text-[11px] font-bold text-amber-300 flex-none uppercase tracking-wider">Adjust Scenery:</span>
+
+                    {/* Scale / Zoom */}
+                    <div className="flex items-center gap-1.5 flex-none">
+                      <span className="text-[10px] text-slate-400 font-bold">Size:</span>
+                      <button
+                        onClick={() => handleAdjustScenery({ scale: Math.max(0.5, (currentPage.sceneryAdjust?.scale ?? 1) - 0.1) })}
+                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="text-[11px] font-mono text-amber-300 w-9 text-center">
+                        {Math.round((currentPage.sceneryAdjust?.scale ?? 1) * 100)}%
+                      </span>
+                      <button
+                        onClick={() => handleAdjustScenery({ scale: Math.min(2.0, (currentPage.sceneryAdjust?.scale ?? 1) + 0.1) })}
+                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Position X Offset */}
+                    <div className="flex items-center gap-1.5 flex-none">
+                      <span className="text-[10px] text-slate-400 font-bold">Pan X:</span>
+                      <button
+                        onClick={() => handleAdjustScenery({ offsetX: (currentPage.sceneryAdjust?.offsetX ?? 0) - 20 })}
+                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
+                      >
+                        Left
+                      </button>
+                      <button
+                        onClick={() => handleAdjustScenery({ offsetX: (currentPage.sceneryAdjust?.offsetX ?? 0) + 20 })}
+                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
+                      >
+                        Right
+                      </button>
+                    </div>
+
+                    {/* Position Y Offset */}
+                    <div className="flex items-center gap-1.5 flex-none">
+                      <span className="text-[10px] text-slate-400 font-bold">Pan Y:</span>
+                      <button
+                        onClick={() => handleAdjustScenery({ offsetY: (currentPage.sceneryAdjust?.offsetY ?? 0) - 20 })}
+                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
+                      >
+                        Up
+                      </button>
+                      <button
+                        onClick={() => handleAdjustScenery({ offsetY: (currentPage.sceneryAdjust?.offsetY ?? 0) + 20 })}
+                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
+                      >
+                        Down
+                      </button>
+                    </div>
+
+                    {/* Rotate Upright */}
+                    <button
+                      onClick={() =>
+                        handleAdjustScenery({
+                          rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360),
+                        })
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-[11px] font-bold text-slate-200 flex-none"
+                    >
+                      Rotate: {currentPage.sceneryAdjust?.rotation ?? 0}deg
+                    </button>
+
+                    {/* Outline Opacity */}
+                    <div className="flex items-center gap-1.5 flex-none">
+                      <span className="text-[10px] text-slate-400 font-bold">Outline:</span>
+                      <input
+                        type="range"
+                        min="20"
+                        max="100"
+                        value={Math.round((currentPage.sceneryAdjust?.opacity ?? 1) * 100)}
+                        onChange={(e) => handleAdjustScenery({ opacity: Number(e.target.value) / 100 })}
+                        className="w-16 accent-amber-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] font-mono text-amber-300 w-8">
+                        {Math.round((currentPage.sceneryAdjust?.opacity ?? 1) * 100)}%
+                      </span>
+                    </div>
+
+                    {/* Reset Button */}
+                    <button
+                      onClick={() => handleAdjustScenery({ scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 })}
+                      className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-[11px] font-bold flex-none"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
