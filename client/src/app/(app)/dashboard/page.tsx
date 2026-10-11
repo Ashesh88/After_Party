@@ -393,27 +393,18 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Action Buttons Cluster - Sculpted 3D Jewel Glass Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Palette / Theme Quick Button */}
-            <button
-              onClick={openMoodModal}
-              title={`Atmosphere Mood: ${currentMoodConfig.label}`}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-purple-500/25 to-pink-500/15 hover:from-purple-500/40 hover:to-pink-500/30 border border-pink-400/40 hover:border-pink-300 shadow-[0_4px_16px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.35)] flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              <Palette size={16} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 group-hover:rotate-12 transition-transform drop-shadow" />
-            </button>
-
-            {/* Menu Trigger Button with Avatar/Chevron */}
+          {/* Action Buttons Cluster - Pure Clean Menu Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Single Unified Account & Settings Menu Button */}
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 title="Account & Spaces Menu"
-                className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-white/[0.18] hover:to-white/[0.08] border border-white/20 hover:border-pink-400/50 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] text-slate-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer group active:scale-95 relative overflow-hidden"
+                className="h-10 sm:h-11 px-3 sm:px-4 rounded-2xl bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-white/[0.2] hover:to-white/[0.08] border border-white/20 hover:border-pink-400/50 shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.35)] text-white flex items-center gap-2 transition-all cursor-pointer group active:scale-95 relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent opacity-40 pointer-events-none" />
-                <Settings size={15} className="group-hover:rotate-45 transition-transform text-pink-300" />
+                <Settings size={16} className="group-hover:rotate-45 transition-transform text-pink-300" />
+                <span className="text-xs font-bold hidden sm:inline text-slate-200 group-hover:text-white">Menu</span>
                 <ChevronDown size={14} className={`transition-transform duration-200 text-slate-400 group-hover:text-white ${showProfileMenu ? 'rotate-180 text-pink-400' : ''}`} />
               </button>
 
@@ -432,34 +423,34 @@ export default function DashboardPage() {
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
                       transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-                      className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-3xl glass-panel border border-white/[0.18] shadow-[0_30px_70px_rgba(0,0,0,0.95),0_0_40px_rgba(244,63,142,0.2)] bg-[#0e0f1f] p-3 space-y-1.5 z-50 overflow-hidden text-left"
+                      className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-3xl glass-panel border border-white/[0.2] shadow-[0_30px_70px_rgba(0,0,0,0.95),0_0_40px_rgba(244,63,142,0.25)] bg-[#0d0e1d] p-3 space-y-1.5 z-50 overflow-hidden text-left"
                     >
                       {/* Dropdown Header: Name & Email & User ID */}
-                      <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] mb-1">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-black/40 border border-pink-500/30 shrink-0">
+                      <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.08] mb-1.5 shadow-inner">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-xl overflow-hidden bg-black/50 border border-pink-500/40 shrink-0 shadow-md">
                             {user?.avatar ? (
                               <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
-                              <User size={18} className="text-pink-400 m-2.5" />
+                              <User size={20} className="text-pink-400 m-2.5" />
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
-                              <span>{user?.displayName || 'User'}</span>
+                            <h4 className="text-sm font-extrabold text-white truncate">
+                              {user?.displayName || 'User'}
                             </h4>
-                            <p className="text-[11px] text-slate-400 truncate font-mono">
+                            <p className="text-[11px] text-slate-400 truncate font-mono mt-0.5">
                               {user?.email || 'user@afterparty.app'}
                             </p>
                           </div>
                         </div>
 
                         {/* ID Copy Row inside Menu */}
-                        <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-cyan-300">
-                          <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-wider font-sans font-bold">
-                            <ShieldCheck size={12} className="text-cyan-400" />
-                            <span>ID:</span>
-                            <span className="text-white font-mono">{user?.friendId || '...'}</span>
+                        <div className="mt-3 pt-2.5 border-t border-white/[0.08] flex items-center justify-between text-xs font-mono text-cyan-300">
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-300 font-sans font-bold">
+                            <ShieldCheck size={14} className="text-cyan-400" />
+                            <span className="text-slate-400 font-normal">User ID:</span>
+                            <span className="text-white font-mono font-bold tracking-wider">{user?.friendId || '...'}</span>
                           </div>
                           <button
                             type="button"
@@ -467,7 +458,7 @@ export default function DashboardPage() {
                               e.stopPropagation();
                               handleCopyMyId();
                             }}
-                            className="px-2 py-0.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-[10px] text-cyan-200 font-sans font-bold flex items-center gap-1 transition-all"
+                            className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-[10px] text-cyan-200 font-sans font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
                           >
                             {copiedMyId ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                             <span>{copiedMyId ? 'Copied' : 'Copy'}</span>
@@ -475,7 +466,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* Item 1: Edit Profile (Change Name, Email view, Avatar) */}
+                      {/* Item 1: Profile Edit */}
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
@@ -483,12 +474,12 @@ export default function DashboardPage() {
                         }}
                         className="w-full p-2.5 rounded-2xl hover:bg-pink-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-pink-500/15 border border-pink-500/25 flex items-center justify-center text-pink-400 group-hover:scale-105 transition-transform shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform shrink-0 shadow-sm">
                           <Edit3 size={15} />
                         </div>
                         <div className="text-left flex-1 min-w-0">
                           <span className="block text-white font-bold">Edit Profile</span>
-                          <span className="block text-[10px] text-slate-400">Change name, avatar & email info</span>
+                          <span className="block text-[10px] text-slate-400">Change name, email & avatar</span>
                         </div>
                       </button>
 
@@ -500,12 +491,12 @@ export default function DashboardPage() {
                         }}
                         className="w-full p-2.5 rounded-2xl hover:bg-cyan-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform shrink-0 shadow-sm">
                           <Users size={15} />
                         </div>
                         <div className="text-left flex-1 min-w-0">
                           <span className="block text-white font-bold">Connections</span>
-                          <span className="block text-[10px] text-slate-400">Manage friends and invitations</span>
+                          <span className="block text-[10px] text-slate-400">Friends, friend requests & status</span>
                         </div>
                       </button>
 
@@ -517,12 +508,12 @@ export default function DashboardPage() {
                         }}
                         className="w-full p-2.5 rounded-2xl hover:bg-purple-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform shrink-0 shadow-sm">
                           <Layers size={15} />
                         </div>
                         <div className="text-left flex-1 min-w-0">
                           <span className="block text-white font-bold">My Spaces</span>
-                          <span className="block text-[10px] text-slate-400">Switch rooms with zero data loss</span>
+                          <span className="block text-[10px] text-slate-400">Switch rooms without losing data</span>
                         </div>
                       </button>
 
@@ -535,10 +526,10 @@ export default function DashboardPage() {
                         className="w-full p-2.5 rounded-2xl hover:bg-rose-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
                       >
                         <div 
-                          className="w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                          className="w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 shadow-sm"
                           style={{
-                            backgroundColor: `${currentMoodConfig.primaryColor}20`,
-                            borderColor: `${currentMoodConfig.primaryColor}40`,
+                            backgroundColor: `${currentMoodConfig.primaryColor}25`,
+                            borderColor: `${currentMoodConfig.primaryColor}45`,
                             color: currentMoodConfig.primaryColor,
                           }}
                         >
@@ -561,7 +552,7 @@ export default function DashboardPage() {
                         }}
                         className="w-full p-2.5 rounded-2xl hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 flex items-center gap-3 transition-colors text-xs font-bold cursor-pointer group"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform shrink-0 shadow-sm">
                           <LogOut size={15} />
                         </div>
                         <div className="text-left flex-1 min-w-0">
@@ -575,46 +566,6 @@ export default function DashboardPage() {
               </AnimatePresence>
             </div>
           </div>
-        </div>
-
-        {/* Bottom Metadata & Interactive Badges */}
-        <div className="flex items-center justify-between gap-2 flex-wrap pt-2.5 border-t border-white/[0.08] relative z-10">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* User ID Pill Badge */}
-            <button
-              type="button"
-              onClick={handleCopyMyId}
-              title="Click to copy your unique User ID"
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent hover:from-cyan-500/25 border border-cyan-400/40 hover:border-cyan-300 text-cyan-200 text-xs font-mono font-bold flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all shadow-[0_2px_12px_rgba(6,182,212,0.2),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95"
-            >
-              <ShieldCheck size={13} className="text-cyan-400 shrink-0" />
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-sans font-bold">ID:</span>
-              <span>{user?.friendId || '...'}</span>
-              {copiedMyId ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="text-slate-400 shrink-0" />}
-            </button>
-
-            {/* My Spaces Switcher Pill Button */}
-            <button
-              type="button"
-              onClick={() => setShowSpacesModal(true)}
-              title="Switch or manage your saved spaces"
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-500/20 via-pink-500/15 to-transparent hover:from-purple-500/30 border border-purple-400/40 hover:border-purple-300 text-purple-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_2px_12px_rgba(168,85,247,0.2),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95"
-            >
-              <Layers size={13} className="text-purple-400 shrink-0" />
-              <span>My Spaces</span>
-            </button>
-          </div>
-
-          {/* Connections Pill Button */}
-          <button
-            type="button"
-            onClick={() => setShowFriendsModal(true)}
-            className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 via-teal-500/15 to-emerald-500/15 hover:from-cyan-500/30 hover:to-emerald-500/25 border border-cyan-400/40 hover:border-cyan-300 text-white text-xs font-extrabold flex items-center gap-2 shadow-[0_2px_12px_rgba(6,182,212,0.3),inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 transition-all cursor-pointer shrink-0"
-          >
-            <Users size={13} className="text-cyan-300" />
-            <span>Connections</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          </button>
         </div>
       </header>
 
