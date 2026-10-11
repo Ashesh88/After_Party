@@ -872,39 +872,27 @@ class LuxuryDuelRacer3D {
     // 7. CONTROLS, TOUCH, TILT & BUTTON LISTENERS
     initEvents() {
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') this.input.p1Left = true;
-            if (e.key === 'ArrowRight') this.input.p1Right = true;
-            if (e.key === 'ArrowUp') this.input.p1Gas = true;
-            if (e.key === 'ArrowDown') this.input.p1Brake = true;
-            if (e.key === 'Shift' || e.key === 'Enter') this.triggerNitro(this.p1, true);
+            // Player controls: Support both Arrow keys AND WASD
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') this.input.p1Left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') this.input.p1Right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') this.input.p1Gas = true;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') this.input.p1Brake = true;
+            if (e.key === 'Shift' || e.key === ' ' || e.key === 'Enter') this.triggerNitro(this.p1, true);
             if (e.key === 'x' || e.key === 'X' || e.key === 'Control') this.input.p1Drift = true;
 
             // Camera toggle hotkey 'C'
             if (e.key === 'c' || e.key === 'C') {
                 this.toggleCameraView();
             }
-
-            // Player 2 controls (WASD)
-            if (e.key === 'a' || e.key === 'A') this.input.p2Left = true;
-            if (e.key === 'd' || e.key === 'D') this.input.p2Right = true;
-            if (e.key === 'w' || e.key === 'W') this.input.p2Gas = true;
-            if (e.key === 's' || e.key === 'S') this.input.p2Brake = true;
-            if (e.key === ' ') this.triggerNitro(this.p2, true);
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft') this.input.p1Left = false;
-            if (e.key === 'ArrowRight') this.input.p1Right = false;
-            if (e.key === 'ArrowUp') this.input.p1Gas = false;
-            if (e.key === 'ArrowDown') this.input.p1Brake = false;
-            if (e.key === 'Shift' || e.key === 'Enter') this.triggerNitro(this.p1, false);
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') this.input.p1Left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') this.input.p1Right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') this.input.p1Gas = false;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') this.input.p1Brake = false;
+            if (e.key === 'Shift' || e.key === ' ' || e.key === 'Enter') this.triggerNitro(this.p1, false);
             if (e.key === 'x' || e.key === 'X' || e.key === 'Control') this.input.p1Drift = false;
-
-            if (e.key === 'a' || e.key === 'A') this.input.p2Left = false;
-            if (e.key === 'd' || e.key === 'D') this.input.p2Right = false;
-            if (e.key === 'w' || e.key === 'W') this.input.p2Gas = false;
-            if (e.key === 's' || e.key === 'S') this.input.p2Brake = false;
-            if (e.key === ' ') this.triggerNitro(this.p2, false);
         });
 
         // Reliable Touch & Pointer Handlers (Works on mobile touch, tablets and desktop clicks)
