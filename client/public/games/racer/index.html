@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Turbo 3D Racer - Luxury 2-Player Duel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Turbo 3D Racer - Cyberpunk Highway Duel</title>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Speed Lines Radial Screen Effect for Nitro / Boost -->
+    <div id="speed-lines" class="speed-lines-overlay"></div>
+    <!-- Chromatic Aberration & Screen Flash Overlay -->
+    <div id="screen-fx" class="screen-fx-overlay"></div>
+
     <!-- 3D Three.js WebGL Canvas Viewport -->
     <div id="canvas-container"></div>
 
@@ -22,12 +27,12 @@
                     <span class="track-start-pin">🏁</span>
                     <div class="track-line-wrapper">
                         <div class="track-line-base"></div>
-                        <!-- P1 Pin (You - Pink Hypercar) -->
+                        <!-- P1 Pin (You - Neon Pink Hypercar) -->
                         <div class="track-pin p1-pin" id="pin-p1" style="left: 0%;">
                             <span class="pin-dot">🏎️</span>
                             <span class="pin-tag">P1</span>
                         </div>
-                        <!-- P2 Pin (Friend - Cyan Hypercar) -->
+                        <!-- P2 Pin (Friend - Electric Cyan Hypercar) -->
                         <div class="track-pin p2-pin" id="pin-p2" style="left: 0%;">
                             <span class="pin-dot">🏎️</span>
                             <span class="pin-tag">P2</span>
@@ -36,9 +41,9 @@
                     <span class="track-finish-pin">🏆 1500m</span>
                 </div>
 
-                <!-- Utilities (Mode / Sound / Restart) -->
+                <!-- Utilities (Mode / Sound / Theme / Settings / Restart) -->
                 <div class="util-actions">
-                    <button class="mode-btn active" id="btn-mode-2p" title="2-Player Duel">
+                    <button class="mode-btn active" id="btn-mode-2p" title="2-Player Realtime Duel">
                         <i class="fa-solid fa-user-group"></i>
                         <span class="mode-txt">2P</span>
                     </button>
@@ -46,19 +51,37 @@
                         <i class="fa-solid fa-robot"></i>
                         <span class="mode-txt">Bot</span>
                     </button>
-                    <button class="btn-icon" id="btn-cam" title="Camera Angle">
+                    <!-- Track Theme Switcher -->
+                    <button class="btn-icon" id="btn-theme" title="Switch Theme (Neon City / Sunset Desert)">
+                        <i class="fa-solid fa-city" id="theme-icon"></i>
+                    </button>
+                    <!-- Camera View Switcher -->
+                    <button class="btn-icon" id="btn-cam" title="Toggle Camera View (Chase / Dynamic / Hood)">
                         <i class="fa-solid fa-video"></i>
                     </button>
-                    <button class="btn-icon" id="btn-mute" title="Sound Mute/Unmute">
+                    <!-- Audio: SFX & Music toggles -->
+                    <button class="btn-icon" id="btn-sfx" title="SFX Sound">
                         <i class="fa-solid fa-volume-high"></i>
                     </button>
-                    <button class="btn-icon" id="btn-restart" title="Restart">
+                    <button class="btn-icon" id="btn-music" title="Synthwave Music">
+                        <i class="fa-solid fa-music"></i>
+                    </button>
+                    <!-- Graphics Quality Selector (Auto / High / Med / Low) -->
+                    <button class="btn-icon" id="btn-quality" title="Graphics Quality">
+                        <span id="quality-badge" class="quality-badge">AUTO</span>
+                    </button>
+                    <!-- Tilt Steering Toggle -->
+                    <button class="btn-icon mobile-only" id="btn-tilt" title="Tilt Steering (Gyro)">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                    </button>
+                    <!-- Restart -->
+                    <button class="btn-icon" id="btn-restart" title="Restart Race">
                         <i class="fa-solid fa-rotate-right"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Match Status Banner -->
+            <!-- Match Status Banner & Live Telemetry Metrics -->
             <div class="match-meta-row">
                 <div class="status-pill leader-pill" id="leader-display">
                     <span class="leader-dot"></span>
@@ -69,8 +92,21 @@
                     <span id="dist-text">0 / 1500m</span>
                 </div>
                 <div class="status-pill time-pill" id="time-display">00:00.0</div>
+                <!-- Network Latency / Reconnecting Badge -->
+                <div class="status-pill ping-pill" id="ping-display">
+                    <span class="ping-dot"></span>
+                    <span id="ping-text">32ms</span>
+                </div>
             </div>
         </header>
+
+        <!-- Dynamic In-Race Toast Notification (Overtake alerts, Wrong Way, Checkpoints) -->
+        <div class="toast-container" id="toast-container">
+            <div class="toast-banner" id="toast-banner">
+                <span class="toast-icon" id="toast-icon">⚡</span>
+                <span class="toast-msg" id="toast-msg">You took the lead!</span>
+            </div>
+        </div>
 
         <!-- Starting Light Gantry (5 Red Lights -> Green GO!) -->
         <div class="start-gantry-container" id="gantry-container">
@@ -84,9 +120,14 @@
             <div class="gantry-text" id="gantry-text">READY</div>
         </div>
 
+        <!-- Slow-Motion Finish Line Replay Banner -->
+        <div class="slowmo-banner" id="slowmo-banner">
+            <span class="slowmo-pulse">●</span> SLOW-MOTION PHOTO FINISH
+        </div>
+
         <!-- Sleek Dual Cockpit Telemetry HUD for Both Racers -->
         <div class="racers-hud interactive">
-            <!-- Player 1 (You - Metallic Rose Supercar) -->
+            <!-- Player 1 (You - Metallic Hot Pink Supercar) -->
             <div class="racer-card p1-card">
                 <div class="racer-header">
                     <div class="racer-id-badge p1-badge">
@@ -95,19 +136,32 @@
                     </div>
                     <span class="racer-pos p1-pos" id="p1-pos">1st</span>
                 </div>
+                <!-- Arc Speedometer + Digital Cluster + Gear Indicator -->
                 <div class="speed-cluster">
-                    <span class="speed-number" id="p1-speed">0</span>
-                    <span class="speed-unit">KM/H</span>
+                    <div class="speed-main">
+                        <span class="speed-number" id="p1-speed">0</span>
+                        <div class="speed-meta">
+                            <span class="speed-unit">KM/H</span>
+                            <span class="gear-badge" id="p1-gear">1</span>
+                        </div>
+                    </div>
+                    <!-- Radial Arc Gauge -->
+                    <div class="gauge-arc-wrapper">
+                        <div class="gauge-arc-fill p1-arc" id="p1-arc-fill"></div>
+                    </div>
                 </div>
                 <div class="nitro-gauge">
                     <div class="nitro-bar">
                         <div class="nitro-bar-fill p1-nitro" id="p1-nitro-fill" style="width: 100%;"></div>
                     </div>
-                    <span class="nitro-lbl">NITRO BOOST</span>
+                    <div class="nitro-labels">
+                        <span class="nitro-lbl">NITRO BOOST</span>
+                        <span class="nitro-pct" id="p1-nitro-pct">100%</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Player 2 (Friend / Partner - Metallic Cyan Supercar) -->
+            <!-- Player 2 (Friend / Partner - Metallic Electric Cyan Supercar) -->
             <div class="racer-card p2-card">
                 <div class="racer-header">
                     <div class="racer-id-badge p2-badge">
@@ -117,27 +171,46 @@
                     <span class="racer-pos p2-pos" id="p2-pos">2nd</span>
                 </div>
                 <div class="speed-cluster">
-                    <span class="speed-number" id="p2-speed">0</span>
-                    <span class="speed-unit">KM/H</span>
+                    <div class="speed-main">
+                        <span class="speed-number" id="p2-speed">0</span>
+                        <div class="speed-meta">
+                            <span class="speed-unit">KM/H</span>
+                            <span class="gear-badge" id="p2-gear">1</span>
+                        </div>
+                    </div>
+                    <div class="gauge-arc-wrapper">
+                        <div class="gauge-arc-fill p2-arc" id="p2-arc-fill"></div>
+                    </div>
                 </div>
                 <div class="nitro-gauge">
                     <div class="nitro-bar">
                         <div class="nitro-bar-fill p2-nitro" id="p2-nitro-fill" style="width: 100%;"></div>
                     </div>
-                    <span class="nitro-lbl">NITRO BOOST</span>
+                    <div class="nitro-labels">
+                        <span class="nitro-lbl">NITRO BOOST</span>
+                        <span class="nitro-pct" id="p2-nitro-pct">100%</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Touch Controls - Ergonomic Futuristic Neon Gamepad -->
+        <!-- Touch Controls - Ergonomic Futuristic Neon Gamepad for Mobile -->
         <div class="touch-overlay interactive" id="touch-controls">
-            <!-- Left Thumb: Precision Steering Wheel Buttons -->
+            <!-- Left Thumb: Precision Steering Wheel Buttons (with Drift Glide) -->
             <div class="touch-group touch-left-group">
                 <button class="btn-touch btn-steer" id="touch-p1-left" aria-label="Steer Left">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
                 <button class="btn-touch btn-steer" id="touch-p1-right" aria-label="Steer Right">
                     <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Center Thumb: Drift / Handbrake button -->
+            <div class="touch-group touch-center-group">
+                <button class="btn-touch btn-drift" id="touch-p1-drift" aria-label="Drift Slide">
+                    <i class="fa-solid fa-wind"></i>
+                    <span>DRIFT</span>
                 </button>
             </div>
 
@@ -155,12 +228,17 @@
         </div>
     </div>
 
-    <!-- Victory Celebration Modal -->
+    <!-- Victory Celebration Modal with Animated Podium -->
     <div class="modal-overlay" id="modal-victory">
         <div class="victory-card interactive">
             <div class="victory-trophy">🏆</div>
             <h2 class="victory-title" id="winner-title">Victory! 🏁</h2>
             <p class="victory-subtitle" id="winner-subtitle">Head-to-Head Highway Champion</p>
+
+            <!-- Fun Couple Line / Stakes -->
+            <div class="couple-stakes-pill" id="couple-stakes">
+                🍕 Loser buys dinner tonight! 💕
+            </div>
 
             <div class="victory-results-box">
                 <div class="res-row winner-row">
@@ -190,12 +268,21 @@
                 </div>
             </div>
 
-            <button class="btn-race-again" id="btn-race-again">
-                <i class="fa-solid fa-rotate-right"></i>
-                <span>Rematch / Race Again</span>
-            </button>
+            <div class="victory-buttons-group">
+                <button class="btn-race-again" id="btn-race-again">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Rematch / Race Again</span>
+                </button>
+                <button class="btn-back-arcade" id="btn-back-arcade">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Back to Arcade</span>
+                </button>
+            </div>
         </div>
     </div>
+
+    <!-- Confetti Canvas on Win -->
+    <canvas id="confetti-canvas" class="confetti-overlay"></canvas>
 
     <!-- Bundled Three.js Library -->
     <script src="js/lib/three.min.js"></script>

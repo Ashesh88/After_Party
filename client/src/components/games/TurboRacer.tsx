@@ -17,11 +17,24 @@ export default function TurboRacer({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     // Listen for race events from iframe and broadcast to partner via socket
     const handleWindowMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === 'RACE_SYNC' && socket) {
+      if (!e.data || !socket) return;
+
+      if (e.data.type === 'RACE_SYNC') {
+        socket.emit('racer:sync', e.data.payload);
         socket.emit('game:move', {
           sessionId: room?._id || 'race_room',
           move: e.data.payload
         });
+      } else if (e.data.type === 'RACER_EVENT') {
+        socket.emit('racer:event', e.data.payload);
+      } else if (e.data.type === 'RACER_PING') {
+        // Echo ping back to measure roundtrip
+        if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'RACER_PONG',
+            time: e.data.time
+          }, '*');
+        }
       }
     };
 
@@ -29,19 +42,39 @@ export default function TurboRacer({ onBack }: { onBack: () => void }) {
 
     // Listen for partner moves from socket and send into iframe
     if (socket) {
-      socket.on('game:move', (data: any) => {
-        if (data && data.move && iframeRef.current?.contentWindow) {
+      const handlePartnerMove = (data: any) => {
+        const moveData = data?.move || data;
+        if (moveData && iframeRef.current?.contentWindow) {
           iframeRef.current.contentWindow.postMessage({
             type: 'PARTNER_MOVE',
-            payload: data.move
+            payload: moveData
           }, '*');
         }
-      });
+      };
+
+      const handleRacerEvent = (data: any) => {
+        if (data && iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'RACER_EVENT',
+            payload: data
+          }, '*');
+        }
+      };
+
+      socket.on('racer:sync', handlePartnerMove);
+      socket.on('racer:event', handleRacerEvent);
+      socket.on('game:move', handlePartnerMove);
+
+      return () => {
+        window.removeEventListener('message', handleWindowMessage);
+        socket.off('racer:sync', handlePartnerMove);
+        socket.off('racer:event', handleRacerEvent);
+        socket.off('game:move', handlePartnerMove);
+      };
     }
 
     return () => {
       window.removeEventListener('message', handleWindowMessage);
-      if (socket) socket.off('game:move');
     };
   }, [socket, room]);
 

@@ -1,4 +1,4 @@
-/* Luxury 2-Player Head-to-Head Racer Stylesheet */
+/* Luxury Cyberpunk 2-Player Head-to-Head Racer Stylesheet */
 * {
     margin: 0;
     padding: 0;
@@ -12,7 +12,7 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #08070d;
+    background: #06050b;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #f8fafc;
 }
@@ -23,6 +23,44 @@ html, body {
     width: 100%;
     height: 100%;
     z-index: 1;
+}
+
+/* Speed Lines Radial Screen Overlay for Nitro Burst */
+.speed-lines-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0;
+    background: radial-gradient(circle at center, transparent 35%, rgba(6, 182, 212, 0.15) 75%, rgba(236, 72, 153, 0.28) 100%);
+    box-shadow: inset 0 0 100px rgba(6, 182, 212, 0.4);
+    transition: opacity 0.25s ease;
+}
+
+.speed-lines-overlay.active {
+    opacity: 1;
+    animation: speedPulse 0.15s infinite alternate ease-in-out;
+}
+
+@keyframes speedPulse {
+    from { transform: scale(1.0); }
+    to { transform: scale(1.015); }
+}
+
+/* Screen FX (Chromatic aberration / collision flash) */
+.screen-fx-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+    background: rgba(255, 255, 255, 0.2);
+    transition: opacity 0.1s ease;
+}
+
+.screen-fx-overlay.flash {
+    opacity: 0.65;
+    background: rgba(244, 63, 142, 0.35);
 }
 
 .ui-layer {
@@ -41,22 +79,22 @@ html, body {
 
 /* Top Dock Header - Glassmorphic Cyber Racing HUD */
 .top-dock-panel {
-    background: rgba(10, 10, 22, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 10px 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    background: rgba(10, 10, 22, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 8px 16px;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.85);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .top-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
 }
 
 /* Live Track Progress Bar with Real-Time Car Pins */
@@ -65,8 +103,8 @@ html, body {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 6px 14px;
     border-radius: 9999px;
     min-width: 0;
@@ -90,7 +128,7 @@ html, body {
 .track-line-base {
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 9999px;
 }
 
@@ -102,7 +140,7 @@ html, body {
     flex-direction: column;
     align-items: center;
     pointer-events: none;
-    transition: left 0.1s linear;
+    transition: left 0.08s linear;
     z-index: 5;
 }
 
@@ -139,7 +177,7 @@ html, body {
 .util-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     shrink: 0;
 }
 
@@ -149,42 +187,54 @@ html, body {
     color: #94a3b8;
     font-size: 11px;
     font-weight: 800;
-    padding: 6px 12px;
-    border-radius: 9999px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    padding: 5px 10px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    white-space: nowrap;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .mode-btn.active {
-    background: linear-gradient(135deg, #06b6d4, #ec4899);
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.3) 0%, rgba(6, 182, 212, 0.3) 100%);
+    border-color: #ec4899;
     color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+    box-shadow: 0 0 14px rgba(236, 72, 153, 0.4);
 }
 
 .btn-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #cbd5e1;
+    color: #94a3b8;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 12px;
+    font-size: 13px;
+    transition: all 0.15s ease;
 }
 
 .btn-icon:hover {
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.14);
     color: #ffffff;
-    transform: scale(1.05);
+}
+
+.btn-icon.active {
+    border-color: #06b6d4;
+    color: #06b6d4;
+    background: rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+}
+
+.quality-badge {
+    font-size: 9px;
+    font-weight: 900;
+    color: #38bdf8;
+    letter-spacing: 0.5px;
 }
 
 /* Match Meta Status Row */
@@ -199,17 +249,18 @@ html, body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 12px;
+    padding: 4px 10px;
     border-radius: 9999px;
     font-size: 11px;
     font-weight: 800;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
 }
 
 .leader-pill {
-    background: rgba(236, 72, 153, 0.15);
-    border-color: rgba(236, 72, 153, 0.35);
+    background: rgba(236, 72, 153, 0.18);
+    border-color: rgba(236, 72, 153, 0.4);
     color: #f472b6;
 }
 
@@ -222,8 +273,8 @@ html, body {
 }
 
 .dist-pill {
-    background: rgba(6, 182, 212, 0.15);
-    border-color: rgba(6, 182, 212, 0.35);
+    background: rgba(6, 182, 212, 0.18);
+    border-color: rgba(6, 182, 212, 0.4);
     color: #22d3ee;
 }
 
@@ -231,6 +282,62 @@ html, body {
     font-family: monospace;
     font-size: 11px;
     color: #f8fafc;
+}
+
+.ping-pill {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #34d399;
+}
+
+.ping-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.ping-pill.lagging {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #f87171;
+}
+
+.ping-pill.lagging .ping-dot {
+    background: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+/* In-Race Toast Notification */
+.toast-container {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 35;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast-container.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(10px);
+}
+
+.toast-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 16, 32, 0.95);
+    border: 1.5px solid #ec4899;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(236, 72, 153, 0.5);
+    border-radius: 9999px;
+    padding: 8px 20px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
 }
 
 /* Starting Lights Gantry (F1 Style 5 Countdown Lights) */
@@ -299,10 +406,45 @@ html, body {
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* Slow Motion Replay Banner */
+.slowmo-banner {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(239, 68, 68, 0.88);
+    border: 1px solid #f87171;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    padding: 6px 18px;
+    border-radius: 9999px;
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 45;
+    transition: opacity 0.2s ease;
+}
+
+.slowmo-banner.active {
+    opacity: 1;
+}
+
+.slowmo-pulse {
+    color: #ffffff;
+    animation: slowmoBlink 0.6s infinite alternate;
+}
+
+@keyframes slowmoBlink {
+    from { opacity: 1; }
+    to { opacity: 0.2; }
+}
+
 /* Racers Telemetry HUD: Left & Right Cyber Dials */
 .racers-hud {
     position: absolute;
-    bottom: 120px;
+    bottom: 115px;
     left: 16px;
     right: 16px;
     display: flex;
@@ -313,9 +455,9 @@ html, body {
 }
 
 .racer-card {
-    background: rgba(12, 13, 26, 0.92);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: rgba(12, 13, 26, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-radius: 24px;
     padding: 12px 18px;
     width: 220px;
@@ -339,71 +481,76 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .racer-id-badge {
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 0;
-}
-
-.p1-tag, .p2-tag {
-    font-size: 9px;
-    font-weight: 900;
-    padding: 2px 6px;
-    border-radius: 6px;
-    letter-spacing: 0.5px;
-    color: #ffffff;
 }
 
 .p1-tag {
+    font-size: 9px;
+    font-weight: 900;
     background: #ec4899;
+    color: #ffffff;
+    padding: 2px 5px;
+    border-radius: 5px;
 }
 
 .p2-tag {
+    font-size: 9px;
+    font-weight: 900;
     background: #06b6d4;
+    color: #ffffff;
+    padding: 2px 5px;
+    border-radius: 5px;
 }
 
 .racer-name {
     font-size: 13px;
     font-weight: 800;
-    color: #ffffff;
+    color: #f8fafc;
+    max-width: 110px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 100px;
 }
 
 .racer-pos {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 900;
-    padding: 2px 8px;
-    border-radius: 9999px;
+    padding: 2px 7px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
 }
 
 .p1-pos {
     background: rgba(236, 72, 153, 0.2);
     color: #f472b6;
-    border: 1px solid rgba(236, 72, 153, 0.3);
+    border: 1px solid rgba(236, 72, 153, 0.35);
 }
 
 .p2-pos {
     background: rgba(6, 182, 212, 0.2);
-    color: #38bdf8;
-    border: 1px solid rgba(6, 182, 212, 0.3);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.35);
 }
 
 .speed-cluster {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.speed-main {
     display: flex;
     align-items: baseline;
-    gap: 5px;
-    margin-bottom: 6px;
+    gap: 6px;
 }
 
 .speed-number {
-    font-size: 34px;
+    font-size: 36px;
     font-weight: 900;
     font-family: monospace;
     color: #ffffff;
@@ -411,11 +558,17 @@ html, body {
 }
 
 .p1-card .speed-number {
-    text-shadow: 0 0 16px rgba(236, 72, 153, 0.8);
+    text-shadow: 0 0 16px rgba(236, 72, 153, 0.85);
 }
 
 .p2-card .speed-number {
-    text-shadow: 0 0 16px rgba(6, 182, 212, 0.8);
+    text-shadow: 0 0 16px rgba(6, 182, 212, 0.85);
+}
+
+.speed-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .speed-unit {
@@ -423,6 +576,42 @@ html, body {
     font-weight: 800;
     color: #94a3b8;
     letter-spacing: 0.5px;
+}
+
+.gear-badge {
+    font-size: 10px;
+    font-weight: 900;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 1px 6px;
+    border-radius: 6px;
+    color: #f59e0b;
+}
+
+.gauge-arc-wrapper {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.gauge-arc-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 9999px;
+    transition: width 0.08s linear;
+}
+
+.p1-arc {
+    background: linear-gradient(90deg, #ec4899, #f43f5e);
+    box-shadow: 0 0 10px #ec4899;
+}
+
+.p2-arc {
+    background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    box-shadow: 0 0 10px #06b6d4;
 }
 
 .nitro-gauge {
@@ -455,6 +644,12 @@ html, body {
     box-shadow: 0 0 10px #06b6d4;
 }
 
+.nitro-labels {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .nitro-lbl {
     font-size: 9px;
     font-weight: 800;
@@ -462,14 +657,10 @@ html, body {
     letter-spacing: 0.5px;
 }
 
-.controls-hint {
+.nitro-pct {
     font-size: 9px;
-    font-weight: 600;
-    color: #94a3b8;
-    display: flex;
-    gap: 4px;
-    overflow: hidden;
-    white-space: nowrap;
+    font-weight: 800;
+    color: #ffffff;
 }
 
 /* Touch Controls on Mobile - Ergonomic, Large, High-Tech Gamepad */
@@ -490,6 +681,13 @@ html, body {
     display: flex;
     gap: 12px;
     pointer-events: auto;
+}
+
+.touch-center-group {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
 }
 
 .btn-touch {
@@ -531,6 +729,28 @@ html, body {
     box-shadow: 0 0 20px rgba(244, 63, 142, 0.6);
 }
 
+.btn-drift {
+    width: 58px;
+    height: 58px;
+    background: rgba(30, 27, 75, 0.85);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    color: #c4b5fd;
+    font-size: 10px;
+    border-radius: 20px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.btn-drift i {
+    font-size: 17px;
+}
+
+.btn-drift:active {
+    background: rgba(139, 92, 246, 0.45);
+    border-color: #a78bfa;
+    color: #ffffff;
+}
+
 .btn-gas {
     width: 68px;
     height: 68px;
@@ -559,53 +779,14 @@ html, body {
     font-size: 18px;
 }
 
-@media (min-width: 900px) {
-    .touch-overlay {
-        display: none;
-    }
-}
-
-@media (max-width: 899px) {
-    .top-dock-panel {
-        padding: 6px 10px;
-    }
-    .top-row {
-        margin-bottom: 4px;
-    }
-    .mode-btn {
-        padding: 4px 8px;
-        font-size: 10px;
-    }
-    .status-pill {
-        padding: 3px 8px;
-        font-size: 10px;
-    }
-    .racers-hud {
-        bottom: 105px;
-        left: 10px;
-        right: 10px;
-        gap: 8px;
-    }
-    .racer-card {
-        width: 140px;
-        padding: 6px 10px;
-        border-radius: 16px;
-    }
-    .speed-number {
-        font-size: 20px;
-    }
-    .controls-hint {
-        display: none;
-    }
-    .touch-overlay {
-        bottom: 16px;
-        padding: 0 12px;
-    }
-    .btn-steer, .btn-gas, .btn-nitro {
-        width: 60px;
-        height: 60px;
-        border-radius: 20px;
-    }
+/* Confetti Overlay Canvas */
+.confetti-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 90;
 }
 
 /* Victory Celebration Modal */
@@ -613,8 +794,8 @@ html, body {
     position: absolute;
     inset: 0;
     z-index: 100;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(16px);
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(18px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -630,14 +811,14 @@ html, body {
 }
 
 .victory-card {
-    background: rgba(18, 18, 32, 0.96);
-    border: 1px solid rgba(236, 72, 153, 0.35);
+    background: rgba(18, 18, 34, 0.96);
+    border: 1px solid rgba(236, 72, 153, 0.45);
     border-radius: 28px;
-    padding: 30px 24px;
-    max-width: 380px;
+    padding: 28px 24px;
+    max-width: 400px;
     width: 100%;
     text-align: center;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 40px rgba(236, 72, 153, 0.25);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(236, 72, 153, 0.3);
     animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -649,11 +830,11 @@ html, body {
 .victory-trophy {
     font-size: 54px;
     margin-bottom: 8px;
-    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.6));
+    filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.7));
 }
 
 .victory-title {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 900;
     color: #ffffff;
     margin-bottom: 4px;
@@ -663,7 +844,19 @@ html, body {
     font-size: 13px;
     color: #f472b6;
     font-weight: 600;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+}
+
+.couple-stakes-pill {
+    background: rgba(244, 63, 142, 0.15);
+    border: 1px solid rgba(244, 63, 142, 0.35);
+    border-radius: 9999px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fbcfe8;
+    margin-bottom: 16px;
+    display: inline-block;
 }
 
 .victory-results-box {
@@ -688,13 +881,13 @@ html, body {
 }
 
 .winner-row {
-    background: rgba(236, 72, 153, 0.15);
-    border: 1px solid rgba(236, 72, 153, 0.3);
+    background: rgba(236, 72, 153, 0.18);
+    border: 1px solid rgba(236, 72, 153, 0.35);
     color: #ffffff;
 }
 
 .runner-row {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.03);
     color: #94a3b8;
 }
 
@@ -740,10 +933,16 @@ html, body {
     color: #ffffff;
 }
 
+.victory-buttons-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .btn-race-again {
     width: 100%;
-    padding: 14px;
-    border-radius: 20px;
+    padding: 13px;
+    border-radius: 18px;
     background: linear-gradient(135deg, #06b6d4, #ec4899);
     border: none;
     color: #ffffff;
@@ -758,6 +957,78 @@ html, body {
     transition: transform 0.2s ease;
 }
 
-.btn-race-again:hover {
-    transform: scale(1.02);
+.btn-back-arcade {
+    width: 100%;
+    padding: 11px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-back-arcade:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+@media (min-width: 900px) {
+    .touch-overlay {
+        display: none;
+    }
+    .mobile-only {
+        display: none !important;
+    }
+}
+
+@media (max-width: 899px) {
+    .top-dock-panel {
+        padding: 6px 10px;
+    }
+    .top-row {
+        margin-bottom: 2px;
+    }
+    .mode-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+    .status-pill {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+    .racers-hud {
+        bottom: 100px;
+        left: 8px;
+        right: 8px;
+        gap: 8px;
+    }
+    .racer-card {
+        width: 145px;
+        padding: 8px 10px;
+        border-radius: 16px;
+    }
+    .speed-number {
+        font-size: 24px;
+    }
+    .touch-overlay {
+        bottom: 16px;
+        padding: 0 10px;
+    }
+    .btn-steer, .btn-gas, .btn-nitro {
+        width: 58px;
+        height: 58px;
+        border-radius: 20px;
+    }
+    .btn-drift {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+    }
 }

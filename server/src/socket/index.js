@@ -610,6 +610,12 @@ const setupSocket = (io) => {
         const currentChannel = getActiveRoomChannel();
         if (!currentChannel) return;
 
+        // If this is a real-time racer or arcade payload, broadcast directly to room partner
+        if (move && (typeof move.distance === 'number' || move.type === 'RACER_STATE')) {
+          socket.to(currentChannel).emit('game:move', { move, senderId: userId });
+          return;
+        }
+
         const session = await GameSession.findById(sessionId);
         if (!session || session.status !== 'active') return;
 
@@ -630,6 +636,27 @@ const setupSocket = (io) => {
       } catch (error) {
         console.error('Error processing game move:', error);
       }
+    });
+
+    // Dedicated Low-Latency 3D Racer Room Relay
+    socket.on('racer:sync', (payload) => {
+      const currentChannel = getActiveRoomChannel();
+      if (!currentChannel) return;
+      socket.to(currentChannel).emit('racer:sync', {
+        ...payload,
+        senderId: userId,
+        serverTime: Date.now()
+      });
+    });
+
+    socket.on('racer:event', (payload) => {
+      const currentChannel = getActiveRoomChannel();
+      if (!currentChannel) return;
+      socket.to(currentChannel).emit('racer:event', {
+        ...payload,
+        senderId: userId,
+        serverTime: Date.now()
+      });
     });
 
     socket.on('game:end', async ({ sessionId, scores, winnerId }) => {
