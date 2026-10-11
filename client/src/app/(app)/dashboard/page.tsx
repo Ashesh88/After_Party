@@ -393,22 +393,19 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Action Buttons Cluster - Pure Clean Menu Button */}
+          {/* Action Buttons Cluster - Pure Clean Settings Button */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Single Unified Account & Settings Menu Button */}
+            {/* Single Solid Settings Icon Button */}
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                title="Account & Spaces Menu"
-                className="h-10 sm:h-11 px-3 sm:px-4 rounded-2xl bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-white/[0.2] hover:to-white/[0.08] border border-white/20 hover:border-pink-400/50 shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.35)] text-white flex items-center gap-2 transition-all cursor-pointer group active:scale-95 relative overflow-hidden"
+                title="Settings & Menu"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#1a1b2e] hover:bg-[#25263d] border border-white/20 hover:border-pink-500/60 shadow-[0_4px_20px_rgba(0,0,0,0.7)] text-pink-300 hover:text-white flex items-center justify-center transition-all cursor-pointer group active:scale-90"
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent opacity-40 pointer-events-none" />
-                <Settings size={16} className="group-hover:rotate-45 transition-transform text-pink-300" />
-                <span className="text-xs font-bold hidden sm:inline text-slate-200 group-hover:text-white">Menu</span>
-                <ChevronDown size={14} className={`transition-transform duration-200 text-slate-400 group-hover:text-white ${showProfileMenu ? 'rotate-180 text-pink-400' : ''}`} />
+                <Settings size={18} className={`transition-transform duration-300 ${showProfileMenu ? 'rotate-90 text-pink-400' : 'group-hover:rotate-45'}`} />
               </button>
 
-              {/* Menu Dropdown Modal Card */}
+              {/* Menu Dropdown Modal Card - 100% Solid Dark Velvet Luxury Card */}
               <AnimatePresence>
                 {showProfileMenu && (
                   <>
@@ -423,7 +420,8 @@ export default function DashboardPage() {
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
                       transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-                      className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-3xl glass-panel border border-white/[0.2] shadow-[0_30px_70px_rgba(0,0,0,0.95),0_0_40px_rgba(244,63,142,0.25)] bg-[#0d0e1d] p-3 space-y-1.5 z-50 overflow-hidden text-left"
+                      className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-3xl border border-white/20 shadow-[0_25px_80px_rgba(0,0,0,0.98),0_0_40px_rgba(0,0,0,0.9)] bg-[#121324] p-3 space-y-1.5 z-50 overflow-hidden text-left"
+                      style={{ backgroundColor: '#121324' }}
                     >
                       {/* Dropdown Header: Name & Email & User ID */}
                       <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.08] mb-1.5 shadow-inner">
