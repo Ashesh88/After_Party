@@ -214,7 +214,7 @@ export default function RoomInviteNotification() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
-                        Party Invitation
+                        Room Invitation
                       </span>
                       <Sparkles size={11} className="text-cyan-400" />
                     </div>

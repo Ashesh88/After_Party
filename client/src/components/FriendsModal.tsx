@@ -138,14 +138,14 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
     if (!user?.friendId) return;
     navigator.clipboard.writeText(user.friendId);
     setCopiedMyId(true);
-    toast.success('Your Player ID copied! Share with friends 🎮');
+    toast.success('User ID copied to clipboard');
     setTimeout(() => setCopiedMyId(false), 2000);
   };
 
   const handleCopyFriendId = (id: string, friendIdVal: string) => {
     navigator.clipboard.writeText(friendIdVal);
     setCopiedFriendId(id);
-    toast.success(`Copied ID: ${friendIdVal}`);
+    toast.success(`User ID ${friendIdVal} copied`);
     setTimeout(() => setCopiedFriendId(null), 2000);
   };
 
@@ -284,12 +284,12 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
               </div>
               <div>
                 <h2 className="text-lg font-black text-white leading-tight flex items-center gap-2">
-                  <span>Connections & Friends</span>
+                  <span>Connections</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold uppercase tracking-wider border border-cyan-500/30">
                     {friends.length} Total
                   </span>
                 </h2>
-                <p className="text-[11px] text-slate-400">Search connections, start instant calls, or chat directly</p>
+                <p className="text-[11px] text-slate-400">Search contacts, start instant calls, or send messages</p>
               </div>
             </div>
             <button
@@ -302,7 +302,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
 
           {/* Content */}
           <div className="overflow-y-auto space-y-4 py-3.5 pr-1 flex-1 custom-scrollbar">
-            {/* My Unique User ID Card */}
+            {/* User ID Card */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-pink-950/40 border border-cyan-500/30 shadow-lg relative overflow-hidden">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -311,7 +311,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
                   </div>
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400">
-                      My Unique Player ID
+                      User ID
                     </span>
                     <div className="font-mono text-lg sm:text-xl font-black text-white tracking-widest mt-0.5">
                       {user?.friendId || 'Generating...'}
@@ -368,13 +368,13 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
             {/* Add Friend Form */}
             <form onSubmit={handleAddFriend} className="space-y-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <UserPlus size={13} className="text-pink-400" />
-                <span>Add New Connection by 8-Digit ID</span>
+                <UserPlus size={13} className="text-cyan-400" />
+                <span>Connect via User ID</span>
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Enter 8-digit Player ID (e.g. 77994450)"
+                  placeholder="Enter 8-digit User ID (e.g. 77994450)"
                   value={friendIdInput}
                   onChange={(e) => setFriendIdInput(e.target.value)}
                   className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm font-mono focus:outline-none focus:border-cyan-400 transition-colors"
@@ -385,7 +385,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50 shrink-0"
                 >
                   {addingFriend ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />}
-                  <span>Add</span>
+                  <span>Connect</span>
                 </button>
               </div>
             </form>
@@ -394,7 +394,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Gamepad2 size={14} className="text-cyan-400" />
+                  <Users size={14} className="text-cyan-400" />
                   <span>All Connections ({filteredFriends.length})</span>
                 </span>
                 {currentRoomCode && (
@@ -423,7 +423,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
                       </button>
                     </>
                   ) : (
-                    <p>No connections added yet. Share your Player ID above or add a friend's ID to connect!</p>
+                    <p>No connections added yet. Share your User ID above or enter a connection's User ID to connect.</p>
                   )}
                 </div>
               ) : (
@@ -479,7 +479,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
                                 <button
                                   type="button"
                                   onClick={() => handleCopyFriendId(friend._id, friend.friendId!)}
-                                  title="Click to copy Player ID"
+                                  title="Click to copy User ID"
                                   className="font-mono text-cyan-300 font-semibold flex items-center gap-1 hover:text-white transition-colors"
                                 >
                                   <span>ID: {friend.friendId}</span>
@@ -572,7 +572,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
 
           {/* Footer */}
           <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-            <span>Direct calls & messages notify instantly ⚡</span>
+            <span>Direct calls and messaging are end-to-end synced</span>
             <button
               onClick={onClose}
               className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold transition-all cursor-pointer active:scale-95"
