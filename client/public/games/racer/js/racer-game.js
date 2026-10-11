@@ -1162,7 +1162,7 @@ class LuxuryDuelRacer3D {
     }
 
     triggerNitro(car, active) {
-        if (active && car.nitro > 12 && !car.isNitroActive) {
+        if (active && car.nitro > 3 && !car.isNitroActive) {
             car.isNitroActive = true;
             if (window.racerAudio) window.racerAudio.playNitro();
             car.exhausts.forEach(f => f.visible = true);
@@ -1210,13 +1210,24 @@ class LuxuryDuelRacer3D {
     updateCarPhysics(car, ctrl) {
         const targetMax = car.isNitroActive ? car.nitroMaxSpeed : car.maxSpeed;
 
-        if (ctrl.gas) {
+        // Acceleration & Throttle Logic:
+        // 1. Gas pedal accelerates smoothly to normal top speed (~210 km/h)
+        // 2. Nitro Boost rockets car directly with massive rocket thrust to ~305 km/h even without holding gas!
+        const isAccelerating = ctrl.gas || car.isNitroActive;
+
+        if (car.isNitroActive) {
+            // Nitro rocket thrust acceleration
+            car.speed = Math.min(targetMax, car.speed + car.accel * 2.8);
+            if (car.brakeLight) car.brakeLight.material.color.setHex(0x38bdf8);
+        } else if (ctrl.gas) {
+            // Normal gas throttle acceleration
             car.speed = Math.min(targetMax, car.speed + car.accel);
             if (car.brakeLight) car.brakeLight.material.color.setHex(0xff0044);
         } else if (ctrl.brake) {
             car.speed = Math.max(0, car.speed - car.friction * 4.5);
             if (car.brakeLight) car.brakeLight.material.color.setHex(0xff3366);
         } else {
+            // Graceful coasting when no pedal is pressed
             car.speed = Math.max(0, car.speed - car.friction);
             if (car.brakeLight) car.brakeLight.material.color.setHex(0x990022);
         }
