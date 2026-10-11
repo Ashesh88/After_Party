@@ -9,6 +9,7 @@ const onlineUsers = new Set();
 const activeLocations = new Map(); // roomId -> Map(userId -> locationPayload)
 const ludoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 const poolRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
+const carromRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 
 const setupSocket = (io) => {
   io.use((socket, next) => {
@@ -779,6 +780,93 @@ const setupSocket = (io) => {
         if (room.players.length === 0) poolRooms.delete(sessionCode);
       }
       socket.to(`pool:${sessionCode}`).emit('pool:opponent_left', {
+        senderId: userId,
+        players: room ? room.players : [],
+      });
+    });
+
+    // ----------------- CARROM MULTIPLAYER -----------------
+    socket.on('carrom:join', ({ sessionCode, role, playerName }) => {
+      if (!sessionCode) return;
+      socket.join(`carrom:${sessionCode}`);
+
+      let room = carromRooms.get(sessionCode);
+      if (!room) {
+        room = { hostId: userId, players: [] };
+        carromRooms.set(sessionCode, room);
+      }
+
+      const existingIdx = room.players.findIndex(p => p.userId?.toString() === userId?.toString());
+      const playerInfo = {
+        userId,
+        playerName: playerName || socket.user?.displayName || 'Player',
+        role: role || (room.players.length === 0 ? 'p1' : 'p2'),
+        socketId: socket.id,
+      };
+
+      if (existingIdx >= 0) {
+        room.players[existingIdx] = playerInfo;
+      } else {
+        room.players.push(playerInfo);
+      }
+
+      socket.emit('carrom:joined_ack', {
+        sessionCode,
+        assignedRole: playerInfo.role,
+        players: room.players,
+      });
+
+      socket.to(`carrom:${sessionCode}`).emit('carrom:opponent_joined', {
+        playerName: playerInfo.playerName,
+        role: playerInfo.role,
+        players: room.players,
+      });
+    });
+
+    socket.on('carrom:shot', ({ sessionCode, power, aimAngle, strikerX }) => {
+      if (!sessionCode) return;
+      socket.to(`carrom:${sessionCode}`).emit('carrom:shot', {
+        power,
+        aimAngle,
+        strikerX,
+        senderId: userId,
+      });
+    });
+
+    socket.on('carrom:sync_pieces', ({ sessionCode, piecesData, scores, currentTurn }) => {
+      if (!sessionCode) return;
+      socket.to(`carrom:${sessionCode}`).emit('carrom:sync_pieces', {
+        piecesData,
+        scores,
+        currentTurn,
+        senderId: userId,
+      });
+    });
+
+    socket.on('carrom:rematch', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.to(`carrom:${sessionCode}`).emit('carrom:rematch', { senderId: userId });
+    });
+
+    socket.on('carrom:chat', ({ sessionCode, message, senderName }) => {
+      if (!sessionCode) return;
+      socket.to(`carrom:${sessionCode}`).emit('carrom:chat', {
+        message,
+        senderName,
+        senderId: userId,
+        timestamp: Date.now(),
+      });
+    });
+
+    socket.on('carrom:leave', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.leave(`carrom:${sessionCode}`);
+      const room = carromRooms.get(sessionCode);
+      if (room) {
+        room.players = room.players.filter(p => p.userId?.toString() !== userId?.toString());
+        if (room.players.length === 0) carromRooms.delete(sessionCode);
+      }
+      socket.to(`carrom:${sessionCode}`).emit('carrom:opponent_left', {
         senderId: userId,
         players: room ? room.players : [],
       });
