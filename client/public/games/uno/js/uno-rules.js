@@ -122,32 +122,17 @@ class UnoGameLogic {
             }
         }
 
-        // Draw first card for discard pile (must not be Wild+4 for starting card)
+        // Draw first card for discard pile (must be a standard number card 0-9 for fair clean start)
         let firstCard = this.drawCardFromDeck();
-        while (firstCard.value === 'wild4') {
+        while (firstCard.isWild() || firstCard.isAction()) {
             this.deck.unshift(firstCard);
             this.shuffle(this.deck);
             firstCard = this.drawCardFromDeck();
         }
 
         this.discardPile.push(firstCard);
-        this.activeColor = firstCard.color === 'wild' ? UNO_COLORS[Math.floor(Math.random() * 4)] : firstCard.color;
-
-        // Handle initial action card if top card on game start
-        if (firstCard.value === 'skip') {
-            this.currentPlayer = this.getNextPlayerIndex(1);
-        } else if (firstCard.value === 'reverse') {
-            this.direction *= -1;
-            if (this.playersCount === 2) {
-                this.currentPlayer = 1; // Dealer plays first in 2-player reverse start
-            } else {
-                this.currentPlayer = this.playersCount - 1;
-            }
-        } else if (firstCard.value === 'draw2') {
-            const victim = this.currentPlayer;
-            this.giveCardsToPlayer(victim, 2);
-            this.currentPlayer = this.getNextPlayerIndex(1);
-        }
+        this.activeColor = firstCard.color;
+        this.currentPlayer = 0; // Human always starts round cleanly!
 
         this.notifyState();
     }
@@ -429,28 +414,29 @@ class UnoGameLogic {
 
         let selectedCard = null;
 
+        // If human is threatening to win (<= 2 cards), bot uses attack/defense actions to stop them
         if (isOpponentThreat) {
-            // Priority 1: +4 or +2 or Skip to stop opponent
             const attackCard = playable.find(c => c.value === 'wild4' || c.value === 'draw2' || c.value === 'skip');
             if (attackCard) selectedCard = attackCard;
         }
 
-        // Priority 2: Action card matching current color/type
+        // Priority 1: Play standard matching number cards first (natural Uno flow)
+        if (!selectedCard) {
+            const normalCards = playable.filter(c => !c.isWild() && !c.isAction());
+            if (normalCards.length > 0) {
+                // Prefer matching active color number card
+                const colorMatch = normalCards.find(c => c.color === this.activeColor);
+                selectedCard = colorMatch || normalCards[0];
+            }
+        }
+
+        // Priority 2: Action card (Skip, Reverse, +2) if no simple number card fits
         if (!selectedCard) {
             const actionCard = playable.find(c => c.isAction());
             if (actionCard) selectedCard = actionCard;
         }
 
-        // Priority 3: Highest point normal card (to discard high numbers first)
-        if (!selectedCard) {
-            const normalCards = playable.filter(c => !c.isWild());
-            if (normalCards.length > 0) {
-                normalCards.sort((a, b) => b.getPoints() - a.getPoints());
-                selectedCard = normalCards[0];
-            }
-        }
-
-        // Priority 4: Wild cards if no other normal card
+        // Priority 3: Wild cards when no other cards fit
         if (!selectedCard) {
             selectedCard = playable.find(c => c.isWild()) || playable[0];
         }

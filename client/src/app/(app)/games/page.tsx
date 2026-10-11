@@ -87,7 +87,7 @@ const games = [
   },
   { 
     id: 'uno', 
-    name: '3D UNO Party', 
+    name: 'UNO Party', 
     desc: 'Wild cards, reverse & fast-paced battle',
     icon: Layers, 
     color: 'from-red-500 via-amber-500 to-yellow-400', 

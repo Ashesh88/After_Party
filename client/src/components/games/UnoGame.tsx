@@ -64,6 +64,18 @@ export default function UnoGame({ onBack }: UnoGameProps) {
   const [chatInput, setChatInput] = useState('');
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
+  // 2-Second Floating In-Game Chat Bubble State
+  const [floatingMessage, setFloatingMessage] = useState<{ sender: string; text: string } | null>(null);
+  const floatingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerFloatingMessage = useCallback((sender: string, text: string) => {
+    if (floatingTimeoutRef.current) clearTimeout(floatingTimeoutRef.current);
+    setFloatingMessage({ sender, text });
+    floatingTimeoutRef.current = setTimeout(() => {
+      setFloatingMessage(null);
+    }, 2000);
+  }, []);
+
   const handleToggleMute = () => {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
@@ -215,6 +227,7 @@ export default function UnoGame({ onBack }: UnoGameProps) {
           isMe: false,
         },
       ]);
+      triggerFloatingMessage(data.senderName, data.message);
       if (!showChatModal) {
         setUnreadChatCount((prev) => prev + 1);
       }
@@ -240,7 +253,7 @@ export default function UnoGame({ onBack }: UnoGameProps) {
       socket.off('uno:chat', handleUnoChat);
       socket.off('uno:opponent_left', handleOpponentLeft);
     };
-  }, [socket, sessionCode, opponentName, showChatModal]);
+  }, [socket, sessionCode, opponentName, showChatModal, triggerFloatingMessage]);
 
   // Handle postMessage from iframe
   useEffect(() => {
@@ -266,7 +279,7 @@ export default function UnoGame({ onBack }: UnoGameProps) {
     return () => window.removeEventListener('message', handleIframeMessage);
   }, [socket, sessionCode]);
 
-  // Send in-game chat message
+  // Send in-game chat message: closes modal and shows 2-second floating bubble
   const handleSendChat = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!chatInput.trim()) return;
@@ -284,6 +297,10 @@ export default function UnoGame({ onBack }: UnoGameProps) {
       },
     ]);
     setChatInput('');
+
+    // Close chat modal and show floating bubble on screen for 2 seconds
+    setShowChatModal(false);
+    triggerFloatingMessage(myName, text);
 
     if (socket && sessionCode) {
       socket.emit('uno:chat', {
@@ -378,10 +395,10 @@ export default function UnoGame({ onBack }: UnoGameProps) {
 
           <div className="flex items-center gap-2">
             <span className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-amber-400 to-yellow-300">
-              3D UNO Party
+              UNO Party
             </span>
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
-              3D LIVE
+              LIVE
             </span>
           </div>
         </div>
@@ -491,8 +508,27 @@ export default function UnoGame({ onBack }: UnoGameProps) {
           src={iframeSrc}
           className="w-full h-full border-none block"
           allow="autoplay; fullscreen"
-          title="3D UNO Party Game"
+          title="UNO Party Game"
         />
+
+        {/* 2-Second Floating In-Game Chat Bubble */}
+        <AnimatePresence>
+          {floatingMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.92 }}
+              transition={{ duration: 0.22 }}
+              className="absolute bottom-24 right-5 z-40 max-w-xs bg-black/80 backdrop-blur-2xl border border-white/20 rounded-2xl px-4 py-2.5 shadow-2xl flex items-center gap-2.5 pointer-events-none"
+            >
+              <div className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+              <div className="text-left">
+                <p className="text-[10px] font-bold text-cyan-300">{floatingMessage.sender}</p>
+                <p className="text-xs font-semibold text-white truncate max-w-[210px]">{floatingMessage.text}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* In-Game Match Chat Modal */}

@@ -696,13 +696,34 @@ class Uno3DGame {
             }
 
             if (move.action === 'play') {
-                this.rules.playCard(1, move.card.id, move.chosenColor);
+                const playResult = this.rules.playCard(1, move.card.id, move.chosenColor);
+                if (!playResult.success) {
+                    this.rules.playerDrawCard(1);
+                    this.rules.passTurn(1);
+                    this.isProcessingMove = false;
+                    this.syncCards3D();
+                    return;
+                }
                 this.audio.playCardPlay();
                 this.syncCards3D();
 
+                const playedCard = move.card;
+                const label = playedCard ? playedCard.getLabel() : '';
+                const color = (this.rules.activeColor || '').toUpperCase();
+
+                if (playResult.effect === 'skip' || playResult.effect === 'reverse_2p_skip') {
+                    this.updateBanner(`Uno Bot played SKIP! You lose your turn. Uno Bot plays again.`);
+                } else if (playResult.effect === 'draw2') {
+                    this.updateBanner(`Uno Bot played +2! You drew 2 penalty cards.`);
+                } else if (playResult.effect === 'wild4') {
+                    this.updateBanner(`Uno Bot played WILD +4! Color is ${color}. You drew 4 cards.`);
+                } else {
+                    this.updateBanner(`Uno Bot played ${color} ${label}. Your turn!`);
+                }
+
                 // If bot played Skip, Reverse (in 2p), Draw 2, or Wild 4, next player is Bot again!
                 if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
-                    setTimeout(() => this.checkBotTurn(), 850);
+                    setTimeout(() => this.checkBotTurn(), 1100);
                 } else {
                     this.isProcessingMove = false;
                 }
@@ -719,19 +740,21 @@ class Uno3DGame {
                         this.rules.playCard(1, drawRes.card.id, botBest.chosenColor || 'blue');
                         this.audio.playCardPlay();
                         this.syncCards3D();
+                        this.updateBanner(`Uno Bot drew and played a matching card! Your turn.`);
 
                         if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
-                            setTimeout(() => this.checkBotTurn(), 850);
+                            setTimeout(() => this.checkBotTurn(), 1100);
                         } else {
                             this.isProcessingMove = false;
                         }
                     }, 650);
                 } else {
                     this.rules.passTurn(1);
+                    this.updateBanner(`Uno Bot drew a card and passed. Your turn!`);
                     this.isProcessingMove = false;
                 }
             }
-        }, 900);
+        }, 850);
     }
 
     // -------------------------------------------------------------
