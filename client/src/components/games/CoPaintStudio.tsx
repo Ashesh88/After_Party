@@ -55,7 +55,17 @@ import { Friend } from '../../lib/types';
 type ToolType = 'pen' | 'brush' | 'neon' | 'spray' | 'eraser';
 type ShapeType = 'line' | 'rectangle' | 'circle' | 'star' | 'heart' | 'cloud' | 'mountain';
 type FrameType = 'wood' | 'gold' | 'black' | 'minimal' | 'none';
-type SceneryPreset = 'blank' | 'sunset-lake' | 'beach-sunset' | 'forest-stars' | 'desert-dunes';
+type SceneryPreset =
+  | 'blank'
+  | 'mountain-cabin'
+  | 'capybara-halloween'
+  | 'rainy-frog'
+  | 'elemental-touch'
+  | 'balloon-house'
+  | 'sunset-lake'
+  | 'beach-sunset'
+  | 'forest-stars'
+  | 'desert-dunes';
 type CanvasRatio = 'fit' | '1:1' | '3:4' | '16:9';
 
 interface Point {
@@ -163,6 +173,14 @@ const SCENERY_STICKERS = [
   { key: 'compass', label: 'Compass', icon: Compass },
 ];
 
+const SCENERY_IMAGE_MAP: Record<string, string> = {
+  'mountain-cabin': '/scenery/scenery-mountain-cabin.png',
+  'capybara-halloween': '/scenery/scenery-capybara-halloween.png',
+  'rainy-frog': '/scenery/scenery-rainy-frog.png',
+  'elemental-touch': '/scenery/scenery-elemental-touch.png',
+  'balloon-house': '/scenery/scenery-balloon-house.png',
+};
+
 export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const user = useAuthStore((state) => state.user);
   const socket = useSocketStore((state) => state.socket);
@@ -172,6 +190,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   const isDrawingRef = useRef(false);
   const currentPointsRef = useRef<Point[]>([]);
@@ -627,6 +646,30 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     if (preset === 'blank') return;
 
     ctx.save();
+
+    if (preset in SCENERY_IMAGE_MAP) {
+      const src = SCENERY_IMAGE_MAP[preset];
+      const img = imageCacheRef.current.get(src);
+      if (img && img.complete && img.naturalWidth > 0) {
+        const padding = 24;
+        const scale = Math.min((w - padding * 2) / img.naturalWidth, (h - padding * 2) / img.naturalHeight);
+        const dw = img.naturalWidth * scale;
+        const dh = img.naturalHeight * scale;
+        const dx = (w - dw) / 2;
+        const dy = (h - dh) / 2;
+        ctx.drawImage(img, dx, dy, dw, dh);
+      } else {
+        const newImg = new Image();
+        newImg.src = src;
+        newImg.onload = () => {
+          imageCacheRef.current.set(src, newImg);
+          redrawBackgroundLayer();
+        };
+      }
+      ctx.restore();
+      return;
+    }
+
     ctx.strokeStyle = '#334155'; // Crisp dark slate line art
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
@@ -2069,10 +2112,15 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {[
                   { key: 'blank', label: 'Blank Canvas' },
-                  { key: 'sunset-lake', label: 'Sunset Lake & Mountains' },
-                  { key: 'beach-sunset', label: 'Tropical Beach Sunset' },
-                  { key: 'forest-stars', label: 'Forest Campfire & Moon' },
-                  { key: 'desert-dunes', label: 'Desert Dunes & Sun' },
+                  { key: 'mountain-cabin', label: 'Mountain Cabin River' },
+                  { key: 'capybara-halloween', label: 'Halloween Capybaras' },
+                  { key: 'rainy-frog', label: 'Cute Rainy Frog' },
+                  { key: 'elemental-touch', label: 'Fire & Water Elemental' },
+                  { key: 'balloon-house', label: 'Balloon Flying House' },
+                  { key: 'sunset-lake', label: 'Sunset Lake Sketch' },
+                  { key: 'beach-sunset', label: 'Tropical Beach Sketch' },
+                  { key: 'forest-stars', label: 'Forest Campfire Sketch' },
+                  { key: 'desert-dunes', label: 'Desert Dunes Sketch' },
                 ].map((s) => (
                   <button
                     key={s.key}
