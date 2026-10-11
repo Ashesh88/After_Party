@@ -39,7 +39,7 @@ class CarromGame {
         this.sessionCode = params.get('code') || null;
         this.myRole = params.get('role') || 'p1';
         this.myName = params.get('name') || (this.myRole === 'p1' ? 'You' : 'Player 2');
-        this.opponentName = params.get('opponent') || (this.mode === 'ai' ? 'Carrom Bot 🤖' : 'Partner');
+        this.opponentName = params.get('opponent') || (this.mode === 'ai' ? 'Carrom Bot' : 'Partner');
 
         const elNameP1 = document.getElementById('name-p1');
         const elNameP2 = document.getElementById('name-p2');
@@ -224,14 +224,32 @@ class CarromGame {
         const activeBtn = document.getElementById(`btn-view-${view}`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        const isMobile = window.innerWidth < 640;
-        const isPortrait = window.innerHeight > window.innerWidth;
+        const aspect = window.innerWidth / window.innerHeight;
+        const isPortrait = aspect < 1.0;
+        const boardExtent = 84; // complete board footprint including outer frame & corner pockets
+
+        // Camera half vertical FOV in radians (fov = 42 deg)
+        const fovRad = (this.camera.fov * Math.PI) / 180;
+        const tanHalfFov = Math.tan(fovRad / 2); // ~0.38386
+
+        let camHeight;
+        if (isPortrait) {
+            // In portrait phones, screen width is the main constraint.
+            // visibleWidth = 2 * d * tanHalfFov * aspect >= boardExtent * 1.16
+            const dWidth = (boardExtent * 1.16) / (2 * tanHalfFov * aspect);
+            // Also ensure vertical height leaves plenty of clear room for top and bottom HUDs
+            const dHeight = (boardExtent * 1.65) / (2 * tanHalfFov);
+            camHeight = Math.max(dWidth, dHeight);
+        } else {
+            // In landscape / desktop, screen height is the main constraint.
+            // Board occupies ~65% of screen height to clear top and bottom HUDs
+            camHeight = (boardExtent / (2 * tanHalfFov)) * 1.55;
+        }
 
         if (view === 'top') {
             if (this.controls) this.controls.enabled = false;
             // Direct Top-Down Bird's Eye View with proper orientation (up: 0, 0, -1)
             this.camera.up.set(0, 0, -1);
-            const camHeight = isPortrait ? (isMobile ? 135 : 120) : (isMobile ? 110 : 96);
             this.camera.position.set(0, camHeight, 0);
             this.camera.lookAt(0, 0, 0);
             if (this.controls) this.controls.target.set(0, 0, 0);
@@ -241,15 +259,17 @@ class CarromGame {
             const sz = this.piecesManager?.striker?.z || 26;
             const sx = this.piecesManager?.striker?.x || 0;
             const sign = sz > 0 ? 1 : -1;
-            const camDist = isPortrait ? 44 : 36;
-            this.camera.position.set(sx * 0.35, 28, sz + sign * camDist);
+            const camDist = isPortrait ? 52 : 40;
+            const camY = isPortrait ? 38 : 28;
+            this.camera.position.set(sx * 0.35, camY, sz + sign * camDist);
             this.camera.lookAt(sx, 0, sz - sign * 25);
             if (this.controls) this.controls.target.set(sx, 0, sz - sign * 25);
         } else if (view === 'orbit') {
             this.camera.up.set(0, 1, 0);
             if (this.controls) {
                 this.controls.enabled = true;
-                this.camera.position.set(0, 55, 68);
+                const orbitDist = isPortrait ? 120 : 85;
+                this.camera.position.set(0, orbitDist * 0.65, orbitDist * 0.85);
                 this.controls.target.set(0, 0, 0);
                 this.controls.update();
             }
@@ -264,7 +284,7 @@ class CarromGame {
 
         this.piecesManager.setupInitialRack();
         this.updateHUD();
-        this.showStatus('🎯 Match Started! Position striker & take your aim.');
+        this.showStatus('Match Started: Position striker and take your aim.');
 
         this.positionStrikerForTurn();
     }
@@ -361,24 +381,24 @@ class CarromGame {
             }, '*');
         }
 
-        this.showStatus('⚡ Shot released! Watching the board...');
+        this.showStatus('Shot released. Watching the board...');
     }
 
     handlePiecePocketed(piece) {
         this.turnPockets.push(piece);
 
         if (piece.type === 'striker') {
-            this.showStatus('⚠️ FOUL! Striker pocketed in net.');
+            this.showStatus('FOUL: Striker pocketed in net.');
             return;
         }
 
         if (piece.type === 'queen') {
-            this.showStatus('👑 QUEEN POCKETED! Must cover with another piece.');
+            this.showStatus('QUEEN POCKETED: Must cover with another piece.');
             return;
         }
 
         const pts = piece.points || 5;
-        this.showStatus(`🎉 ${piece.type.toUpperCase()} Piece Pocketed! (+${pts} pts)`);
+        this.showStatus(`${piece.type.toUpperCase()} Piece Pocketed (+${pts} pts)`);
     }
 
     handleShotComplete() {
@@ -420,7 +440,7 @@ class CarromGame {
                 this.scores[this.currentTurn] += 30;
                 this.queenPendingCover = false;
                 this.queenCoverBy = null;
-                this.showStatus('👑 QUEEN SUCCESSFULLY COVERED! +30 Points Bonus! 🌟');
+                this.showStatus('QUEEN COVERED: +30 Points Bonus!');
             } else if (!this.turnPockets.find(p => p.type === 'queen')) {
                 // Failed to cover queen on follow-up turn -> return queen to center
                 const queenPiece = this.piecesManager.pieces.find(p => p.type === 'queen');
@@ -439,7 +459,7 @@ class CarromGame {
                 }
                 this.queenPendingCover = false;
                 this.queenCoverBy = null;
-                this.showStatus('❌ Queen cover missed! Queen returned to board center.');
+                this.showStatus('Queen cover missed: Queen returned to board center.');
             }
         }
 
@@ -459,10 +479,10 @@ class CarromGame {
         if (!extraTurn) {
             this.currentTurn = this.currentTurn === 'p1' ? 'p2' : 'p1';
             const name = this.currentTurn === 'p1' ? this.myName : this.opponentName;
-            this.showStatus(`👉 Next Turn: ${name}`);
+            this.showStatus(`Next Turn: ${name}`);
         } else {
             const name = this.currentTurn === 'p1' ? this.myName : this.opponentName;
-            this.showStatus(`🔥 Extra Turn Awarded to ${name}!`);
+            this.showStatus(`Extra Turn Awarded to ${name}!`);
         }
 
         this.updateHUD();
@@ -492,7 +512,7 @@ class CarromGame {
     }
 
     triggerBotTurn() {
-        this.showStatus('🤖 Carrom Bot is calculating optimal angle & power...');
+        this.showStatus('Carrom Bot is calculating optimal angle and power...');
 
         setTimeout(() => {
             if (this.currentTurn !== 'p2' || this.physics.isTableBusy()) return;
@@ -557,7 +577,7 @@ class CarromGame {
         const title = document.getElementById('victory-title');
         const desc = document.getElementById('victory-desc');
 
-        if (title) title.textContent = `${winner} Wins! 🏆`;
+        if (title) title.textContent = `${winner} Wins!`;
         if (desc) desc.textContent = `Final Score: ${this.myName} (${this.scores.p1} pts) — ${this.opponentName} (${this.scores.p2} pts)`;
         if (modal) modal.classList.add('open');
 
@@ -595,8 +615,8 @@ class CarromGame {
 
         const badge1 = document.getElementById('badge-p1');
         const badge2 = document.getElementById('badge-p2');
-        if (badge1) badge1.textContent = this.currentTurn === 'p1' ? 'STRIKING ⚡' : 'WAITING';
-        if (badge2) badge2.textContent = this.currentTurn === 'p2' ? 'STRIKING ⚡' : 'WAITING';
+        if (badge1) badge1.textContent = this.currentTurn === 'p1' ? 'STRIKING' : 'WAITING';
+        if (badge2) badge2.textContent = this.currentTurn === 'p2' ? 'STRIKING' : 'WAITING';
     }
 
     setupEventListeners() {

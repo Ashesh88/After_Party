@@ -167,7 +167,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
       if (data.sessionCode === sessionCode && data.game === 'carrom') {
         setIsWaitingForFriend(false);
         setIsOpponentConnected(true);
-        toast.success(`${opponentName || 'Friend'} accepted your challenge! 🎯`, { icon: '👑' });
+        toast.success(`${opponentName || 'Friend'} accepted your challenge!`);
       }
     };
 
@@ -184,7 +184,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
       setIsWaitingForFriend(false);
       setIsOpponentConnected(true);
       if (data.playerName) setOpponentName(data.playerName);
-      toast.success(`${data.playerName || 'Opponent'} joined the board! Match is live! 🎯`);
+      toast.success(`${data.playerName || 'Opponent'} joined the board! Match is live!`);
     };
 
     // Opponent shot
@@ -215,7 +215,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
 
     // Rematch requested
     const handleRematch = () => {
-      toast('Opponent requested a rematch! Board reset.', { icon: '🔄' });
+      toast('Opponent requested a rematch. Board reset.');
       iframeRef.current?.contentWindow?.postMessage({ type: 'CARROM_RESTART' }, '*');
     };
 
@@ -276,7 +276,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
 
       // Game over
       if (type === 'CARROM_GAME_OVER') {
-        toast.success(`Game Finished! Winner: ${event.data.winner || 'Player'} 🏆`, { duration: 5000 });
+        toast.success(`Game Finished! Winner: ${event.data.winner || 'Player'}`, { duration: 5000 });
       }
     };
 
@@ -320,7 +320,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
     setIsWaitingForFriend(false);
     setIsOpponentConnected(false);
     setIframeSrc('/games/carrom/index.html?mode=ai');
-    toast.success('Switched to Solo Bot Mode 🤖');
+    toast.success('Switched to Solo Bot Mode');
   };
 
   // Send Direct Game Invite to a Friend
@@ -335,10 +335,10 @@ export default function CarromGame({ onBack }: CarromGameProps) {
       targetUserId: friend._id,
       sessionCode,
       game: 'carrom',
-      gameTitle: 'Royal 3D Carrom 🎯',
+      gameTitle: 'Royal 3D Carrom',
     });
 
-    toast.success(`Invite sent to ${friend.displayName}! 🎯`, { icon: '🚀' });
+    toast.success(`Invite sent to ${friend.displayName}!`);
     setShowFriendsModal(false);
   };
 
@@ -377,8 +377,8 @@ export default function CarromGame({ onBack }: CarromGameProps) {
   return (
     <div className="fixed inset-0 z-[100] bg-[#07070e] flex flex-col select-none text-white overflow-hidden">
       {/* Top Header Controls Bar */}
-      <header className="h-14 px-3 sm:px-4 flex items-center justify-between border-b border-white/10 bg-black/75 backdrop-blur-xl z-20 shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <header className="h-12 sm:h-14 px-2 sm:px-4 flex items-center justify-between border-b border-white/10 bg-black/85 backdrop-blur-xl z-20 shrink-0 gap-1.5">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             onClick={() => {
               if (socket && sessionCode) {
@@ -386,61 +386,59 @@ export default function CarromGame({ onBack }: CarromGameProps) {
               }
               onBack();
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-amber-400" />
             <span className="hidden sm:inline">Arcade</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-rose-300 to-amber-500">
-              Royal 3D Carrom 🎯
-            </span>
-          </div>
+          <span className="text-xs sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-rose-300 to-amber-500 whitespace-nowrap">
+            3D Carrom
+          </span>
         </div>
 
         {/* Center Mode Switcher Tabs */}
-        <div className="flex items-center bg-white/[0.06] p-1 rounded-2xl border border-white/10">
+        <div className="flex items-center bg-white/[0.06] p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-white/10 shrink-0">
           <button
             onClick={handleSwitchToAI}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               mode === 'ai'
                 ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>Bot AI</span>
+            <span>Bot</span>
           </button>
 
           <button
             onClick={handleStartOnlineMatch}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               mode === 'online'
                 ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Play with Friend</span>
+            <span>Friend</span>
           </button>
         </div>
 
         {/* Right Tools Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {mode === 'online' && sessionCode && (
             <button
               onClick={() => setShowFriendsModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all cursor-pointer"
             >
               <Users className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Invite Friend</span>
+              <span className="hidden md:inline">Invite</span>
             </button>
           )}
 
           <button
             onClick={handleToggleMute}
-            className="p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
@@ -448,7 +446,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
 
           <button
             onClick={handleResetGame}
-            className="p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
             title="Reset Board"
           >
             <RotateCcw className="w-4 h-4 text-amber-400" />
@@ -456,7 +454,7 @@ export default function CarromGame({ onBack }: CarromGameProps) {
 
           <button
             onClick={handleFullscreen}
-            className="p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 transition-colors cursor-pointer"
             title="Fullscreen"
           >
             <Maximize2 className="w-4 h-4" />
