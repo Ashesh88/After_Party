@@ -37,6 +37,8 @@ export default function CallOverlay() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const miniRemoteVideoRef = useRef<HTMLVideoElement>(null);
+  const dragConstraintsRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
 
   // Bind local stream
   useEffect(() => {
@@ -230,81 +232,108 @@ export default function CallOverlay() {
         )}
       </AnimatePresence>
 
-      {/* 3. ACTIVE CONNECTED CALL: MINIMIZED (Chota Floating PiP Window) */}
-      <AnimatePresence>
-        {callStatus === 'connected' && isMinimized && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed right-4 bottom-24 z-[90] w-36 sm:w-44 h-52 sm:h-60 rounded-3xl glass-panel border border-pink-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col group cursor-pointer"
-            onClick={toggleMinimize}
-            title="Click to expand"
-          >
-            {/* Video preview / Avatar */}
-            <div className="relative flex-1 bg-black">
-              <video
-                ref={miniRemoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              {(!remoteStream || callType === 'audio') && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d0d18] p-2 text-center">
-                  <div className="w-12 h-12 rounded-full bg-pink-500/20 border border-pink-500/30 p-1 mb-1">
-                    {partnerInfo?.avatar ? (
-                      <img src={partnerInfo.avatar} alt="Partner" className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <User size={20} className="text-pink-400" />
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold text-white truncate max-w-full">
-                    {partnerInfo?.displayName || 'Partner'}
-                  </span>
-                </div>
-              )}
-
-              {/* Expand badge */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
+      {/* 3. ACTIVE CONNECTED CALL: MINIMIZED (Chota Floating PiP Window - Draggable) */}
+      <div 
+        ref={dragConstraintsRef} 
+        className="fixed inset-3 pointer-events-none z-[95]"
+      >
+        <AnimatePresence>
+          {callStatus === 'connected' && isMinimized && (
+            <motion.div
+              drag
+              dragConstraints={dragConstraintsRef}
+              dragElastic={0.08}
+              dragMomentum={false}
+              onDragStart={() => {
+                isDraggingRef.current = true;
+              }}
+              onDragEnd={() => {
+                setTimeout(() => {
+                  isDraggingRef.current = false;
+                }, 150);
+              }}
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              className="absolute right-2 bottom-20 w-36 sm:w-44 h-52 sm:h-60 rounded-3xl glass-panel border border-pink-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col group cursor-grab active:cursor-grabbing pointer-events-auto touch-none select-none"
+              onClick={() => {
+                if (!isDraggingRef.current) {
                   toggleMinimize();
-                }}
-                title="Expand full screen"
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
-              >
-                <Maximize2 size={13} />
-              </button>
-
-              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-[9px] font-mono font-bold text-emerald-400">
-                {formatDuration(callDuration)}
-              </div>
-            </div>
-
-            {/* Quick mini bottom controls */}
-            <div 
-              className="p-2 bg-[#0c0c18] border-t border-white/10 flex items-center justify-between"
-              onClick={(e) => e.stopPropagation()}
+                }
+              }}
+              title="Drag to move anywhere / Tap to expand"
             >
-              <button
-                onClick={toggleMute}
-                className={`p-2 rounded-xl transition-all ${
-                  isMuted ? 'bg-rose-500/20 text-rose-300' : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
-              </button>
+              {/* Subtle top drag handle bar like WhatsApp/Telegram */}
+              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
+                <div className="w-8 h-1 rounded-full bg-white/40 shadow-sm" />
+              </div>
 
-              <button
-                onClick={() => endCall(socket)}
-                className="p-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition-all shadow-md"
+              {/* Video preview / Avatar */}
+              <div className="relative flex-1 bg-black">
+                <video
+                  ref={miniRemoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                {(!remoteStream || callType === 'audio') && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d0d18] p-2 text-center">
+                    <div className="w-12 h-12 rounded-full bg-pink-500/20 border border-pink-500/30 p-1 mb-1">
+                      {partnerInfo?.avatar ? (
+                        <img src={partnerInfo.avatar} alt="Partner" className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        <User size={20} className="text-pink-400" />
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-white truncate max-w-full">
+                      {partnerInfo?.displayName || 'Partner'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Expand badge */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMinimize();
+                  }}
+                  title="Expand full screen"
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-90 z-20"
+                >
+                  <Maximize2 size={13} />
+                </button>
+
+                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-[9px] font-mono font-bold text-emerald-400 z-20">
+                  {formatDuration(callDuration)}
+                </div>
+              </div>
+
+              {/* Quick mini bottom controls */}
+              <div 
+                className="p-2 bg-[#0c0c18] border-t border-white/10 flex items-center justify-between z-20"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
               >
-                <PhoneOff size={14} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <button
+                  onClick={toggleMute}
+                  className={`p-2 rounded-xl transition-all cursor-pointer ${
+                    isMuted ? 'bg-rose-500/20 text-rose-300' : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+                </button>
+
+                <button
+                  onClick={() => endCall(socket)}
+                  className="p-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition-all shadow-md cursor-pointer active:scale-95"
+                >
+                  <PhoneOff size={14} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* 4. ACTIVE CONNECTED CALL: EXPANDED (Bada WhatsApp-Style Interface) */}
       <AnimatePresence>
