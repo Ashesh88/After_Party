@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(
       type: Object,
       default: null,
     },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );

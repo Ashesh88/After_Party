@@ -6,6 +6,7 @@ export interface User {
   friendId?: string;
   roomId?: string | null;
   friends?: (User | string)[];
+  lastSeen?: string | Date;
 }
 
 export interface Friend {
@@ -16,6 +17,7 @@ export interface Friend {
   friendId?: string;
   roomId?: string | null;
   isOnline?: boolean;
+  lastSeen?: string | Date;
 }
 
 export type MoodType = 'love' | 'angry' | 'just_friends' | 'sad' | 'horny';
@@ -38,9 +40,17 @@ export interface MoodTheme {
 export interface Room {
   _id: string;
   inviteCode: string;
-  participants: User[];
+  participants?: User[];
   members?: User[];
+  host?: User | string;
   moodTheme?: MoodTheme;
+  plannedEvent?: {
+    title: string;
+    targetDate: string;
+    updatedBy?: string;
+    updatedByName?: string;
+    updatedAt?: string;
+  };
   createdAt: string;
 }
 

@@ -8,6 +8,7 @@ import CallOverlay from '../../components/CallOverlay';
 import MoodThemeModal from '../../components/MoodThemeModal';
 import MoodAtmosphereOverlay from '../../components/MoodAtmosphereOverlay';
 import RoomInviteNotification from '../../components/RoomInviteNotification';
+import MessageNotificationToast from '../../components/MessageNotificationToast';
 import { useMoodStore } from '../../lib/store/moodStore';
 import { useGameStore } from '../../lib/store/gameStore';
 
@@ -51,6 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <CallOverlay />
       <MoodThemeModal />
       <RoomInviteNotification />
+      <MessageNotificationToast />
     </div>
   );
 }

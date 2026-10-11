@@ -51,13 +51,15 @@ router.post('/create', async (req, res, next) => {
 
     const room = new Room({
       members: [user._id],
+      host: user._id,
     });
     await room.save();
 
     user.roomId = room._id;
     await user.save();
 
-    await room.populate('members', 'displayName email avatar friendId');
+    await room.populate('members', 'displayName email avatar friendId lastSeen');
+    await room.populate('host', 'displayName email avatar friendId lastSeen');
 
     res.status(201).json({ room });
   } catch (error) {
@@ -94,13 +96,18 @@ router.post('/join', async (req, res, next) => {
     const alreadyMember = targetRoom.members.some(m => m.toString() === user._id.toString());
     if (!alreadyMember) {
       targetRoom.members.push(user._id);
-      await targetRoom.save();
     }
+    // Set host if not set
+    if (!targetRoom.host) {
+      targetRoom.host = targetRoom.members[0] || user._id;
+    }
+    await targetRoom.save();
 
     user.roomId = targetRoom._id;
     await user.save();
 
-    await targetRoom.populate('members', 'displayName email avatar friendId');
+    await targetRoom.populate('members', 'displayName email avatar friendId lastSeen');
+    await targetRoom.populate('host', 'displayName email avatar friendId lastSeen');
 
     // Notify room members in real-time
     if (io) {
@@ -110,6 +117,7 @@ router.post('/join', async (req, res, next) => {
           displayName: user.displayName,
           avatar: user.avatar,
           friendId: user.friendId,
+          lastSeen: user.lastSeen,
         },
         room: targetRoom,
       });
@@ -129,7 +137,10 @@ router.get('/mine', async (req, res, next) => {
       return res.status(404).json({ message: 'User is not in a room' });
     }
 
-    const room = await Room.findById(user.roomId).populate('members', 'displayName email avatar friendId');
+    const room = await Room.findById(user.roomId)
+      .populate('members', 'displayName email avatar friendId lastSeen')
+      .populate('host', 'displayName email avatar friendId lastSeen');
+
     if (!room) {
       // Clean up orphaned roomId
       user.roomId = null;
@@ -137,15 +148,133 @@ router.get('/mine', async (req, res, next) => {
       return res.status(404).json({ message: 'Room no longer exists' });
     }
 
+    // Ensure room has a host assigned
+    let roomDirty = false;
+    if (!room.host && room.members.length > 0) {
+      room.host = room.members[0]._id;
+      roomDirty = true;
+    }
+
     // Ensure current user is in members array
     const isInMembers = room.members.some(m => m._id.toString() === user._id.toString());
     if (!isInMembers) {
       room.members.push(user._id);
+      roomDirty = true;
+    }
+
+    if (roomDirty) {
       await room.save();
-      await room.populate('members', 'displayName email avatar friendId');
+      await room.populate('members', 'displayName email avatar friendId lastSeen');
+      await room.populate('host', 'displayName email avatar friendId lastSeen');
     }
 
     res.json({ room });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/rooms/kick (Host kicks member)
+router.post('/kick', async (req, res, next) => {
+  try {
+    const { targetUserId } = req.body;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Target user ID is required' });
+    }
+
+    const hostUser = await User.findById(req.user.userId);
+    if (!hostUser || !hostUser.roomId) {
+      return res.status(404).json({ message: 'You are not in a room' });
+    }
+
+    const room = await Room.findById(hostUser.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    // Verify host authority
+    const currentHostId = (room.host || room.members[0])?.toString();
+    if (currentHostId !== hostUser._id.toString()) {
+      return res.status(403).json({ message: 'Only the room host can remove members' });
+    }
+
+    if (targetUserId.toString() === hostUser._id.toString()) {
+      return res.status(400).json({ message: 'Host cannot kick themselves from room' });
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Target user not found' });
+    }
+
+    // Remove from room members
+    room.members = room.members.filter(id => id.toString() !== targetUserId.toString());
+    await room.save();
+
+    // Detach target user's roomId
+    targetUser.roomId = null;
+    await targetUser.save();
+
+    await room.populate('members', 'displayName email avatar friendId lastSeen');
+    await room.populate('host', 'displayName email avatar friendId lastSeen');
+
+    const io = req.app.get('io');
+    if (io) {
+      // Notify the kicked user directly
+      io.to(`user:${targetUserId}`).emit('room:kicked', {
+        roomId: room._id.toString(),
+        message: 'You have been removed from the room by the host',
+      });
+
+      // Broadcast to room members
+      io.to(`room:${room._id}`).emit('room:member-left', {
+        userId: targetUserId.toString(),
+        displayName: targetUser.displayName,
+        kicked: true,
+      });
+      io.to(`room:${room._id}`).emit('room:updated', { room });
+    }
+
+    res.json({ room, message: `${targetUser.displayName} was removed from the room` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/rooms/invite (Invite friend/connection to room)
+router.post('/invite', async (req, res, next) => {
+  try {
+    const { friendUserId } = req.body;
+    if (!friendUserId) {
+      return res.status(400).json({ message: 'Friend user ID is required' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.roomId) {
+      return res.status(400).json({ message: 'You must be in a room to invite members' });
+    }
+
+    const room = await Room.findById(user.roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    const targetUser = await User.findById(friendUserId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Friend not found' });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${friendUserId}`).emit('room:invite', {
+        roomId: room._id.toString(),
+        inviteCode: room.inviteCode,
+        inviterName: user.displayName,
+        inviterAvatar: user.avatar,
+      });
+    }
+
+    res.json({ message: `Invitation sent to ${targetUser.displayName}` });
   } catch (error) {
     next(error);
   }

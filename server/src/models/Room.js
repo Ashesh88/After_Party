@@ -15,6 +15,11 @@ const roomSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
+    host: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     moodTheme: {
       current: {
         type: String,

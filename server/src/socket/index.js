@@ -68,13 +68,38 @@ const setupSocket = (io) => {
       }
     });
 
-    // Query online status for friends list
-    socket.on('presence:query', (targetUserIds, callback) => {
+    // Query online status and lastSeen for friends/room members
+    socket.on('presence:query', async (targetUserIds, callback) => {
       if (typeof callback === 'function') {
         const statusMap = {};
-        (targetUserIds || []).forEach(id => {
-          statusMap[id] = onlineUsers.has(id.toString());
-        });
+        const ids = Array.isArray(targetUserIds) ? targetUserIds : [];
+        
+        try {
+          // Query lastSeen from DB for requested IDs
+          const users = await User.find({ _id: { $in: ids } }).select('_id lastSeen').lean();
+          const lastSeenMap = {};
+          users.forEach(u => {
+            lastSeenMap[u._id.toString()] = u.lastSeen;
+          });
+
+          ids.forEach(id => {
+            const strId = id.toString();
+            statusMap[strId] = {
+              online: onlineUsers.has(strId),
+              lastSeen: lastSeenMap[strId] || null,
+            };
+          });
+        } catch (err) {
+          console.error('Error fetching presence query:', err);
+          ids.forEach(id => {
+            const strId = id.toString();
+            statusMap[strId] = {
+              online: onlineUsers.has(strId),
+              lastSeen: null,
+            };
+          });
+        }
+
         callback(statusMap);
       }
     });
@@ -115,8 +140,19 @@ const setupSocket = (io) => {
         });
         await message.save();
         await message.populate('senderId', 'displayName avatar');
-        // Broadcast to entire room
+        // Broadcast message to entire room
         io.to(currentChannel).emit('chat:message', message);
+
+        // Also broadcast an explicit message notification to room members outside active chat
+        socket.to(currentChannel).emit('chat:notification', {
+          senderId: userId,
+          senderName: message.senderId?.displayName || 'Your partner',
+          senderAvatar: message.senderId?.avatar || '',
+          content: content.length > 80 ? content.slice(0, 80) + '...' : content,
+          type,
+          timestamp: message.createdAt,
+          roomId: currentRoomId,
+        });
       } catch (err) {
         console.error('chat:message error:', err);
       }
@@ -872,17 +908,24 @@ const setupSocket = (io) => {
       });
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`User disconnected: ${userId}`);
       onlineUsers.delete(userId.toString());
-      io.emit('presence:offline', { userId });
+      const now = new Date();
+      try {
+        await User.findByIdAndUpdate(userId, { lastSeen: now });
+      } catch (err) {
+        console.error('Error updating user lastSeen on disconnect:', err);
+      }
+
+      io.emit('presence:offline', { userId, lastSeen: now });
       const currentChannel = getActiveRoomChannel();
       const currentRoomId = getActiveRoomId();
       if (currentRoomId && activeLocations.has(currentRoomId)) {
         activeLocations.get(currentRoomId).delete(userId.toString());
       }
       if (currentChannel) {
-        socket.to(currentChannel).emit('presence:offline', { userId });
+        socket.to(currentChannel).emit('presence:offline', { userId, lastSeen: now });
         socket.to(currentChannel).emit('location:stop', { userId });
       }
     });
