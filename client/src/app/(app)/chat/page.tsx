@@ -83,6 +83,18 @@ function ChatContent() {
   // Mobile View Toggle: When true, shows active chat in full-screen modal mode on mobile
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
+  // Hide bottom nav on mobile when chat conversation is open
+  useEffect(() => {
+    if (mobileChatOpen) {
+      document.body.classList.add('hide-bottom-nav');
+    } else {
+      document.body.classList.remove('hide-bottom-nav');
+    }
+    return () => {
+      document.body.classList.remove('hide-bottom-nav');
+    };
+  }, [mobileChatOpen]);
+
   // Refs
   const feedRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -927,7 +939,7 @@ function ChatContent() {
       {/* (When mobileChatOpen === true, takes full native screen) */}
       {/* ======================================================== */}
       {mobileChatOpen && activeChat && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-[#0a0b14] overflow-hidden">
+        <div className="md:hidden fixed inset-0 z-[100] flex flex-col bg-[#0a0b14] overflow-hidden">
           <ChatWindow
             activeChat={activeChat}
             messages={messages}
@@ -1268,7 +1280,7 @@ function ChatWindow({
       </AnimatePresence>
 
       {/* Input Bar */}
-      <div className="p-3 sm:p-4 bg-[#111224]/95 border-t border-white/[0.08] relative z-20 shrink-0">
+      <div className="p-3 sm:p-4 bg-[#111224] border-t border-white/[0.1] relative z-20 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_25px_rgba(0,0,0,0.5)]">
         {isRecording ? (
           /* Recording Mode */
           <div className="flex items-center justify-between gap-3 bg-rose-500/15 border border-rose-500/30 rounded-2xl p-2.5 px-4 animate-pulse">
@@ -1298,18 +1310,18 @@ function ChatWindow({
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
             >
-              <Smile size={18} />
+              <Smile size={19} />
             </button>
 
             {/* Photo Upload Trigger */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
             >
-              <ImageIcon size={18} />
+              <ImageIcon size={19} />
             </button>
             <input
               ref={fileInputRef}
@@ -1326,7 +1338,7 @@ function ChatWindow({
               onChange={handleTyping}
               onKeyDown={handleKeyDown}
               placeholder={`Message ${activeChat.title}...`}
-              className="flex-1 py-2.5 px-4 rounded-2xl bg-white/[0.06] border border-white/[0.1] text-white text-sm placeholder-slate-500 focus:outline-none focus:border-pink-500/50 transition-all"
+              className="flex-1 py-3 px-4 rounded-2xl bg-white/[0.08] border border-white/[0.14] text-white text-sm placeholder-slate-400 focus:outline-none focus:border-pink-500/60 focus:bg-white/[0.12] transition-all shadow-inner"
             />
 
             {/* Mic / Send Button */}
@@ -1335,15 +1347,15 @@ function ChatWindow({
                 type="submit"
                 className="w-10 h-10 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 hover:brightness-110 text-white flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-[0_0_15px_rgba(244,63,142,0.4)] active:scale-95"
               >
-                <Send size={16} />
+                <Send size={17} />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={startRecording}
-                className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-pink-500/20 hover:text-pink-300 text-slate-300 flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
+                className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-pink-500/20 hover:text-pink-300 text-slate-300 flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
               >
-                <Mic size={18} />
+                <Mic size={19} />
               </button>
             )}
           </form>

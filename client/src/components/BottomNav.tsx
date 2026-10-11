@@ -24,7 +24,7 @@ export default function BottomNav() {
   }
 
   return (
-    <div className="fixed bottom-3 sm:bottom-4 left-0 right-0 flex justify-center px-2 sm:px-4 pointer-events-none z-50">
+    <div className="bottom-nav-container fixed bottom-3 sm:bottom-4 left-0 right-0 flex justify-center px-2 sm:px-4 pointer-events-none z-40">
       <nav className="pointer-events-auto flex items-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-full bg-[#0d0d1a]/92 backdrop-blur-2xl border border-white/[0.08] shadow-[0_20px_40px_rgba(0,0,0,0.7)] max-w-full overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = pathname === tab.path || pathname.startsWith(tab.path + '/');

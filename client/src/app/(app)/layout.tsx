@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import BottomNav from '../../components/BottomNav';
 import { useSocketStore } from '../../lib/store/socketStore';
 import { useAuthStore } from '../../lib/store/authStore';
@@ -14,11 +15,13 @@ import { useMoodStore } from '../../lib/store/moodStore';
 import { useGameStore } from '../../lib/store/gameStore';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { connectSocket, disconnectSocket, socket } = useSocketStore();
   const token = useAuthStore((state) => state.token);
   const fetchMe = useAuthStore((state) => state.fetchMe);
   const { fetchMood, updateFromSocket } = useMoodStore();
   const activeGame = useGameStore((state) => state.activeGame);
+  const isChatPage = pathname === '/chat';
 
   useEffect(() => {
     fetchMe();
@@ -43,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [socket, updateFromSocket]);
 
   return (
-    <div className={`relative min-h-screen overflow-x-hidden ${activeGame ? 'pb-0' : 'pb-24'}`}>
+    <div className={`relative min-h-screen overflow-x-hidden ${activeGame || isChatPage ? 'pb-0' : 'pb-24'}`}>
       {/* Global Ambient Mood Glow Blobs */}
       <div className="ambient-glow-mood-primary -top-28 -left-24 pointer-events-none fixed z-0" />
       <div className="ambient-glow-mood-secondary top-72 -right-28 pointer-events-none fixed z-0" />
@@ -51,7 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Floating dynamic mood atmosphere particles */}
       <MoodAtmosphereOverlay />
 
-      <div className="relative z-10">{children}</div>
+      <div className="relative">{children}</div>
       <BottomNav />
       <CallOverlay />
       <MoodThemeModal />

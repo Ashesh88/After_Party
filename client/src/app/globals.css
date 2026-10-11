@@ -217,3 +217,7 @@ html[data-mood="sad"] .ambient-glow-mood-secondary {
   }
 }
 
+/* Hide bottom navigation when inside full-screen mobile chat */
+body.hide-bottom-nav .bottom-nav-container {
+  display: none !important;
+}
