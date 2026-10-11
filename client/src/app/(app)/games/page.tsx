@@ -8,12 +8,11 @@ import Chess3D from '../../../components/games/Chess3D';
 import LudoGame from '../../../components/games/LudoGame';
 import PoolGame from '../../../components/games/PoolGame';
 import TurboRacer from '../../../components/games/TurboRacer';
-import CardsGame from '../../../components/games/CardsGame';
 import BowlingGame from '../../../components/games/BowlingGame';
 import CarromGame from '../../../components/games/CarromGame';
 import UnoGame from '../../../components/games/UnoGame';
 import CoPaintStudio from '../../../components/games/CoPaintStudio';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Disc, Target, Layers, Palette } from 'lucide-react';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Disc, Target, Layers, Palette } from 'lucide-react';
 
 const games = [
   { 
@@ -55,16 +54,6 @@ const games = [
     tag: '3D LIVE',
     video: '/videos/bowling-preview.mp4',
     thumb: '/videos/bowling-thumb.jpg'
-  },
-  { 
-    id: 'cards', 
-    name: 'Royal 3D Cards', 
-    desc: 'Luxury Blackjack, 3D dealing & chips',
-    icon: Spade, 
-    color: 'from-emerald-400 via-teal-500 to-amber-500', 
-    tag: '3D LIVE',
-    video: '/videos/cards-preview.mp4',
-    thumb: '/videos/cards-thumb.jpg'
   },
   { 
     id: 'racer', 
@@ -147,7 +136,6 @@ export default function GamesPage() {
   if (activeGame === 'pool') return <PoolGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'bowling') return <BowlingGame onBack={() => setActiveGame(null)} />;
-  if (activeGame === 'cards') return <CardsGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'racer') return <TurboRacer onBack={() => setActiveGame(null)} />;
   if (activeGame === 'carrom') return <CarromGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'uno') return <UnoGame onBack={() => setActiveGame(null)} />;
