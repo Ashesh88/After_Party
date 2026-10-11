@@ -26,6 +26,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (token) {
       connectSocket(token);
     }
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
     return () => {
       disconnectSocket();
     };

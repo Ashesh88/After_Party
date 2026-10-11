@@ -74,6 +74,18 @@ export const useCallStore = create<CallState>((set, get) => ({
   setIncomingCall: (incomingCaller) => {
     if (incomingCaller) {
       soundService.playIncomingRingtone();
+
+      // Browser native system notification
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(`${incomingCaller.callerName || 'Your partner'} is calling you! 📞`, {
+            body: `${incomingCaller.callType === 'video' ? 'Incoming Video Call 📹' : 'Incoming Voice Call 📞'}. Tap to answer!`,
+            icon: incomingCaller.callerAvatar || '/icon-192x192.png',
+            tag: 'incoming-call',
+          });
+        } catch {}
+      }
+
       set({ 
         incomingCaller, 
         callStatus: 'incoming', 

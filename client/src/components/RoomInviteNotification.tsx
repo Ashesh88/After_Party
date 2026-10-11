@@ -61,11 +61,35 @@ export default function RoomInviteNotification() {
         },
       };
       setCurrentInvite(normalized);
+
+      // Trigger Browser System Notification
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(`${normalized.from.displayName} invited you to room! 🚀`, {
+            body: `Room Code: ${normalized.room.inviteCode}. Click to join!`,
+            icon: normalized.from.avatar || '/icon-192x192.png',
+            tag: 'room-invite',
+          });
+        } catch {}
+      }
+      toast(`${normalized.from.displayName} invited you to Room ${normalized.room.inviteCode}!`, { icon: '💌' });
     };
 
     const handleGameInvite = (data: GameInvitePayload) => {
       soundService.playMessageTone();
       setCurrentGameInvite(data);
+
+      const gameLabel = data.game === 'ludo' ? 'Ludo 🎲' : data.game === 'pool' ? '8-Ball Pool 🎱' : data.game === 'chess' ? 'Chess ♟️' : data.game === 'carrom' ? 'Carrom 🎯' : 'UNO 🃏';
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(`${data.senderName} challenged you to ${gameLabel}! ⚔️`, {
+            body: 'Click to accept match challenge!',
+            icon: data.senderAvatar || '/icon-192x192.png',
+            tag: 'game-challenge',
+          });
+        } catch {}
+      }
+      toast(`${data.senderName} challenged you to ${gameLabel}! ⚔️`, { icon: '🎮' });
     };
 
     socket.on('room:invite', handleRoomInvite);

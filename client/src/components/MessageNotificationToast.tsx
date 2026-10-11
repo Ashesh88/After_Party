@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircleHeart, ArrowRight, X } from 'lucide-react';
 import { useSocketStore } from '../lib/store/socketStore';
+import { useAuthStore } from '../lib/store/authStore';
 import { soundService } from '../lib/soundService';
 
 interface MessageNotification {
@@ -51,18 +52,40 @@ export default function MessageNotificationToast() {
       // Browser native push notification if enabled
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          new Notification(`${newNotif.senderName} messaged you`, {
+          new Notification(`${newNotif.senderName} messaged you 💬`, {
             body: newNotif.content,
             icon: newNotif.senderAvatar || '/icon-192x192.png',
+            tag: 'chat-message',
           });
         } catch {}
       }
     };
 
+    const handleDirectChatMessage = (msg: any) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      const senderObj = msg?.senderId;
+      const senderId = typeof senderObj === 'object' ? senderObj?._id : senderObj;
+      if (senderId && currentUserId && senderId.toString() === currentUserId.toString()) {
+        return;
+      }
+      const senderName = typeof senderObj === 'object' ? (senderObj?.displayName || 'Your partner') : 'Your partner';
+      const senderAvatar = typeof senderObj === 'object' ? senderObj?.avatar : undefined;
+      const textContent = msg?.type === 'audio' ? '🎤 Sent a voice note' : (msg?.content || 'Sent a message');
+
+      handleChatNotification({
+        senderId,
+        senderName,
+        senderAvatar,
+        content: textContent,
+      });
+    };
+
     socket.on('chat:notification', handleChatNotification);
+    socket.on('chat:message', handleDirectChatMessage);
 
     return () => {
       socket.off('chat:notification', handleChatNotification);
+      socket.off('chat:message', handleDirectChatMessage);
     };
   }, [socket, pathname]);
 

@@ -11,6 +11,7 @@ import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../lib/store/authStore';
 import { useSocketStore } from '../../../lib/store/socketStore';
+import { useCallStore } from '../../../lib/store/callStore';
 import { Room, User } from '../../../lib/types';
 
 function formatLastSeen(lastSeen: string | Date | undefined, isOnline: boolean): string {
@@ -186,8 +187,8 @@ export default function RoomPage() {
     setInviteModalOpen(true);
     setLoadingConnections(true);
     try {
-      const res = await api.get('/auth/me');
-      const friendList = res.data.user?.friends || [];
+      const res = await api.get('/friends');
+      const friendList = res.data.friends || [];
       setConnections(friendList);
     } catch {
       toast.error('Could not load connections');
@@ -200,8 +201,8 @@ export default function RoomPage() {
   const handleSendInvite = async (friendUserId: string, friendName: string) => {
     setInvitingId(friendUserId);
     try {
-      await api.post('/rooms/invite', { friendUserId });
-      toast.success(`Invite sent to ${friendName}`);
+      await api.post('/friends/invite', { friendUserId });
+      toast.success(`Invite sent to ${friendName} 🚀`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send invite');
     } finally {
@@ -237,16 +238,21 @@ export default function RoomPage() {
   };
 
   // Toggle Casual Voice Lounge Walkie-Talkie
-  const handleToggleVoiceLounge = () => {
+  const handleToggleVoiceLounge = async () => {
     if (!socket) return;
     if (inVoiceLounge) {
       socket.emit('voice-lounge:leave');
       setInVoiceLounge(false);
+      useCallStore.getState().endCall(socket);
       toast('Left Voice Lounge');
     } else {
       socket.emit('voice-lounge:join');
       setInVoiceLounge(true);
-      toast.success('Joined Voice Lounge! Casual voice channel open.');
+      const otherMember = membersList.find((m) => m._id?.toString() !== currentUser?._id?.toString());
+      if (otherMember) {
+        useCallStore.getState().startCall(socket, 'audio', otherMember, currentUser).catch(() => {});
+      }
+      toast.success('Connected to Voice Lounge! Audio mic live 🎙️');
     }
   };
 
