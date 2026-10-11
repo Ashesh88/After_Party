@@ -355,8 +355,8 @@ export default function DashboardPage() {
       <div className="ambient-glow-purple top-64 -right-28 pointer-events-none" />
 
       {/* Header Profile - Luxury Modern Architecture with Rich Detailing */}
-      <header className="relative p-5 sm:p-6 rounded-[32px] glass-panel z-10 border border-white/[0.14] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.18)] space-y-4 overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/[0.04] via-transparent to-purple-500/[0.04] pointer-events-none" />
+      <header className="relative p-5 sm:p-6 rounded-[32px] glass-panel z-30 border border-white/[0.14] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.18)] space-y-4 group">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/[0.04] via-transparent to-purple-500/[0.04] pointer-events-none rounded-[32px]" />
 
         {/* Top Profile Row */}
         <div className="flex items-center justify-between gap-3 relative z-10">
@@ -394,7 +394,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Action Buttons Cluster - Sculpted 3D Jewel Glass Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 relative">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Palette / Theme Quick Button */}
             <button
               onClick={openMoodModal}
@@ -432,7 +432,7 @@ export default function DashboardPage() {
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
                       transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-                      className="absolute right-0 top-full mt-2 w-72 rounded-3xl glass-panel border border-white/[0.15] shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_30px_rgba(244,63,142,0.15)] bg-[#0d0e1b]/98 p-2.5 space-y-1.5 z-50 overflow-hidden text-left"
+                      className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-3xl glass-panel border border-white/[0.18] shadow-[0_30px_70px_rgba(0,0,0,0.95),0_0_40px_rgba(244,63,142,0.2)] bg-[#0e0f1f] p-3 space-y-1.5 z-50 overflow-hidden text-left"
                     >
                       {/* Dropdown Header: Name & Email & User ID */}
                       <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] mb-1">
