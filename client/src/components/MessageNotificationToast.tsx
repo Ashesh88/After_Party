@@ -16,6 +16,11 @@ interface MessageNotification {
   timestamp: string;
 }
 
+const isUserAway = () => {
+  if (typeof document === 'undefined') return false;
+  return document.hidden || !document.hasFocus();
+};
+
 export default function MessageNotificationToast() {
   const [notification, setNotification] = useState<MessageNotification | null>(null);
   const pathname = usePathname();
@@ -25,40 +30,70 @@ export default function MessageNotificationToast() {
   useEffect(() => {
     if (!socket) return;
 
+    // Track recent message signatures to prevent duplicate notifications
+    const recentNotifKeys = new Set<string>();
+
     const handleChatNotification = (data: any) => {
-      // Do not trigger toast if user is already actively chatting on /chat
-      if (pathname === '/chat' || pathname.startsWith('/chat/')) {
+      if (!data || !data.content) return;
+
+      const currentUserId = useAuthStore.getState().user?._id;
+      const rawSenderId = typeof data.senderId === 'object' ? data.senderId?._id : data.senderId;
+      if (rawSenderId && currentUserId && rawSenderId.toString() === currentUserId.toString()) {
         return;
       }
 
-      if (!data || !data.content) return;
+      const dedupeKey = `${rawSenderId}_${data.content}_${data.timestamp || ''}`;
+      if (recentNotifKeys.has(dedupeKey)) return;
+      recentNotifKeys.add(dedupeKey);
+      setTimeout(() => recentNotifKeys.delete(dedupeKey), 3000);
 
+      const senderName = data.senderName || 'Partner';
       const newNotif: MessageNotification = {
         id: Math.random().toString(36).substring(7),
-        senderId: data.senderId,
-        senderName: data.senderName || 'Your partner',
+        senderId: rawSenderId || '',
+        senderName,
         senderAvatar: data.senderAvatar,
         content: data.content,
         timestamp: data.timestamp || new Date().toISOString(),
       };
 
-      setNotification(newNotif);
+      const away = isUserAway();
+      const isChatRoute = pathname === '/chat' || pathname.startsWith('/chat/');
 
-      // Procedural audio chime
+      // If user is AWAY (tab in background, window unfocused, or screen minimized)
+      if (away) {
+        // Trigger OS-level browser push notification so user gets notified while doing other tasks
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            const osNotif = new Notification(`${newNotif.senderName} messaged you`, {
+              body: newNotif.content,
+              icon: newNotif.senderAvatar || '/icon-192x192.png',
+              tag: 'chat-message',
+            });
+            osNotif.onclick = () => {
+              window.focus();
+              router.push('/chat');
+            };
+          } catch {}
+        }
+
+        try {
+          soundService.playMessageTone();
+        } catch {}
+        return;
+      }
+
+      // If user is actively looking at the /chat page, they are already viewing messages live
+      if (isChatRoute) {
+        return;
+      }
+
+      // If user is active in the app on another page (e.g. /dashboard, /watch, /games),
+      // show only the gentle in-app banner toast WITHOUT firing OS desktop notifications
+      setNotification(newNotif);
       try {
         soundService.playMessageTone();
       } catch {}
-
-      // Browser native push notification if enabled
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        try {
-          new Notification(`${newNotif.senderName} messaged you 💬`, {
-            body: newNotif.content,
-            icon: newNotif.senderAvatar || '/icon-192x192.png',
-            tag: 'chat-message',
-          });
-        } catch {}
-      }
     };
 
     const handleDirectChatMessage = (msg: any) => {
@@ -68,26 +103,27 @@ export default function MessageNotificationToast() {
       if (senderId && currentUserId && senderId.toString() === currentUserId.toString()) {
         return;
       }
-      const senderName = typeof senderObj === 'object' ? (senderObj?.displayName || 'Your partner') : 'Your partner';
+      const senderName = typeof senderObj === 'object' ? (senderObj?.displayName || 'Partner') : 'Partner';
       const senderAvatar = typeof senderObj === 'object' ? senderObj?.avatar : undefined;
-      const textContent = msg?.type === 'audio' ? '🎤 Sent a voice note' : (msg?.content || 'Sent a message');
+      const textContent = msg?.type === 'audio' ? 'Sent a voice note' : (msg?.content || 'Sent a message');
 
       handleChatNotification({
         senderId,
         senderName,
         senderAvatar,
         content: textContent,
+        timestamp: msg?.createdAt,
       });
     };
 
     socket.on('chat:notification', handleChatNotification);
-    socket.on('chat:message', handleDirectChatMessage);
+    socket.on('chat:direct-message', handleDirectChatMessage);
 
     return () => {
       socket.off('chat:notification', handleChatNotification);
-      socket.off('chat:message', handleDirectChatMessage);
+      socket.off('chat:direct-message', handleDirectChatMessage);
     };
-  }, [socket, pathname]);
+  }, [socket, pathname, router]);
 
   // Auto-dismiss after 6.5 seconds
   useEffect(() => {
