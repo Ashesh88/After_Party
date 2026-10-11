@@ -437,32 +437,6 @@ export default function DashboardPage() {
               <span>{user?.friendId || '...'}</span>
               {copiedMyId ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="text-slate-400 shrink-0" />}
             </button>
-
-            {/* Room Code Pill Badge */}
-            {room?.inviteCode ? (
-              <button
-                onClick={handleCopyCode}
-                title="Click to copy Room Code"
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500/20 via-purple-500/15 to-transparent hover:from-pink-500/30 border border-pink-400/40 hover:border-pink-300 text-xs font-medium text-white shadow-[0_2px_12px_rgba(244,63,142,0.25),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer"
-              >
-                <KeyRound size={12} className="text-pink-400 shrink-0" />
-                <span className="text-[10px] text-slate-400 uppercase font-sans font-bold">Room:</span>
-                <span className="font-mono font-bold text-pink-300 tracking-wider">{room.inviteCode}</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/30 text-pink-200 font-extrabold flex items-center gap-1 border border-pink-400/30 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span>{room.members?.length || 1}</span>
-                </span>
-                {copiedCode ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="text-slate-400 shrink-0" />}
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowRoomModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_4px_15px_rgba(244,63,142,0.3)] active:scale-95"
-              >
-                <KeyRound size={12} />
-                <span>Create Room</span>
-              </button>
-            )}
           </div>
 
           {/* Connections Pill Button */}
