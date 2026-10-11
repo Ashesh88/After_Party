@@ -15,26 +15,32 @@
     <!-- UI Overlay Layer -->
     <div class="ui-layer">
         <!-- Sleek Top Status & Score Tracking Dock -->
+        <!-- Sleek Top Status & Score Tracking Dock -->
         <div class="top-dock-panel interactive">
-            <div class="top-status-row">
-                <span class="status-pill" id="status-banner">New Match: Position striker and aim</span>
+            <!-- Row 1: Camera View Modes & Action Controls -->
+            <div class="top-controls-row">
                 <div class="view-toggle-mini">
-                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top Tactical View">
+                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top View">
                         <i class="fa-solid fa-table-cells-large"></i> Top
                     </button>
-                    <button class="toggle-btn view-btn" id="btn-view-aim" title="Aim View (Behind Striker)">
+                    <button class="toggle-btn view-btn" id="btn-view-aim" title="Aim View">
                         <i class="fa-solid fa-crosshairs"></i> Aim
                     </button>
                     <button class="toggle-btn active view-btn" id="btn-view-orbit" title="Realistic 3D View">
                         <i class="fa-solid fa-cube"></i> 3D
                     </button>
-                    <button class="toggle-btn view-btn" id="btn-rotate-board" title="Rotate 3D Board (Turn 45 deg)">
+                    <button class="toggle-btn view-btn" id="btn-rotate-board" title="Rotate Board (Turn 45 deg)">
                         <i class="fa-solid fa-rotate"></i>
                     </button>
-                    <button class="toggle-btn chat-toggle-btn" id="btn-chat-toggle" title="Open Chat">
+                    <button class="toggle-btn chat-toggle-btn" id="btn-chat-toggle" title="Match Chat">
                         <i class="fa-solid fa-comment-dots"></i> Chat
                     </button>
                 </div>
+            </div>
+
+            <!-- Row 2: Match Status Live Banner (Never clipped) -->
+            <div class="status-banner-row">
+                <span class="status-pill" id="status-banner">Match live: Position striker on baseline to aim.</span>
             </div>
 
             <!-- Compact Player HUD Cards -->
