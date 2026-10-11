@@ -86,8 +86,9 @@ export interface SavedSpace {
 
 export interface Message {
   _id: string;
-  roomId: string;
-  senderId: string;
+  roomId?: string | null;
+  recipientId?: any;
+  senderId: any;
   content: string;
   type: 'text' | 'image' | 'emoji' | 'audio';
   imageUrl?: string;
@@ -95,6 +96,33 @@ export interface Message {
   audioDuration?: number;
   createdAt: string;
   seen: boolean;
+}
+
+export interface ConversationItem {
+  id: string;
+  type: 'direct' | 'room';
+  user?: {
+    _id: string;
+    displayName: string;
+    avatar?: string;
+    friendId?: string;
+    lastSeen?: string | Date;
+  };
+  name?: string;
+  inviteCode?: string;
+  members?: any[];
+  isActive?: boolean;
+  lastMessage?: {
+    _id?: string;
+    content: string;
+    type?: string;
+    senderName?: string;
+    senderId?: any;
+    createdAt?: string;
+    seen?: boolean;
+  } | null;
+  unreadCount?: number;
+  updatedAt?: string | Date;
 }
 
 export interface Goal {

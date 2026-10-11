@@ -245,7 +245,7 @@ export default function FriendsModal({ isOpen, onClose, currentRoomCode }: Frien
       api.post('/friends/invite', { friendUserId: friend._id }).catch(() => {});
     }
     onClose();
-    router.push('/chat');
+    router.push(`/chat?friendId=${friend._id}`);
     toast.success(`Opening chat with ${friend.displayName}! 💬`);
   };
 

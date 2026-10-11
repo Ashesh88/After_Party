@@ -123,13 +123,13 @@ const setupSocket = (io) => {
       socket.to(roomChannel).emit('presence:online', { userId });
     }
 
-    // Chat
+    // Chat (Room Group Messaging)
     socket.on('chat:message', async (data) => {
       try {
         const content = typeof data === 'object' ? data.content : data;
         const type = (typeof data === 'object' && data.type) ? data.type : 'text';
-        const currentRoomId = getActiveRoomId();
-        const currentChannel = getActiveRoomChannel();
+        const targetRoomId = (typeof data === 'object' && data.roomId) ? data.roomId : getActiveRoomId();
+        const targetChannel = targetRoomId ? `room:${targetRoomId}` : getActiveRoomChannel();
 
         const audioUrl = (typeof data === 'object' && data.audioUrl) ? data.audioUrl : null;
         const audioDuration = (typeof data === 'object' && data.audioDuration) ? data.audioDuration : 0;
@@ -137,7 +137,7 @@ const setupSocket = (io) => {
         if ((!content || !content.trim()) && !audioUrl) return;
 
         const message = new Message({
-          roomId: currentRoomId,
+          roomId: targetRoomId,
           senderId: userId,
           type,
           content: content || (type === 'audio' ? 'Voice note' : ''),
@@ -146,33 +146,111 @@ const setupSocket = (io) => {
         });
         await message.save();
         await message.populate('senderId', 'displayName avatar');
-        // Broadcast message to entire room
-        io.to(currentChannel).emit('chat:message', message);
+        
+        // Broadcast message to room channel
+        if (targetChannel) {
+          io.to(targetChannel).emit('chat:message', message);
 
-        // Also broadcast an explicit message notification to room members outside active chat
-        socket.to(currentChannel).emit('chat:notification', {
-          senderId: userId,
-          senderName: message.senderId?.displayName || 'Your partner',
-          senderAvatar: message.senderId?.avatar || '',
-          content: type === 'audio' ? 'Voice note' : (content.length > 80 ? content.slice(0, 80) + '...' : content),
-          type,
-          timestamp: message.createdAt,
-          roomId: currentRoomId,
-        });
+          // Broadcast notification to room members
+          socket.to(targetChannel).emit('chat:notification', {
+            senderId: userId,
+            senderName: message.senderId?.displayName || 'Partner',
+            senderAvatar: message.senderId?.avatar || '',
+            content: type === 'audio' ? 'Voice note' : (content.length > 80 ? content.slice(0, 80) + '...' : content),
+            type,
+            timestamp: message.createdAt,
+            roomId: targetRoomId,
+          });
+        }
       } catch (err) {
         console.error('chat:message error:', err);
       }
     });
 
+    // Chat (Direct 1-on-1 WhatsApp-style Messaging)
+    socket.on('chat:direct-message', async (data) => {
+      try {
+        const { recipientId, content, type = 'text', audioUrl, audioDuration } = data || {};
+        if (!recipientId) return;
+        if ((!content || !content.trim()) && !audioUrl) return;
+
+        const message = new Message({
+          senderId: userId,
+          recipientId,
+          type: audioUrl ? 'audio' : type,
+          content: content || (audioUrl ? 'Voice note' : ''),
+          audioUrl: audioUrl || undefined,
+          audioDuration: Number(audioDuration) || 0,
+          seen: false,
+        });
+
+        await message.save();
+        await message.populate('senderId', 'displayName avatar');
+        await message.populate('recipientId', 'displayName avatar');
+
+        // Deliver live to both sender and recipient personal channels
+        io.to(`user:${recipientId}`).emit('chat:direct-message', message);
+        io.to(`user:${userId}`).emit('chat:direct-message', message);
+
+        // Send instant notification to recipient
+        socket.to(`user:${recipientId}`).emit('chat:notification', {
+          senderId: userId,
+          senderName: message.senderId?.displayName || 'Friend',
+          senderAvatar: message.senderId?.avatar || '',
+          content: message.type === 'audio' ? 'Voice note' : (message.content || 'New message'),
+          type: message.type,
+          timestamp: message.createdAt,
+          isDirect: true,
+        });
+      } catch (err) {
+        console.error('chat:direct-message error:', err);
+      }
+    });
+
+    socket.on('chat:direct-typing', ({ recipientId, isTyping }) => {
+      if (recipientId) {
+        io.to(`user:${recipientId}`).emit('chat:direct-typing', { senderId: userId, isTyping });
+      }
+    });
+
+    socket.on('chat:direct-seen', async ({ friendId }) => {
+      if (friendId) {
+        try {
+          await Message.updateMany(
+            { senderId: friendId, recipientId: userId, seen: false },
+            { $set: { seen: true } }
+          );
+          io.to(`user:${friendId}`).emit('chat:direct-seen', { seenBy: userId });
+        } catch (err) {
+          console.error('chat:direct-seen error:', err);
+        }
+      }
+    });
+
+    socket.on('chat:direct-vanish', ({ friendId }) => {
+      if (friendId) {
+        io.to(`user:${friendId}`).emit('chat:direct-vanish', { senderId: userId });
+      }
+    });
+
     // Touch: Heartbeat / Haptic pulse across screens
     socket.on('touch:heartbeat', (data) => {
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('touch:heartbeat', {
+      const recipientId = data?.recipientId;
+      if (recipientId) {
+        io.to(`user:${recipientId}`).emit('touch:heartbeat', {
           senderId: userId,
-          senderName: data?.senderName || 'Your partner',
+          senderName: data?.senderName || 'Your friend',
           timestamp: Date.now(),
         });
+      } else {
+        const currentChannel = getActiveRoomChannel();
+        if (currentChannel) {
+          socket.to(currentChannel).emit('touch:heartbeat', {
+            senderId: userId,
+            senderName: data?.senderName || 'Your partner',
+            timestamp: Date.now(),
+          });
+        }
       }
     });
 
@@ -201,24 +279,24 @@ const setupSocket = (io) => {
       }
     });
 
-    socket.on('chat:typing', ({ isTyping }) => {
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('chat:typing', { userId, isTyping });
+    socket.on('chat:typing', ({ isTyping, roomId: targetRoomId }) => {
+      const channel = targetRoomId ? `room:${targetRoomId}` : getActiveRoomChannel();
+      if (channel) {
+        socket.to(channel).emit('chat:typing', { userId, isTyping });
       }
     });
 
-    socket.on('chat:seen', ({ messageId }) => {
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('chat:seen', { messageId, seenBy: userId });
+    socket.on('chat:seen', ({ messageId, roomId: targetRoomId }) => {
+      const channel = targetRoomId ? `room:${targetRoomId}` : getActiveRoomChannel();
+      if (channel) {
+        socket.to(channel).emit('chat:seen', { messageId, seenBy: userId });
       }
     });
 
-    socket.on('chat:vanish', () => {
-      const currentChannel = getActiveRoomChannel();
-      if (currentChannel) {
-        socket.to(currentChannel).emit('chat:vanish');
+    socket.on('chat:vanish', ({ roomId: targetRoomId } = {}) => {
+      const channel = targetRoomId ? `room:${targetRoomId}` : getActiveRoomChannel();
+      if (channel) {
+        socket.to(channel).emit('chat:vanish');
       }
     });
 
