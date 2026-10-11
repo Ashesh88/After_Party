@@ -596,8 +596,6 @@ export default function DashboardPage() {
                 key={idx} 
                 className="relative p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-white/[0.08] via-white/[0.03] to-black/50 border border-white/[0.14] shadow-[0_12px_30px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.25)] overflow-hidden group"
               >
-                {/* Horizontal Flip-Board division line */}
-                <div className="absolute inset-x-0 top-1/2 h-[1px] bg-black/60 border-b border-white/[0.06] pointer-events-none" />
                 <div className="text-2xl sm:text-4xl md:text-5xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-400 drop-shadow-[0_4px_10px_rgba(0,0,0,0.95)]">
                   {item.val}
                 </div>
