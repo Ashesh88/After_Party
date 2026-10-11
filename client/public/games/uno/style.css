@@ -429,6 +429,7 @@ html, body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    pointer-events: auto;
 }
 
 .btn-color-choice {
@@ -444,6 +445,35 @@ html, body {
     border: none;
     cursor: pointer;
     transition: all 0.2s ease;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 101;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-color-choice * {
+    pointer-events: none !important;
+}
+
+.btn-wild-cancel {
+    margin-top: 14px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #94a3b8;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+}
+
+.btn-wild-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
 }
 
 .color-dot {
@@ -458,7 +488,7 @@ html, body {
     color: #ef4444;
     border: 1px solid #ef4444;
 }
-.choice-red:hover {
+.choice-red:hover, .choice-red:active {
     background: #ef4444;
     color: #ffffff;
 }
@@ -468,7 +498,7 @@ html, body {
     color: #3b82f6;
     border: 1px solid #3b82f6;
 }
-.choice-blue:hover {
+.choice-blue:hover, .choice-blue:active {
     background: #3b82f6;
     color: #ffffff;
 }
@@ -478,7 +508,7 @@ html, body {
     color: #10b981;
     border: 1px solid #10b981;
 }
-.choice-green:hover {
+.choice-green:hover, .choice-green:active {
     background: #10b981;
     color: #ffffff;
 }
@@ -488,7 +518,7 @@ html, body {
     color: #facc15;
     border: 1px solid #facc15;
 }
-.choice-yellow:hover {
+.choice-yellow:hover, .choice-yellow:active {
     background: #eab308;
     color: #0f172a;
 }

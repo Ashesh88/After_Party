@@ -104,23 +104,26 @@
             <h3 class="wild-title">Choose Active Color</h3>
             <p class="wild-desc">Select the color for the next player to follow</p>
             <div class="color-options-grid">
-                <button class="btn-color-choice choice-red" data-color="red">
+                <button type="button" class="btn-color-choice choice-red" data-color="red" onclick="window.unoGame?.executeWildCardPlay('red')" ontouchend="window.unoGame?.executeWildCardPlay('red')">
                     <span class="color-dot"></span>
                     <span>RED</span>
                 </button>
-                <button class="btn-color-choice choice-blue" data-color="blue">
+                <button type="button" class="btn-color-choice choice-blue" data-color="blue" onclick="window.unoGame?.executeWildCardPlay('blue')" ontouchend="window.unoGame?.executeWildCardPlay('blue')">
                     <span class="color-dot"></span>
                     <span>BLUE</span>
                 </button>
-                <button class="btn-color-choice choice-green" data-color="green">
+                <button type="button" class="btn-color-choice choice-green" data-color="green" onclick="window.unoGame?.executeWildCardPlay('green')" ontouchend="window.unoGame?.executeWildCardPlay('green')">
                     <span class="color-dot"></span>
                     <span>GREEN</span>
                 </button>
-                <button class="btn-color-choice choice-yellow" data-color="yellow">
+                <button type="button" class="btn-color-choice choice-yellow" data-color="yellow" onclick="window.unoGame?.executeWildCardPlay('yellow')" ontouchend="window.unoGame?.executeWildCardPlay('yellow')">
                     <span class="color-dot"></span>
                     <span>YELLOW</span>
                 </button>
             </div>
+            <button type="button" class="btn-wild-cancel" id="btn-wild-cancel" onclick="window.unoGame?.cancelWildCardSelection()">
+                Cancel
+            </button>
         </div>
     </div>
 

@@ -224,12 +224,35 @@ class Uno3DGame {
         this.dom.btnUno?.addEventListener('click', () => this.handlePlayerUnoShout());
         this.dom.btnCatch?.addEventListener('click', () => this.handlePlayerCatchUno());
 
-        // Wild color choice buttons
-        document.querySelectorAll('.btn-color-choice').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const color = e.currentTarget.getAttribute('data-color');
+        // Wild color choice buttons (supporting mouse click, pointerdown, and touch)
+        const colorChoiceButtons = document.querySelectorAll('.btn-color-choice');
+        colorChoiceButtons.forEach(btn => {
+            const handlePick = (e) => {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                }
+                const color = btn.getAttribute('data-color') ||
+                    (e && e.currentTarget && e.currentTarget.getAttribute('data-color')) ||
+                    (e && e.target && e.target.closest('.btn-color-choice')?.getAttribute('data-color'));
                 this.executeWildCardPlay(color);
+            };
+
+            btn.addEventListener('click', handlePick);
+            btn.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
             });
+            btn.addEventListener('touchend', (e) => {
+                e.stopPropagation();
+                handlePick(e);
+            }, { passive: false });
+        });
+
+        // Wild modal cancel button
+        document.getElementById('btn-wild-cancel')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.cancelWildCardSelection();
         });
 
         // Replay button
@@ -529,13 +552,43 @@ class Uno3DGame {
     }
 
     executeWildCardPlay(chosenColor) {
-        this.dom.wildModal?.classList.remove('active');
-        if (!this.selectedWildCardId) return;
+        if (this.dom.wildModal) {
+            this.dom.wildModal.classList.remove('active');
+        }
 
-        const cardId = this.selectedWildCardId;
+        const validColors = ['red', 'blue', 'green', 'yellow'];
+        const normalizedColor = (chosenColor && validColors.includes(String(chosenColor).toLowerCase()))
+            ? String(chosenColor).toLowerCase()
+            : 'red';
+
+        // Retrieve card ID, with fail-safe fallback to first wild card in player's hand
+        let cardId = this.selectedWildCardId;
+        if (!cardId) {
+            const hand = this.rules.playersHands[0] || [];
+            const wildCard = hand.find(c => c && c.isWild && c.isWild());
+            if (wildCard) {
+                cardId = wildCard.id;
+            }
+        }
         this.selectedWildCardId = null;
+
+        if (!cardId) {
+            this.updateBanner('No Wild card found in hand to play.');
+            return;
+        }
+
+        this.isProcessingMove = false;
         this.audio.playWildChime();
-        this.executeCardPlay(0, cardId, chosenColor);
+        this.executeCardPlay(0, cardId, normalizedColor);
+    }
+
+    cancelWildCardSelection() {
+        if (this.dom.wildModal) {
+            this.dom.wildModal.classList.remove('active');
+        }
+        this.selectedWildCardId = null;
+        this.isProcessingMove = false;
+        this.updateBanner('Color choice cancelled. Select a card or tap DRAW.');
     }
 
     executeCardPlay(playerIdx, cardId, chosenColor) {
