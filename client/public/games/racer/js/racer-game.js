@@ -14,7 +14,7 @@ class LuxuryDuelRacer3D {
         this.p2Name = params.get('p2') || 'Friend';
 
         // Track & Race Configuration
-        this.trackLength = 1500; // 1500m sprint to checkered finish arch
+        this.trackLength = 4000; // 4000m grand sprint to checkered finish arch
         this.roadWidth = 14;
         this.segmentCount = 55;
         this.segmentLength = 12;
@@ -52,10 +52,10 @@ class LuxuryDuelRacer3D {
             rimHex: 0xfbbf24, // Forged Gold
             pos: new THREE.Vector3(-2.2, 0, 0),
             speed: 0,
-            maxSpeed: 1.52, // ~205 km/h
-            nitroMaxSpeed: 2.22, // ~300 km/h
-            accel: 0.0095,
-            friction: 0.0032,
+            maxSpeed: 1.55, // ~210 km/h
+            nitroMaxSpeed: 2.25, // ~305 km/h
+            accel: 0.0125, // Snappy throttle response on GAS
+            friction: 0.0036, // Smooth coasting when GAS is released
             steerAngle: 0,
             laneX: -2.2,
             distance: 0,
@@ -463,7 +463,7 @@ class LuxuryDuelRacer3D {
 
     // 3. HOLOGRAPHIC CHECKPOINT RINGS THAT PULSE & FLASH
     initHologramGates() {
-        this.gateDistances = [300, 600, 900, 1200];
+        this.gateDistances = [800, 1600, 2400, 3200];
         this.gateDistances.forEach((dist, idx) => {
             const gate = new THREE.Group();
             const ringGeo = new THREE.TorusGeometry(8.5, 0.22, 12, 36, Math.PI);
@@ -1229,28 +1229,28 @@ class LuxuryDuelRacer3D {
             car.nitro = Math.min(100, car.nitro + 0.14);
         }
 
-        // Drift Handling: Pressing Drift button initiates high-angle drift slide & tire smoke
+        // Steering & Lane Changing: Responsive steering with drift multiplier
         const driftInputActive = !!(ctrl.drift || this.input.p1Drift);
-        car.isDrifting = driftInputActive && car.speed > 0.25;
-        const driftFactor = car.isDrifting ? 1.75 : 1.0;
+        car.isDrifting = driftInputActive && car.speed > 0.15;
+        const driftFactor = car.isDrifting ? 1.6 : 1.0;
 
-        const effectiveSpeed = Math.max(0.45, Math.min(1.35, car.speed / 0.7));
-        const steerSpeed = 0.175 * effectiveSpeed * driftFactor;
+        // Base steer speed allows snappy lane changes even when accelerating from low speed
+        const steerSpeed = (0.24 + Math.min(0.12, car.speed * 0.1)) * driftFactor;
 
         if (ctrl.left) {
             car.laneX -= steerSpeed;
-            car.steerAngle = Math.max(-0.45, car.steerAngle - (car.isDrifting ? 0.09 : 0.05));
+            car.steerAngle = Math.max(-0.45, car.steerAngle - (car.isDrifting ? 0.1 : 0.08));
         } else if (ctrl.right) {
             car.laneX += steerSpeed;
-            car.steerAngle = Math.min(0.45, car.steerAngle + (car.isDrifting ? 0.09 : 0.05));
+            car.steerAngle = Math.min(0.45, car.steerAngle + (car.isDrifting ? 0.1 : 0.08));
         } else if (car.isDrifting) {
             // If drifting without steering, initiate subtle fishtail / momentum slide
             if (Math.abs(car.steerAngle) < 0.08) {
-                car.steerAngle = (car.laneX <= 0 ? 0.16 : -0.16);
+                car.steerAngle = (car.laneX <= 0 ? 0.18 : -0.18);
             }
         } else {
             // Auto counter-steer assist to center
-            car.steerAngle *= 0.72;
+            car.steerAngle *= 0.68;
         }
 
         // Drift SFX & Smoke Generation
@@ -1643,11 +1643,11 @@ class LuxuryDuelRacer3D {
 
         // Physics Updates
         if (this.raceStarted && !this.raceFinished) {
-            const p1Gas = this.input.p1Gas || window.innerWidth < 650;
+            // Gas Throttle: Holding GAS (or Up Arrow / W) accelerates; releasing coasts
             this.updateCarPhysics(this.p1, {
                 left: this.input.p1Left,
                 right: this.input.p1Right,
-                gas: p1Gas,
+                gas: this.input.p1Gas,
                 brake: this.input.p1Brake,
                 drift: this.input.p1Drift
             });
