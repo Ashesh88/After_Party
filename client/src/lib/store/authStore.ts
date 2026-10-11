@@ -14,6 +14,7 @@ interface AuthState {
   fetchMe: () => Promise<void>;
   setRoom: (room: Room | null) => void;
   updateAvatar: (avatarUrl: string) => Promise<void>;
+  updateProfile: (displayName: string, avatarUrl?: string) => Promise<void>;
 }
 
 const setCookie = (name: string, value: string, days: number) => {
@@ -83,6 +84,17 @@ export const useAuthStore = create<AuthState>()(
       updateAvatar: async (avatarUrl: string) => {
         try {
           const res = await api.patch('/auth/profile', { avatar: avatarUrl });
+          set({ user: res.data.user });
+        } catch (error) {
+          throw error;
+        }
+      },
+
+      updateProfile: async (displayName: string, avatarUrl?: string) => {
+        try {
+          const payload: any = { displayName };
+          if (avatarUrl !== undefined) payload.avatar = avatarUrl;
+          const res = await api.patch('/auth/profile', payload);
           set({ user: res.data.user });
         } catch (error) {
           throw error;

@@ -12,11 +12,13 @@ import {
   Target, MapPin, CalendarHeart, User, ArrowRight,
   KeyRound, Copy, Check, Users,
   Flame, Heart, AlertCircle, Palette, ShieldCheck, CloudRain,
-  Calendar, Clock, Edit2, Plus, PartyPopper, Layers
+  Calendar, Clock, Edit2, Plus, PartyPopper, Layers,
+  ChevronDown, Settings
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
 import FriendsModal from '../../../components/FriendsModal';
 import SavedSpacesModal from '../../../components/SavedSpacesModal';
+import EditProfileModal from '../../../components/EditProfileModal';
 
 const CUTE_AVATARS = [
   { id: 'cat', emoji: '🐱', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Angel&backgroundColor=ffb6c1', name: 'Pink Bot' },
@@ -32,6 +34,8 @@ const CUTE_AVATARS = [
 export default function DashboardPage() {
   const router = useRouter();
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showSpacesModal, setShowSpacesModal] = useState(false);
@@ -390,26 +394,186 @@ export default function DashboardPage() {
           </div>
 
           {/* Action Buttons Cluster - Sculpted 3D Jewel Glass Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Palette Button */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 relative">
+            {/* Palette / Theme Quick Button */}
             <button
               onClick={openMoodModal}
-              title={`Mood Theme: ${currentMoodConfig.label}`}
+              title={`Atmosphere Mood: ${currentMoodConfig.label}`}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-purple-500/25 to-pink-500/15 hover:from-purple-500/40 hover:to-pink-500/30 border border-pink-400/40 hover:border-pink-300 shadow-[0_4px_16px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.35)] flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
               <Palette size={16} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 group-hover:rotate-12 transition-transform drop-shadow" />
             </button>
 
-            {/* Logout Button */}
-            <button
-              onClick={handleLogout}
-              title="Sign Out"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-rose-500/20 to-red-500/10 hover:from-rose-500/35 hover:to-red-500/25 border border-rose-500/35 hover:border-rose-400 shadow-[0_4px_16px_rgba(244,63,94,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-rose-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              <LogOut size={16} className="group-hover:scale-110 group-hover:translate-x-0.5 transition-transform drop-shadow" />
-            </button>
+            {/* Menu Trigger Button with Avatar/Chevron */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                title="Account & Spaces Menu"
+                className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-white/[0.18] hover:to-white/[0.08] border border-white/20 hover:border-pink-400/50 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] text-slate-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer group active:scale-95 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent opacity-40 pointer-events-none" />
+                <Settings size={15} className="group-hover:rotate-45 transition-transform text-pink-300" />
+                <ChevronDown size={14} className={`transition-transform duration-200 text-slate-400 group-hover:text-white ${showProfileMenu ? 'rotate-180 text-pink-400' : ''}`} />
+              </button>
+
+              {/* Menu Dropdown Modal Card */}
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <>
+                    {/* Backdrop click dismiss */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowProfileMenu(false)}
+                    />
+
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      transition={{ type: 'spring', damping: 25, stiffness: 400 }}
+                      className="absolute right-0 top-full mt-2 w-72 rounded-3xl glass-panel border border-white/[0.15] shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_30px_rgba(244,63,142,0.15)] bg-[#0d0e1b]/98 p-2.5 space-y-1.5 z-50 overflow-hidden text-left"
+                    >
+                      {/* Dropdown Header: Name & Email & User ID */}
+                      <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] mb-1">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-black/40 border border-pink-500/30 shrink-0">
+                            {user?.avatar ? (
+                              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={18} className="text-pink-400 m-2.5" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
+                              <span>{user?.displayName || 'User'}</span>
+                            </h4>
+                            <p className="text-[11px] text-slate-400 truncate font-mono">
+                              {user?.email || 'user@afterparty.app'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* ID Copy Row inside Menu */}
+                        <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-cyan-300">
+                          <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-wider font-sans font-bold">
+                            <ShieldCheck size={12} className="text-cyan-400" />
+                            <span>ID:</span>
+                            <span className="text-white font-mono">{user?.friendId || '...'}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyMyId();
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-[10px] text-cyan-200 font-sans font-bold flex items-center gap-1 transition-all"
+                          >
+                            {copiedMyId ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                            <span>{copiedMyId ? 'Copied' : 'Copy'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Item 1: Edit Profile (Change Name, Email view, Avatar) */}
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setShowEditProfileModal(true);
+                        }}
+                        className="w-full p-2.5 rounded-2xl hover:bg-pink-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-pink-500/15 border border-pink-500/25 flex items-center justify-center text-pink-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Edit3 size={15} />
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <span className="block text-white font-bold">Edit Profile</span>
+                          <span className="block text-[10px] text-slate-400">Change name, avatar & email info</span>
+                        </div>
+                      </button>
+
+                      {/* Item 2: Connections */}
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setShowFriendsModal(true);
+                        }}
+                        className="w-full p-2.5 rounded-2xl hover:bg-cyan-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Users size={15} />
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <span className="block text-white font-bold">Connections</span>
+                          <span className="block text-[10px] text-slate-400">Manage friends and invitations</span>
+                        </div>
+                      </button>
+
+                      {/* Item 3: My Spaces */}
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setShowSpacesModal(true);
+                        }}
+                        className="w-full p-2.5 rounded-2xl hover:bg-purple-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Layers size={15} />
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <span className="block text-white font-bold">My Spaces</span>
+                          <span className="block text-[10px] text-slate-400">Switch rooms with zero data loss</span>
+                        </div>
+                      </button>
+
+                      {/* Item 4: Mood & Atmosphere Theme */}
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          openMoodModal();
+                        }}
+                        className="w-full p-2.5 rounded-2xl hover:bg-rose-500/15 text-slate-200 hover:text-white flex items-center gap-3 transition-colors text-xs font-semibold cursor-pointer group"
+                      >
+                        <div 
+                          className="w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                          style={{
+                            backgroundColor: `${currentMoodConfig.primaryColor}20`,
+                            borderColor: `${currentMoodConfig.primaryColor}40`,
+                            color: currentMoodConfig.primaryColor,
+                          }}
+                        >
+                          <Palette size={15} />
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <span className="block text-white font-bold">Atmosphere Theme</span>
+                          <span className="block text-[10px] text-slate-400">Current: {currentMoodConfig.label}</span>
+                        </div>
+                      </button>
+
+                      {/* Divider */}
+                      <div className="h-px bg-white/[0.08] my-1" />
+
+                      {/* Item 5: Logout */}
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          handleLogout();
+                        }}
+                        className="w-full p-2.5 rounded-2xl hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 flex items-center gap-3 transition-colors text-xs font-bold cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform shrink-0">
+                          <LogOut size={15} />
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <span className="block text-rose-300 font-bold">Log Out</span>
+                          <span className="block text-[10px] text-rose-400/80">Sign out of this session</span>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
@@ -980,6 +1144,13 @@ export default function DashboardPage() {
         onSpaceSwitched={(switchedRoom) => {
           setRoom(switchedRoom);
         }}
+      />
+
+      {/* Edit Profile Modal (Name change, Avatar, Email & ID view) */}
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+        onOpenMoodModal={openMoodModal}
       />
     </div>
   );
