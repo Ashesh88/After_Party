@@ -147,6 +147,20 @@ console.log('--- STARTING UNO CLASSIC RULES TESTS ---');
     const secondDraw = game.playerDrawCard(0);
     assert(secondDraw === null, 'Cannot draw more than 1 card per turn in Classic UNO');
 
+    // Scenario: Can play any matching card in hand after drawing
+    const gameDrawPlay = new UnoGameLogic({ playersCount: 2 });
+    gameDrawPlay.startNewGame();
+    gameDrawPlay.currentPlayer = 0;
+    gameDrawPlay.activeColor = 'blue';
+    gameDrawPlay.discardPile = [new UnoCard('c_top', 'blue', '5')];
+    const matchBlue = new UnoCard('c_b7', 'blue', '7');
+    gameDrawPlay.playersHands[0] = [matchBlue];
+    gameDrawPlay.playerDrawCard(0);
+    assert(gameDrawPlay.hasDrawnThisTurn === true, 'Player drew a card before playing');
+    const playAfterDrawRes = gameDrawPlay.playCard(0, matchBlue.id);
+    assert(playAfterDrawRes.success === true, 'Player can play matching card in hand after drawing');
+    assert(gameDrawPlay.hasDrawnThisTurn === false, 'hasDrawnThisTurn reset after playing card');
+
     // Pass turn after drawing
     game.passTurn(0);
     assert(game.currentPlayer === 1, 'Turn successfully passed to next player after drawing');

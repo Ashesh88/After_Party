@@ -40,13 +40,8 @@ class Uno3DGame {
         this.isProcessingMove = false;
         this.selectedWildCardId = null;
         this.tiltStep = 0;
+        this.autoDrawTimeout = null;
 
-        // Camera presets (Constrained to player side with high-angle hand framing)
-        this.cameraModes = {
-            orbit: { pos: new THREE.Vector3(0, 9.6, 7.8), target: new THREE.Vector3(0, -0.3, 0.4) },
-            hand: { pos: new THREE.Vector3(0, 7.4, 5.6), target: new THREE.Vector3(0, -0.2, 0.6) },
-            top: { pos: new THREE.Vector3(0, 13.5, 0.6), target: new THREE.Vector3(0, 0, 0) }
-        };
         this.currentViewMode = 'orbit';
 
         // Initialize Rules Engine
@@ -76,18 +71,40 @@ class Uno3DGame {
         requestAnimationFrame(this.animate);
     }
 
+    getCameraPreset(modeName) {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const aspect = width / height;
+        const isMobile = width < 700 || aspect < 0.85;
+
+        if (isMobile) {
+            return {
+                orbit: { pos: new THREE.Vector3(0, 11.4, 9.5), target: new THREE.Vector3(0, -0.2, 0.5) },
+                hand: { pos: new THREE.Vector3(0, 9.2, 7.2), target: new THREE.Vector3(0, -0.1, 0.8) },
+                top: { pos: new THREE.Vector3(0, 15.5, 0.8), target: new THREE.Vector3(0, 0, 0) }
+            }[modeName] || { pos: new THREE.Vector3(0, 11.4, 9.5), target: new THREE.Vector3(0, -0.2, 0.5) };
+        }
+
+        return {
+            orbit: { pos: new THREE.Vector3(0, 9.6, 7.8), target: new THREE.Vector3(0, -0.3, 0.4) },
+            hand: { pos: new THREE.Vector3(0, 7.4, 5.6), target: new THREE.Vector3(0, -0.2, 0.6) },
+            top: { pos: new THREE.Vector3(0, 13.5, 0.6), target: new THREE.Vector3(0, 0, 0) }
+        }[modeName] || { pos: new THREE.Vector3(0, 9.6, 7.8), target: new THREE.Vector3(0, -0.3, 0.4) };
+    }
+
     initThree() {
         this.scene = new THREE.Scene();
         // Warm mahogany / dark walnut background & fog
         this.scene.fog = new THREE.FogExp2(0x0c0807, 0.022);
 
-        this.camera = new THREE.PerspectiveCamera(
-            window.innerWidth < 650 ? 52 : 44,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            100
-        );
-        const preset = this.cameraModes[this.currentViewMode];
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const aspect = width / height;
+        const isMobile = width < 700 || aspect < 0.85;
+        const fov = isMobile ? Math.max(56, Math.min(68, Math.round(34 / aspect))) : 44;
+
+        this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 100);
+        const preset = this.getCameraPreset(this.currentViewMode);
         this.camera.position.copy(preset.pos);
         this.camera.lookAt(preset.target);
 
@@ -312,9 +329,9 @@ class Uno3DGame {
     }
 
     switchView(mode) {
-        if (!this.cameraModes[mode]) return;
+        if (!['orbit', 'hand', 'top'].includes(mode)) return;
         this.currentViewMode = mode;
-        const preset = this.cameraModes[mode];
+        const preset = this.getCameraPreset(mode);
 
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-view-${mode}`)?.classList.add('active');
@@ -325,16 +342,17 @@ class Uno3DGame {
     // Dynamic tilt angle: toggles gently between center, left-angle, right-angle
     rotateViewAngle() {
         this.tiltStep = ((this.tiltStep || 0) + 1) % 3;
-        const angles = [0, -0.30, 0.30];
+        const angles = [0, -0.28, 0.28];
         const targetAngle = angles[this.tiltStep];
 
-        const radius = 9.5;
+        const preset = this.getCameraPreset(this.currentViewMode);
+        const radius = preset.pos.length();
         const targetPos = new THREE.Vector3(
-            Math.sin(targetAngle) * radius,
-            8.6,
-            Math.cos(targetAngle) * radius
+            Math.sin(targetAngle) * radius * 0.7,
+            preset.pos.y,
+            Math.cos(targetAngle) * preset.pos.z
         );
-        this.tweenCamera(targetPos, new THREE.Vector3(0, -0.3, 0.4), 600);
+        this.tweenCamera(targetPos, preset.target, 550);
     }
 
     tweenCamera(targetPos, targetLookAt, duration = 500) {
@@ -362,10 +380,16 @@ class Uno3DGame {
     onResize() {
         const width = window.innerWidth;
         const height = window.innerHeight;
-        this.camera.aspect = width / height;
-        this.camera.fov = width < 650 ? 52 : 44;
+        const aspect = width / height;
+        this.camera.aspect = aspect;
+
+        const isMobile = width < 700 || aspect < 0.85;
+        this.camera.fov = isMobile ? Math.max(56, Math.min(68, Math.round(34 / aspect))) : 44;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
+
+        // Re-sync cards so spacing dynamically fits the viewport width
+        this.syncCards3D();
     }
 
     onPointerMove(e) {
@@ -505,8 +529,13 @@ class Uno3DGame {
             }
         }
 
-        // 3. Player Hand (Wide, High-Visibility Arc)
-        // All cards are completely visible with ample spacing and 2-tier staging for larger hands
+        // 3. Player Hand (High-Visibility Non-Sinking Elevation & Mobile Adaptive Fan)
+        // Card mesh height is 1.92. Elevating baseY to 1.05 ensures card bottom (y=0.15) stays
+        // comfortably above the table surface (y=0.0) without sinking into the table felt.
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const isMobile = width < 700 || (width / height) < 0.85;
+
         const p1Cards = this.rules.playersHands[0] || [];
         const count = p1Cards.length;
 
@@ -517,31 +546,33 @@ class Uno3DGame {
             let x, y, z, rotZ;
 
             if (count <= 7) {
-                // Wide single arc: generous 0.95 - 1.15 spacing so symbols & values are 100% visible
-                const spacing = Math.max(0.92, Math.min(6.8 / Math.max(count, 1), 1.18));
+                // Wide single arc with responsive bounds
+                const maxSpread = isMobile ? 3.3 : 6.4;
+                const spacing = Math.min(maxSpread / Math.max(count - 1, 1), isMobile ? 0.60 : 1.15);
                 const centerOffset = i - (count - 1) / 2;
                 x = centerOffset * spacing;
-                y = 0.55 - Math.abs(centerOffset) * 0.03;
-                z = 3.65 - Math.abs(centerOffset) * 0.06;
-                rotZ = -centerOffset * 0.035;
+                y = 1.05 - Math.abs(centerOffset) * 0.025;
+                z = 3.65 - Math.abs(centerOffset) * 0.05;
+                rotZ = -centerOffset * (isMobile ? 0.045 : 0.035);
             } else {
                 // Multi-card staggered tiers: Back row (even cards) & Front row (odd cards)
                 const isBackRow = (i % 2 === 0);
                 const rowCount = isBackRow ? Math.ceil(count / 2) : Math.floor(count / 2);
                 const rowIdx = Math.floor(i / 2);
                 const centerOffset = rowIdx - (rowCount - 1) / 2;
-                const spacing = Math.max(0.85, Math.min(7.2 / Math.max(rowCount, 1), 1.25));
+                const maxSpread = isMobile ? 3.3 : 6.8;
+                const spacing = Math.min(maxSpread / Math.max(rowCount - 1, 1), isMobile ? 0.58 : 1.15);
 
-                x = centerOffset * spacing + (isBackRow ? -0.2 : 0.2);
-                y = isBackRow ? 0.75 : 0.35;
-                z = isBackRow ? 3.35 : 3.85;
-                rotZ = -centerOffset * 0.03;
+                x = centerOffset * spacing + (isBackRow ? -0.15 : 0.15);
+                y = isBackRow ? 1.35 : 1.05;
+                z = isBackRow ? 3.35 : 3.80;
+                rotZ = -centerOffset * (isMobile ? 0.04 : 0.03);
             }
 
-            // Elevate and bring forward playable cards (+0.28 units)
+            // Elevate and bring forward playable cards (+0.25 units)
             if (isPlayable) {
-                y += 0.28;
-                z -= 0.12;
+                y += 0.25;
+                z -= 0.10;
             }
 
             mesh.position.set(x, y, z);
@@ -555,18 +586,19 @@ class Uno3DGame {
             this.playerCardMeshes.push(mesh);
         });
 
-        // 4. Opponent Hand (Always faces with back texture on both sides for 100% security)
+        // 4. Opponent Hand (Elevated above table, dual-face back texture guarantees no peeking)
         const p2Cards = this.rules.playersHands[1] || [];
         const oppCount = p2Cards.length;
-        const oppSpacing = Math.min(3.4 / Math.max(oppCount, 5), 0.65);
+        const oppMaxSpread = isMobile ? 3.2 : 5.0;
+        const oppSpacing = Math.min(oppMaxSpread / Math.max(oppCount - 1, 1), isMobile ? 0.45 : 0.65);
 
         p2Cards.forEach((card, i) => {
             const mesh = this.textureFactory.createCardMesh(card, true);
             const centerOffset = i - (oppCount - 1) / 2;
             const x = centerOffset * oppSpacing;
-            const y = 0.5 - Math.abs(centerOffset) * 0.03;
-            const z = -3.4 + Math.abs(centerOffset) * 0.06;
-            const rotZ = centerOffset * 0.04;
+            const y = 1.05 - Math.abs(centerOffset) * 0.02;
+            const z = -3.4 + Math.abs(centerOffset) * 0.05;
+            const rotZ = centerOffset * (isMobile ? 0.045 : 0.035);
 
             mesh.position.set(x, y, z);
             mesh.rotation.set(Math.PI - 0.35, 0, rotZ);
@@ -587,14 +619,6 @@ class Uno3DGame {
     handlePlayerPlayCard(card) {
         if (this.rules.currentPlayer !== 0) {
             this.updateBanner('Wait for your turn! Uno Bot is playing.');
-            return;
-        }
-
-        // Classic UNO rule: If player has drawn a card this turn, only that drawn card can be played
-        if (this.rules.hasDrawnThisTurn && card.id !== this.rules.drawnCardId) {
-            this.audio.playPenalty();
-            this.wiggleCardRefusal(card.id);
-            this.updateBanner('Classic UNO rule: You can only play the card you just drew, or tap PASS.');
             return;
         }
 
@@ -661,17 +685,18 @@ class Uno3DGame {
     }
 
     executeCardPlay(playerIdx, cardId, chosenColor) {
+        if (this.autoDrawTimeout) {
+            clearTimeout(this.autoDrawTimeout);
+            this.autoDrawTimeout = null;
+        }
+
         this.isProcessingMove = true;
         this.resetCardHover();
 
         const result = this.rules.playCard(playerIdx, cardId, chosenColor);
         if (!result.success) {
             this.isProcessingMove = false;
-            if (result.reason === 'can_only_play_drawn_card') {
-                this.updateBanner('Classic UNO rule: You can only play the drawn card, or tap PASS.');
-            } else {
-                this.updateBanner('Cannot play card: ' + result.reason);
-            }
+            this.updateBanner('Cannot play card: ' + result.reason);
             return;
         }
 
@@ -732,8 +757,13 @@ class Uno3DGame {
             return;
         }
         if (this.rules.hasDrawnThisTurn) {
-            this.updateBanner('You already drew 1 card. Play the drawn card or tap PASS.');
+            this.updateBanner('You already drew 1 card. Play any matching card or tap PASS.');
             return;
+        }
+
+        if (this.autoDrawTimeout) {
+            clearTimeout(this.autoDrawTimeout);
+            this.autoDrawTimeout = null;
         }
 
         this.isProcessingMove = true;
@@ -750,20 +780,22 @@ class Uno3DGame {
             }, '*');
         }
 
-        if (drawRes && drawRes.isPlayable) {
-            this.updateBanner(`You drew ${drawRes.card.getLabel()}! Click it to play immediately, or tap PASS.`);
+        const playableAfterDraw = this.rules.getPlayableCards(0);
+        if (playableAfterDraw.length > 0) {
+            const cardName = drawRes && drawRes.card ? drawRes.card.getLabel() : 'Card';
+            this.updateBanner(`You drew ${cardName}. Play any matching card, or tap PASS.`);
             if (this.dom.btnPass) this.dom.btnPass.style.display = 'inline-flex';
             this.isProcessingMove = false;
         } else {
             const cardName = drawRes && drawRes.card ? drawRes.card.getLabel() : 'Card';
-            this.updateBanner(`Card drawn (${cardName}) cannot be played. Passing turn to Uno Bot...`);
+            this.updateBanner(`Card drawn (${cardName}) cannot be played. No matching cards. Passing turn...`);
             if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
             setTimeout(() => {
                 this.rules.passTurn(0);
                 this.syncCards3D();
                 this.isProcessingMove = false;
                 this.checkBotTurn();
-            }, 850);
+            }, 900);
         }
     }
 
@@ -773,6 +805,12 @@ class Uno3DGame {
             this.updateBanner('Classic UNO rule: You must draw 1 card before passing.');
             return;
         }
+
+        if (this.autoDrawTimeout) {
+            clearTimeout(this.autoDrawTimeout);
+            this.autoDrawTimeout = null;
+        }
+
         if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
         this.rules.passTurn(0);
         this.syncCards3D();
@@ -1007,19 +1045,35 @@ class Uno3DGame {
 
             if (state.hasDrawnThisTurn) {
                 if (this.dom.btnPass) this.dom.btnPass.style.display = 'inline-flex';
-                this.updateBanner(`You drew a card. Play the drawn card, or tap PASS.`);
+                this.updateBanner(`You drew a card. Play any matching card, or tap PASS.`);
             } else {
                 if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
                 const playableCards = this.rules.getPlayableCards(0);
                 if (playableCards.length === 0) {
-                    this.updateBanner(`No matching card! Match ${topCol} or ${topVal}. Tap Draw Pile to draw.`);
+                    this.updateBanner(`No matching card (${topCol} or ${topVal}). Auto-drawing 1 card...`);
                     if (this.dom.btnDraw) this.dom.btnDraw.classList.add('pulsing');
+                    if (!this.autoDrawTimeout && !this.isProcessingMove && !state.isGameOver) {
+                        this.autoDrawTimeout = setTimeout(() => {
+                            this.autoDrawTimeout = null;
+                            if (this.rules.currentPlayer === 0 && !this.rules.hasDrawnThisTurn && !this.rules.isGameOver) {
+                                this.handlePlayerDraw();
+                            }
+                        }, 750);
+                    }
                 } else {
+                    if (this.autoDrawTimeout) {
+                        clearTimeout(this.autoDrawTimeout);
+                        this.autoDrawTimeout = null;
+                    }
                     if (this.dom.btnDraw) this.dom.btnDraw.classList.remove('pulsing');
                     this.updateBanner(`Your Turn: Play any ${topCol} card, or match ${topVal}, or tap Draw.`);
                 }
             }
         } else {
+            if (this.autoDrawTimeout) {
+                clearTimeout(this.autoDrawTimeout);
+                this.autoDrawTimeout = null;
+            }
             this.dom.cardP2.classList.add('active-turn');
             this.dom.cardP1.classList.remove('active-turn');
             if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';

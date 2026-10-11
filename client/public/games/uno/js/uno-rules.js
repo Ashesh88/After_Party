@@ -210,14 +210,8 @@ class UnoGameLogic {
     // 1. Wild cards can always be played
     // 2. Card color matches activeColor
     // 3. Card value matches topCard.value (number on number OR symbol on symbol: reverse on reverse, skip on skip, draw2 on draw2 across any colors)
-    // 4. If player has already drawn a card this turn, only that drawn card can be played!
     isCardPlayable(card, playerIdx = null) {
         if (!card) return false;
-
-        // If checking for the active player and they have already drawn this turn, only the drawn card is legal
-        if (playerIdx !== null && playerIdx === this.currentPlayer && this.hasDrawnThisTurn) {
-            if (card.id !== this.drawnCardId) return false;
-        }
 
         const top = this.getTopCard();
         if (!top) return true;
@@ -292,11 +286,6 @@ class UnoGameLogic {
 
         const card = hand[cardIndex];
         if (!this.isCardPlayable(card, playerIdx)) return { success: false, reason: 'illegal_card' };
-
-        // If player has drawn this turn, only that drawn card can be played
-        if (this.hasDrawnThisTurn && cardId !== this.drawnCardId) {
-            return { success: false, reason: 'can_only_play_drawn_card' };
-        }
 
         const prevActiveColor = this.activeColor;
 
