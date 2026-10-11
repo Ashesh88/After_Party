@@ -40,6 +40,8 @@ import {
   CheckCircle2,
   Clock,
   Compass,
+  FileText,
+  Upload,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -52,8 +54,9 @@ import { Friend } from '../../lib/types';
 // Types
 type ToolType = 'pen' | 'brush' | 'neon' | 'spray' | 'eraser';
 type ShapeType = 'line' | 'rectangle' | 'circle' | 'star' | 'heart' | 'cloud' | 'mountain';
-type FrameType = 'none' | 'polaroid' | 'gold' | 'sunset' | 'wood' | 'neon';
-type BgPreset = 'blank' | 'sunset' | 'midnight' | 'golden' | 'scenery';
+type FrameType = 'wood' | 'gold' | 'black' | 'minimal' | 'none';
+type SceneryPreset = 'blank' | 'sunset-lake' | 'beach-sunset' | 'forest-stars' | 'desert-dunes';
+type CanvasRatio = 'fit' | '1:1' | '3:4' | '16:9';
 
 interface Point {
   x: number;
@@ -89,18 +92,20 @@ interface StickerItem {
   x: number;
   y: number;
   size: number;
-  color: string;
   author: string;
 }
 
 interface CanvasPage {
   id: string;
   title: string;
+  pageColor: string;
+  sceneryPreset: SceneryPreset;
+  customSceneryUrl?: string | null;
+  frame: FrameType;
+  canvasRatio: CanvasRatio;
   strokes: Stroke[];
   shapes: ShapeItem[];
   stickers: StickerItem[];
-  bgPreset: BgPreset;
-  frame: FrameType;
   history: Array<{ strokes: Stroke[]; shapes: ShapeItem[]; stickers: StickerItem[] }>;
   historyStep: number;
 }
@@ -117,32 +122,44 @@ interface CoPaintStudioProps {
   onBack: () => void;
 }
 
-// Curated Color Palettes (Rich Sunset & Scenery)
-const SUNSET_PALETTE = [
-  '#ff4500', // Sunset Coral Red
-  '#ff8c00', // Dark Orange
-  '#ffd700', // Sun Gold
-  '#ff69b4', // Hot Pink
-  '#8a2be2', // Twilight Violet
-  '#4b0082', // Indigo Night
-  '#1e90ff', // Ocean Blue
-  '#00ced1', // Lagoon Turquoise
-  '#2e8b57', // Forest Pine
-  '#8b4513', // Saddle Earth
+// Curated Brush Palettes
+const BRUSH_PALETTE = [
+  '#ef4444', // Crimson Red
+  '#f97316', // Sunset Orange
+  '#f59e0b', // Sun Amber
+  '#eab308', // Gold Yellow
+  '#10b981', // Emerald Green
+  '#06b6d4', // Cyan Wave
+  '#3b82f6', // Ocean Blue
+  '#8b5cf6', // Twilight Violet
+  '#ec4899', // Rose Pink
+  '#78350f', // Earth Wood
   '#ffffff', // Pure White
-  '#111827', // Midnight Obsidian
+  '#0f172a', // Midnight Obsidian
+];
+
+// Curated Page Paper Colors
+const PAGE_COLORS = [
+  { label: 'White', color: '#ffffff' },
+  { label: 'Ivory Cream', color: '#fefae0' },
+  { label: 'Pastel Blush', color: '#fce7f3' },
+  { label: 'Sky Mist', color: '#e0f2fe' },
+  { label: 'Soft Mint', color: '#ecfdf5' },
+  { label: 'Warm Sand', color: '#f5ebe0' },
+  { label: 'Lavender', color: '#f3e8ff' },
+  { label: 'Charcoal Dark', color: '#1e293b' },
 ];
 
 const SCENERY_STICKERS = [
   { key: 'sun', label: 'Sun', icon: Sun },
   { key: 'cloud', label: 'Cloud', icon: Cloud },
   { key: 'mountain', label: 'Mountain', icon: Mountain },
-  { key: 'waves', label: 'Waves', icon: Waves },
+  { key: 'waves', label: 'Ocean Waves', icon: Waves },
   { key: 'trees', label: 'Pine Trees', icon: Trees },
+  { key: 'heart', label: 'Love Heart', icon: Heart },
   { key: 'star', label: 'Star', icon: Star },
-  { key: 'sparkle', label: 'Sparkle', icon: Sparkles },
-  { key: 'heart', label: 'Heart', icon: Heart },
   { key: 'flame', label: 'Campfire', icon: Flame },
+  { key: 'sparkle', label: 'Sparkles', icon: Sparkles },
   { key: 'compass', label: 'Compass', icon: Compass },
 ];
 
@@ -152,7 +169,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const { sessionData, setSessionData } = useGameStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const drawCanvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const isDrawingRef = useRef(false);
   const currentPointsRef = useRef<Point[]>([]);
 
@@ -166,26 +186,29 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [isWaitingForFriend, setIsWaitingForFriend] = useState(false);
   const [remoteCursor, setRemoteCursor] = useState<{ x: number; y: number; name: string } | null>(null);
 
-  // Active Tool Settings
-  const [activeTab, setActiveTab] = useState<'brush' | 'color' | 'shape' | 'sticker' | 'bg' | 'frame'>('brush');
+  // Active Tool Navigation
+  const [activeTab, setActiveTab] = useState<'brush' | 'color' | 'page' | 'scenery' | 'shape' | 'sticker' | 'frame'>('brush');
   const [selectedTool, setSelectedTool] = useState<ToolType>('brush');
-  const [brushColor, setBrushColor] = useState<string>('#ff4500');
+  const [brushColor, setBrushColor] = useState<string>('#ef4444');
   const [brushSize, setBrushSize] = useState<number>(8);
   const [brushOpacity, setBrushOpacity] = useState<number>(100);
   const [selectedShape, setSelectedShape] = useState<ShapeType>('rectangle');
   const [shapeFilled, setShapeFilled] = useState<boolean>(false);
   const [selectedSticker, setSelectedSticker] = useState<string>('sun');
 
-  // Multi-Page Canvas Management
+  // Multi-Page Canvas Management (Default Clean Pure White Canvas)
   const [pages, setPages] = useState<CanvasPage[]>([
     {
       id: 'page-1',
       title: 'Page 1',
+      pageColor: '#ffffff', // Default pure white page
+      sceneryPreset: 'blank', // Default clean blank sheet
+      customSceneryUrl: null,
+      frame: 'wood', // Real walnut photo frame by default
+      canvasRatio: 'fit', // Responsive fit
       strokes: [],
       shapes: [],
       stickers: [],
-      bgPreset: 'sunset',
-      frame: 'polaroid',
       history: [{ strokes: [], shapes: [], stickers: [] }],
       historyStep: 0,
     },
@@ -325,11 +348,18 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           return next;
         });
         toast('Friend cleared the canvas');
-      } else if (actionType === 'set_bg' && payload?.bgPreset) {
+      } else if (actionType === 'set_page_color' && payload?.pageColor) {
         setPages((prev) => {
           const next = [...prev];
           const page = next[activePageIndex];
-          if (page) page.bgPreset = payload.bgPreset;
+          if (page) page.pageColor = payload.pageColor;
+          return next;
+        });
+      } else if (actionType === 'set_scenery' && payload?.sceneryPreset) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) page.sceneryPreset = payload.sceneryPreset;
           return next;
         });
       } else if (actionType === 'set_frame' && payload?.frame) {
@@ -337,6 +367,13 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           const next = [...prev];
           const page = next[activePageIndex];
           if (page) page.frame = payload.frame;
+          return next;
+        });
+      } else if (actionType === 'set_ratio' && payload?.canvasRatio) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) page.canvasRatio = payload.canvasRatio;
           return next;
         });
       } else if (actionType === 'switch_page' && typeof payload?.pageIndex === 'number') {
@@ -377,8 +414,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       };
 
       setChatMessages((prev) => [...prev, newMsg]);
-
-      // Trigger 2-second floating popup toast
       showFloatingToast(data.senderName || 'Friend', data.message);
 
       if (!showChatModal) {
@@ -392,7 +427,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       toast('Friend disconnected from studio');
     };
 
-    // Friend accepted in-game invite
     const handleInviteAccepted = (data: { acceptedBy: string; sessionCode: string; game: string }) => {
       if (data.sessionCode === sessionCode && (data.game === 'paint' || data.game === 'painting')) {
         setIsWaitingForFriend(false);
@@ -484,57 +518,78 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     toastTimeoutRef.current = setTimeout(() => {
       setFloatingToast(null);
       toastTimeoutRef.current = null;
-    }, 2000); // Exactly 2 seconds as requested by the user
+    }, 2000); // Exactly 2 seconds
   };
 
   // -------------------------------------------------------------
-  // CANVAS RENDERING ENGINE
+  // TWO-CANVAS RENDERING ENGINE (NON-DESTRUCTIVE CLEAN ERASER)
   // -------------------------------------------------------------
-  const redrawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+  const redrawBackgroundLayer = useCallback(() => {
+    const bgCanvas = bgCanvasRef.current;
+    if (!bgCanvas) return;
+    const ctx = bgCanvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = bgCanvas.width;
+    const height = bgCanvas.height;
 
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Draw Background
-    drawBackgroundPreset(ctx, width, height, currentPage.bgPreset);
+    // 1. Fill Page Base Color (Default White or User Chosen)
+    ctx.fillStyle = currentPage.pageColor || '#ffffff';
+    ctx.fillRect(0, 0, width, height);
 
-    // 2. Draw Vector Shapes
+    // 2. Draw Prebuilt Scenery Coloring Line Art Outline
+    drawSceneryLineArt(ctx, width, height, currentPage.sceneryPreset);
+  }, [currentPage.pageColor, currentPage.sceneryPreset]);
+
+  const redrawDrawingLayer = useCallback(() => {
+    const drawCanvas = drawCanvasRef.current;
+    if (!drawCanvas) return;
+    const ctx = drawCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = drawCanvas.width;
+    const height = drawCanvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Draw Vector Shapes
     currentPage.shapes.forEach((shape) => {
       drawShapeOnCanvas(ctx, shape);
     });
 
-    // 2.1 Draw Live Shape Preview during drag
+    // 1.1 Draw Live Shape Preview during drag
     if (currentShapePreview) {
       drawShapeOnCanvas(ctx, currentShapePreview, true);
     }
 
-    // 3. Draw Brush Strokes
+    // 2. Draw Brush Strokes (Eraser uses destination-out cleanly on this transparent layer!)
     currentPage.strokes.forEach((stroke) => {
       drawStrokeOnCanvas(ctx, stroke);
     });
 
-    // 4. Draw Stickers & Stamps
+    // 3. Draw Stickers & Stamps
     currentPage.stickers.forEach((sticker) => {
       drawStickerOnCanvas(ctx, sticker);
     });
-  }, [currentPage, currentShapePreview]);
+  }, [currentPage.shapes, currentPage.strokes, currentPage.stickers, currentShapePreview]);
 
   useEffect(() => {
-    redrawCanvas();
-  }, [redrawCanvas]);
+    redrawBackgroundLayer();
+  }, [redrawBackgroundLayer]);
 
-  // Canvas resize with retina scaling
+  useEffect(() => {
+    redrawDrawingLayer();
+  }, [redrawDrawingLayer]);
+
+  // Synchronized resize with retina scaling
   useEffect(() => {
     const updateCanvasDimensions = () => {
       const container = containerRef.current;
-      const canvas = canvasRef.current;
-      if (!container || !canvas) return;
+      const bgCanvas = bgCanvasRef.current;
+      const drawCanvas = drawCanvasRef.current;
+      if (!container || !bgCanvas || !drawCanvas) return;
 
       const rect = container.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -543,114 +598,262 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       const targetHeight = Math.floor(rect.height);
 
       if (targetWidth > 0 && targetHeight > 0) {
-        canvas.width = targetWidth * dpr;
-        canvas.height = targetHeight * dpr;
-        canvas.style.width = `${targetWidth}px`;
-        canvas.style.height = `${targetHeight}px`;
+        [bgCanvas, drawCanvas].forEach((c) => {
+          c.width = targetWidth * dpr;
+          c.height = targetHeight * dpr;
+          c.style.width = `${targetWidth}px`;
+          c.style.height = `${targetHeight}px`;
 
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.scale(dpr, dpr);
-        }
-        redrawCanvas();
+          const ctx = c.getContext('2d');
+          if (ctx) {
+            ctx.scale(dpr, dpr);
+          }
+        });
+
+        redrawBackgroundLayer();
+        redrawDrawingLayer();
       }
     };
 
     updateCanvasDimensions();
     window.addEventListener('resize', updateCanvasDimensions);
     return () => window.removeEventListener('resize', updateCanvasDimensions);
-  }, [redrawCanvas]);
+  }, [redrawBackgroundLayer, redrawDrawingLayer]);
 
   // -------------------------------------------------------------
-  // DRAWING HELPER FUNCTIONS
+  // SCENERY LINE ART OUTLINES FOR COLORING
   // -------------------------------------------------------------
-  const drawBackgroundPreset = (ctx: CanvasRenderingContext2D, w: number, h: number, preset: BgPreset) => {
-    if (preset === 'blank') {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, w, h);
-    } else if (preset === 'sunset') {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#2e0854'); // Twilight purple
-      grad.addColorStop(0.35, '#8b1e4f'); // Magenta sunset
-      grad.addColorStop(0.65, '#d35400'); // Amber orange
-      grad.addColorStop(0.9, '#f39c12'); // Golden glow
-      grad.addColorStop(1, '#f1c40f'); // Horizon yellow
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+  const drawSceneryLineArt = (ctx: CanvasRenderingContext2D, w: number, h: number, preset: SceneryPreset) => {
+    if (preset === 'blank') return;
 
-      // Distant horizon mountain silhouette
-      ctx.fillStyle = 'rgba(40, 10, 60, 0.4)';
+    ctx.save();
+    ctx.strokeStyle = '#334155'; // Crisp dark slate line art
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (preset === 'sunset-lake') {
+      // 1. Setting Sun Horizon Circle
       ctx.beginPath();
-      ctx.moveTo(0, h * 0.72);
-      ctx.lineTo(w * 0.25, h * 0.62);
-      ctx.lineTo(w * 0.55, h * 0.68);
-      ctx.lineTo(w * 0.85, h * 0.58);
-      ctx.lineTo(w, h * 0.66);
-      ctx.lineTo(w, h);
-      ctx.lineTo(0, h);
-      ctx.closePath();
-      ctx.fill();
-    } else if (preset === 'midnight') {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#060919'); // Deep space
-      grad.addColorStop(0.5, '#0f172a'); // Navy
-      grad.addColorStop(1, '#1e1b4b'); // Twilight violet
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Subtle starlight dots
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      const seedPoints = [
-        { x: 0.12, y: 0.15 },
-        { x: 0.35, y: 0.08 },
-        { x: 0.65, y: 0.22 },
-        { x: 0.85, y: 0.12 },
-        { x: 0.45, y: 0.32 },
-        { x: 0.22, y: 0.42 },
-      ];
-      seedPoints.forEach((p) => {
-        ctx.beginPath();
-        ctx.arc(w * p.x, h * p.y, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    } else if (preset === 'golden') {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#b45309'); // Amber
-      grad.addColorStop(0.5, '#f59e0b'); // Golden
-      grad.addColorStop(1, '#fef3c7'); // Soft dawn
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-    } else if (preset === 'scenery') {
-      // Scenery line art template
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(0, 0, w, h);
-
-      // Sunset sun outline
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.45, Math.min(w, h) * 0.16, 0, Math.PI * 2);
+      ctx.arc(w * 0.5, h * 0.48, Math.min(w, h) * 0.18, Math.PI, Math.PI * 2);
       ctx.stroke();
 
-      // Mountain ridge outline
+      // Sun rays
+      for (let i = 0; i < 7; i++) {
+        const ang = Math.PI + (i * Math.PI) / 6;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.5 + Math.cos(ang) * (Math.min(w, h) * 0.22), h * 0.48 + Math.sin(ang) * (Math.min(w, h) * 0.22));
+        ctx.lineTo(w * 0.5 + Math.cos(ang) * (Math.min(w, h) * 0.32), h * 0.48 + Math.sin(ang) * (Math.min(w, h) * 0.32));
+        ctx.stroke();
+      }
+
+      // 2. Majestic Mountains
       ctx.beginPath();
-      ctx.moveTo(0, h * 0.65);
-      ctx.lineTo(w * 0.28, h * 0.42);
-      ctx.lineTo(w * 0.52, h * 0.58);
-      ctx.lineTo(w * 0.76, h * 0.38);
+      ctx.moveTo(0, h * 0.58);
+      ctx.lineTo(w * 0.22, h * 0.32);
+      ctx.lineTo(w * 0.35, h * 0.45);
+      ctx.lineTo(w * 0.58, h * 0.28);
+      ctx.lineTo(w * 0.78, h * 0.48);
+      ctx.lineTo(w, h * 0.38);
+      ctx.stroke();
+
+      // Mountain Snowcaps
+      ctx.beginPath();
+      ctx.moveTo(w * 0.22, h * 0.32);
+      ctx.lineTo(w * 0.18, h * 0.38);
+      ctx.lineTo(w * 0.26, h * 0.38);
+      ctx.moveTo(w * 0.58, h * 0.28);
+      ctx.lineTo(w * 0.53, h * 0.35);
+      ctx.lineTo(w * 0.63, h * 0.35);
+      ctx.stroke();
+
+      // 3. Lake Horizon & Water Ripples
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.62);
       ctx.lineTo(w, h * 0.62);
       ctx.stroke();
 
-      // Water waves outline
+      // Waves
+      ctx.beginPath();
+      ctx.moveTo(w * 0.2, h * 0.72);
+      ctx.bezierCurveTo(w * 0.35, h * 0.7, w * 0.65, h * 0.74, w * 0.8, h * 0.72);
+      ctx.moveTo(w * 0.1, h * 0.84);
+      ctx.bezierCurveTo(w * 0.3, h * 0.82, w * 0.7, h * 0.86, w * 0.9, h * 0.84);
+      ctx.stroke();
+
+      // 4. Shoreline Pine Trees
+      drawTreeOutline(ctx, w * 0.08, h * 0.68, 60);
+      drawTreeOutline(ctx, w * 0.15, h * 0.65, 45);
+      drawTreeOutline(ctx, w * 0.88, h * 0.66, 55);
+    } else if (preset === 'beach-sunset') {
+      // 1. Sun on Water Line
+      ctx.beginPath();
+      ctx.arc(w * 0.6, h * 0.52, Math.min(w, h) * 0.16, Math.PI, Math.PI * 2);
+      ctx.stroke();
+
+      // Sea Horizon
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.52);
+      ctx.lineTo(w, h * 0.52);
+      ctx.stroke();
+
+      // 2. Surf shoreline
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.72);
+      ctx.bezierCurveTo(w * 0.3, h * 0.68, w * 0.7, h * 0.85, w, h * 0.78);
+      ctx.stroke();
+
+      // 3. Slanted Palm Tree
+      ctx.beginPath();
+      ctx.moveTo(w * 0.15, h * 0.95);
+      ctx.quadraticCurveTo(w * 0.18, h * 0.5, w * 0.32, h * 0.38);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(w * 0.18, h * 0.95);
+      ctx.quadraticCurveTo(w * 0.21, h * 0.5, w * 0.32, h * 0.38);
+      ctx.stroke();
+
+      // Palm fronds
+      const px = w * 0.32;
+      const py = h * 0.38;
+      const frondAngles = [-0.8, -0.3, 0.2, 0.7, 1.2, -1.3];
+      frondAngles.forEach((a) => {
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.quadraticCurveTo(px + Math.cos(a) * 45, py + Math.sin(a) * 45 - 15, px + Math.cos(a) * 75, py + Math.sin(a) * 75);
+        ctx.stroke();
+      });
+
+      // 4. Flying Birds
+      drawBirdOutline(ctx, w * 0.45, h * 0.28, 22);
+      drawBirdOutline(ctx, w * 0.52, h * 0.22, 18);
+      drawBirdOutline(ctx, w * 0.58, h * 0.26, 15);
+    } else if (preset === 'forest-stars') {
+      // 1. Crescent Moon
+      ctx.beginPath();
+      ctx.arc(w * 0.82, h * 0.22, 32, 0.5 * Math.PI, 1.5 * Math.PI);
+      ctx.quadraticCurveTo(w * 0.82 + 10, h * 0.22, w * 0.82, h * 0.22 + 32);
+      ctx.stroke();
+
+      // 2. Stars
+      const stars = [
+        { x: 0.15, y: 0.18 },
+        { x: 0.32, y: 0.12 },
+        { x: 0.48, y: 0.24 },
+        { x: 0.65, y: 0.14 },
+        { x: 0.25, y: 0.32 },
+        { x: 0.72, y: 0.28 },
+      ];
+      stars.forEach((st) => {
+        drawStarOutline(ctx, w * st.x, h * st.y, 8);
+      });
+
+      // 3. Pine Forest Horizon
       ctx.beginPath();
       ctx.moveTo(0, h * 0.75);
-      ctx.bezierCurveTo(w * 0.3, h * 0.72, w * 0.7, h * 0.78, w, h * 0.75);
-      ctx.moveTo(0, h * 0.86);
-      ctx.bezierCurveTo(w * 0.4, h * 0.83, w * 0.8, h * 0.89, w, h * 0.86);
+      for (let x = 0; x <= w; x += 35) {
+        const th = 40 + (Math.sin(x) * 15);
+        ctx.lineTo(x + 17, h * 0.75 - th);
+        ctx.lineTo(x + 35, h * 0.75);
+      }
+      ctx.stroke();
+
+      // 4. Campfire with Logs
+      const cx = w * 0.5;
+      const cy = h * 0.88;
+      ctx.beginPath();
+      ctx.moveTo(cx - 30, cy + 12);
+      ctx.lineTo(cx + 30, cy - 8);
+      ctx.moveTo(cx - 30, cy - 8);
+      ctx.lineTo(cx + 30, cy + 12);
+      ctx.stroke();
+
+      // Flame
+      ctx.beginPath();
+      ctx.moveTo(cx - 15, cy);
+      ctx.quadraticCurveTo(cx - 20, cy - 35, cx, cy - 50);
+      ctx.quadraticCurveTo(cx + 20, cy - 35, cx + 15, cy);
+      ctx.closePath();
+      ctx.stroke();
+    } else if (preset === 'desert-dunes') {
+      // Sun
+      ctx.beginPath();
+      ctx.arc(w * 0.3, h * 0.35, 45, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Dunes
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.58);
+      ctx.bezierCurveTo(w * 0.25, h * 0.52, w * 0.6, h * 0.68, w, h * 0.55);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.72);
+      ctx.bezierCurveTo(w * 0.4, h * 0.82, w * 0.75, h * 0.68, w, h * 0.76);
+      ctx.stroke();
+
+      // Saguaro Cactus
+      const kx = w * 0.78;
+      const ky = h * 0.65;
+      ctx.beginPath();
+      ctx.moveTo(kx, ky + 60);
+      ctx.lineTo(kx, ky);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(kx - 18, ky + 30);
+      ctx.lineTo(kx - 18, ky + 15);
+      ctx.lineTo(kx, ky + 25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(kx + 18, ky + 38);
+      ctx.lineTo(kx + 18, ky + 20);
+      ctx.lineTo(kx, ky + 32);
       ctx.stroke();
     }
+
+    ctx.restore();
   };
 
+  const drawTreeOutline = (ctx: CanvasRenderingContext2D, x: number, y: number, height: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - height * 0.25, y - height * 0.3);
+    ctx.lineTo(x - height * 0.15, y - height * 0.3);
+    ctx.lineTo(x - height * 0.22, y - height * 0.65);
+    ctx.lineTo(x - height * 0.12, y - height * 0.65);
+    ctx.lineTo(x, y - height);
+    ctx.lineTo(x + height * 0.12, y - height * 0.65);
+    ctx.lineTo(x + height * 0.22, y - height * 0.65);
+    ctx.lineTo(x + height * 0.15, y - height * 0.3);
+    ctx.lineTo(x + height * 0.25, y - height * 0.3);
+    ctx.closePath();
+    ctx.stroke();
+  };
+
+  const drawBirdOutline = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
+    ctx.beginPath();
+    ctx.arc(x - size * 0.5, y, size * 0.5, Math.PI, 0);
+    ctx.arc(x + size * 0.5, y, size * 0.5, Math.PI, 0);
+    ctx.stroke();
+  };
+
+  const drawStarOutline = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r * 0.3, y - r * 0.3);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x + r * 0.3, y + r * 0.3);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r * 0.3, y + r * 0.3);
+    ctx.lineTo(x - r, y);
+    ctx.lineTo(x - r * 0.3, y - r * 0.3);
+    ctx.closePath();
+    ctx.stroke();
+  };
+
+  // -------------------------------------------------------------
+  // BRUSH STROKE RENDERING ENGINE
+  // -------------------------------------------------------------
   const drawStrokeOnCanvas = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (!stroke.points || stroke.points.length < 2) return;
 
@@ -659,8 +862,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.lineJoin = 'round';
 
     if (stroke.tool === 'eraser') {
+      // Destination-out on transparent drawing layer cleanly erases without cutting into paper!
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = stroke.size * 1.5;
+      ctx.lineWidth = stroke.size * 2.2;
       ctx.strokeStyle = 'rgba(0,0,0,1)';
     } else if (stroke.tool === 'neon') {
       ctx.globalCompositeOperation = 'source-over';
@@ -696,7 +900,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       }
     }
 
-    // Smooth quadratic Bézier curves
+    // Smooth quadratic curves
     ctx.beginPath();
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
 
@@ -788,47 +992,85 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.restore();
   };
 
+  // -------------------------------------------------------------
+  // VIBRANT VECTOR STICKERS RENDERING
+  // -------------------------------------------------------------
   const drawStickerOnCanvas = (ctx: CanvasRenderingContext2D, sticker: StickerItem) => {
     ctx.save();
     ctx.translate(sticker.x, sticker.y);
-    ctx.fillStyle = sticker.color;
-    ctx.strokeStyle = sticker.color;
-    ctx.lineWidth = 2.5;
-
-    const s = sticker.size;
+    const s = sticker.size || 75;
 
     if (sticker.stickerKey === 'sun') {
+      // Golden Sun with Bright Corona Rays
+      ctx.fillStyle = '#f59e0b';
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2);
+      ctx.arc(0, 0, s * 0.36, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3.5;
       for (let i = 0; i < 8; i++) {
-        const angle = (i * Math.PI) / 4;
+        const ang = (i * Math.PI) / 4;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * s * 0.45, Math.sin(angle) * s * 0.45);
-        ctx.lineTo(Math.cos(angle) * s * 0.65, Math.sin(angle) * s * 0.65);
+        ctx.moveTo(Math.cos(ang) * (s * 0.46), Math.sin(ang) * (s * 0.46));
+        ctx.lineTo(Math.cos(ang) * (s * 0.65), Math.sin(ang) * (s * 0.65));
         ctx.stroke();
       }
     } else if (sticker.stickerKey === 'cloud') {
+      // Fluffy Sky Cloud
+      ctx.fillStyle = '#e0f2fe';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(-s * 0.2, 0, s * 0.2, Math.PI * 0.5, Math.PI * 1.5);
-      ctx.arc(0, -s * 0.15, s * 0.28, Math.PI * 0.8, Math.PI * 2.2);
+      ctx.arc(0, -s * 0.16, s * 0.28, Math.PI * 0.8, Math.PI * 2.2);
       ctx.arc(s * 0.2, 0, s * 0.2, Math.PI * 1.5, Math.PI * 0.5);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
     } else if (sticker.stickerKey === 'mountain') {
+      // Snowcapped Mountain
+      ctx.fillStyle = '#475569';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(-s * 0.5, s * 0.4);
       ctx.lineTo(0, -s * 0.4);
       ctx.lineTo(s * 0.5, s * 0.4);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+
+      // Snowcap
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.4);
+      ctx.lineTo(-s * 0.18, -s * 0.12);
+      ctx.lineTo(s * 0.18, -s * 0.12);
+      ctx.closePath();
+      ctx.fill();
     } else if (sticker.stickerKey === 'waves') {
+      // Ocean Surf
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(-s * 0.5, 0);
-      ctx.bezierCurveTo(-s * 0.25, -s * 0.3, 0, s * 0.3, s * 0.25, 0);
-      ctx.bezierCurveTo(s * 0.35, -s * 0.2, s * 0.45, 0, s * 0.5, 0);
+      ctx.bezierCurveTo(-s * 0.25, -s * 0.35, 0, s * 0.35, s * 0.25, 0);
+      ctx.bezierCurveTo(s * 0.35, -s * 0.25, s * 0.45, 0, s * 0.5, 0);
+      ctx.stroke();
+      ctx.strokeStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.45, s * 0.2);
+      ctx.bezierCurveTo(-s * 0.2, -s * 0.15, 0.05, s * 0.45, s * 0.3, s * 0.2);
       ctx.stroke();
     } else if (sticker.stickerKey === 'trees') {
+      // Evergreen Pine
+      ctx.fillStyle = '#10b981';
+      ctx.strokeStyle = '#047857';
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(0, -s * 0.5);
       ctx.lineTo(-s * 0.3, -s * 0.1);
@@ -839,13 +1081,27 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       ctx.lineTo(s * 0.3, -s * 0.1);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+
+      // Trunk
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-s * 0.06, s * 0.3, s * 0.12, s * 0.18);
     } else if (sticker.stickerKey === 'heart') {
+      // Crimson Love Heart
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#b91c1c';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(0, s * 0.35);
-      ctx.bezierCurveTo(-s * 0.5, -s * 0.1, -s * 0.4, -s * 0.4, 0, -s * 0.2);
-      ctx.bezierCurveTo(s * 0.4, -s * 0.4, s * 0.5, -s * 0.1, 0, s * 0.35);
+      ctx.bezierCurveTo(-s * 0.5, -s * 0.1, -s * 0.4, -s * 0.45, 0, -s * 0.2);
+      ctx.bezierCurveTo(s * 0.4, -s * 0.45, s * 0.5, -s * 0.1, 0, s * 0.35);
       ctx.fill();
+      ctx.stroke();
     } else if (sticker.stickerKey === 'star' || sticker.stickerKey === 'sparkle') {
+      // Golden Sparkling Star
+      ctx.fillStyle = '#fbbf24';
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(0, -s * 0.5);
       ctx.lineTo(s * 0.12, -s * 0.12);
@@ -857,9 +1113,28 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       ctx.lineTo(-s * 0.12, -s * 0.12);
       ctx.closePath();
       ctx.fill();
-    } else {
+      ctx.stroke();
+    } else if (sticker.stickerKey === 'flame') {
+      // Campfire Flame
+      ctx.fillStyle = '#f97316';
       ctx.beginPath();
-      ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2);
+      ctx.moveTo(-s * 0.25, s * 0.35);
+      ctx.quadraticCurveTo(-s * 0.4, -s * 0.1, 0, -s * 0.45);
+      ctx.quadraticCurveTo(s * 0.4, -s * 0.1, s * 0.25, s * 0.35);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.12, s * 0.35);
+      ctx.quadraticCurveTo(-s * 0.2, 0, 0, -s * 0.2);
+      ctx.quadraticCurveTo(s * 0.2, 0, s * 0.12, s * 0.35);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -870,7 +1145,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   // POINTER & TOUCH EVENT HANDLING
   // -------------------------------------------------------------
   const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
-    const canvas = canvasRef.current;
+    const canvas = drawCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     return {
@@ -879,9 +1154,44 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     };
   };
 
+  const handlePlaceSticker = (key: string, x: number, y: number) => {
+    const newSticker: StickerItem = {
+      id: Math.random().toString(),
+      stickerKey: key,
+      x,
+      y,
+      size: 75,
+      author: user?.displayName || 'Me',
+    };
+
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.stickers = [...page.stickers, newSticker];
+        page.history = [
+          ...page.history.slice(0, page.historyStep + 1),
+          { strokes: page.strokes, shapes: page.shapes, stickers: page.stickers },
+        ];
+        page.historyStep = page.history.length - 1;
+      }
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'add_sticker',
+        payload: { sticker: newSticker },
+      });
+    }
+
+    toast.success('Sticker placed on canvas! Tap to place more.');
+  };
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    canvasRef.current?.setPointerCapture(e.pointerId);
+    drawCanvasRef.current?.setPointerCapture(e.pointerId);
 
     const pt = getCanvasCoords(e);
 
@@ -903,33 +1213,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
 
     if (activeTab === 'sticker') {
-      // Place sticker directly on click
-      const newSticker: StickerItem = {
-        id: Math.random().toString(),
-        stickerKey: selectedSticker,
-        x: pt.x,
-        y: pt.y,
-        size: brushSize * 4,
-        color: brushColor,
-        author: user?.displayName || 'Me',
-      };
-
-      setPages((prev) => {
-        const next = [...prev];
-        const page = next[activePageIndex];
-        if (page) {
-          page.stickers = [...page.stickers, newSticker];
-        }
-        return next;
-      });
-
-      if (socket && isOpponentConnected) {
-        socket.emit('paint:action', {
-          sessionCode,
-          actionType: 'add_sticker',
-          payload: { sticker: newSticker },
-        });
-      }
+      handlePlaceSticker(selectedSticker, pt.x, pt.y);
       return;
     }
 
@@ -971,7 +1255,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     currentPointsRef.current.push(pt);
 
     // Live preview of stroke currently being drawn
-    const canvas = canvasRef.current;
+    const canvas = drawCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -986,13 +1270,13 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       author: user?.displayName || 'Me',
     };
 
-    redrawCanvas();
+    redrawDrawingLayer();
     drawStrokeOnCanvas(ctx, tempStroke);
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    canvasRef.current?.releasePointerCapture(e.pointerId);
+    drawCanvasRef.current?.releasePointerCapture(e.pointerId);
 
     if (activeTab === 'shape' && currentShapePreview) {
       if (currentShapePreview.width > 5 || currentShapePreview.height > 5) {
@@ -1108,7 +1392,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   };
 
   const handleClearCanvas = () => {
-    if (confirm('Clear the current canvas page?')) {
+    if (confirm('Clear the drawings on this page?')) {
       setPages((prev) => {
         const next = [...prev];
         const page = next[activePageIndex];
@@ -1137,18 +1421,21 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   };
 
   // -------------------------------------------------------------
-  // PAGE MANAGEMENT
+  // PAGE MANAGEMENT & CUSTOMIZATION
   // -------------------------------------------------------------
   const handleAddPage = () => {
     const newPageNum = pages.length + 1;
     const newPage: CanvasPage = {
       id: `page-${Date.now()}`,
       title: `Page ${newPageNum}`,
+      pageColor: '#ffffff',
+      sceneryPreset: 'blank',
+      customSceneryUrl: null,
+      frame: 'wood',
+      canvasRatio: 'fit',
       strokes: [],
       shapes: [],
       stickers: [],
-      bgPreset: 'sunset',
-      frame: 'polaroid',
       history: [{ strokes: [], shapes: [], stickers: [] }],
       historyStep: 0,
     };
@@ -1185,22 +1472,36 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
   };
 
-  // -------------------------------------------------------------
-  // BACKGROUND & FRAME SELECTION
-  // -------------------------------------------------------------
-  const handleSelectBgPreset = (preset: BgPreset) => {
+  const handleSelectPageColor = (color: string) => {
     setPages((prev) => {
       const next = [...prev];
       const page = next[activePageIndex];
-      if (page) page.bgPreset = preset;
+      if (page) page.pageColor = color;
       return next;
     });
 
     if (socket && isOpponentConnected) {
       socket.emit('paint:action', {
         sessionCode,
-        actionType: 'set_bg',
-        payload: { bgPreset: preset },
+        actionType: 'set_page_color',
+        payload: { pageColor: color },
+      });
+    }
+  };
+
+  const handleSelectSceneryPreset = (preset: SceneryPreset) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.sceneryPreset = preset;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_scenery',
+        payload: { sceneryPreset: preset },
       });
     }
   };
@@ -1222,65 +1523,66 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
   };
 
+  const handleSelectCanvasRatio = (ratio: CanvasRatio) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.canvasRatio = ratio;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_ratio',
+        payload: { canvasRatio: ratio },
+      });
+    }
+  };
+
   // -------------------------------------------------------------
   // HIGH-RESOLUTION ARTWORK DOWNLOAD
   // -------------------------------------------------------------
   const handleDownloadArtwork = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const bgCanvas = bgCanvasRef.current;
+    const drawCanvas = drawCanvasRef.current;
+    if (!bgCanvas || !drawCanvas) return;
 
     // Create high-res export canvas
     const exportCanvas = document.createElement('canvas');
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = bgCanvas.width;
+    const height = bgCanvas.height;
     exportCanvas.width = width;
     exportCanvas.height = height;
 
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
-    // Draw background
-    drawBackgroundPreset(ctx, width, height, currentPage.bgPreset);
+    // 1. Draw Background
+    ctx.drawImage(bgCanvas, 0, 0);
 
-    // Draw shapes
-    currentPage.shapes.forEach((shape) => drawShapeOnCanvas(ctx, shape));
+    // 2. Draw Drawings on top
+    ctx.drawImage(drawCanvas, 0, 0);
 
-    // Draw strokes
-    currentPage.strokes.forEach((stroke) => drawStrokeOnCanvas(ctx, stroke));
-
-    // Draw stickers
-    currentPage.stickers.forEach((sticker) => drawStickerOnCanvas(ctx, sticker));
-
-    // Draw Frame overlay if chosen
-    if (currentPage.frame === 'polaroid') {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, height - 70, width, 70);
-      ctx.fillStyle = '#334155';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Sunset Canvas Studio - After Party', width / 2, height - 28);
+    // 3. Draw Realistic Frame Overlay if selected
+    if (currentPage.frame === 'wood') {
+      ctx.strokeStyle = '#5c3a21';
+      ctx.lineWidth = 28;
+      ctx.strokeRect(14, 14, width - 28, height - 28);
+      ctx.strokeStyle = '#3b2312';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(28, 28, width - 56, height - 56);
     } else if (currentPage.frame === 'gold') {
       ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 18;
-      ctx.strokeRect(9, 9, width - 18, height - 18);
-      ctx.strokeStyle = '#fef3c7';
+      ctx.lineWidth = 26;
+      ctx.strokeRect(13, 13, width - 26, height - 26);
+      ctx.strokeStyle = '#fef08a';
       ctx.lineWidth = 3;
-      ctx.strokeRect(18, 18, width - 36, height - 36);
-    } else if (currentPage.frame === 'sunset') {
-      const grad = ctx.createLinearGradient(0, 0, width, height);
-      grad.addColorStop(0, '#f43f5e');
-      grad.addColorStop(0.5, '#f59e0b');
-      grad.addColorStop(1, '#8b5cf6');
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 14;
-      ctx.strokeRect(7, 7, width - 14, height - 14);
-    } else if (currentPage.frame === 'wood') {
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 20;
-      ctx.strokeRect(10, 10, width - 20, height - 20);
-      ctx.strokeStyle = '#451a03';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(20, 20, width - 40, height - 40);
+      ctx.strokeRect(26, 26, width - 52, height - 52);
+    } else if (currentPage.frame === 'black') {
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 24;
+      ctx.strokeRect(12, 12, width - 24, height - 24);
     }
 
     const dataUrl = exportCanvas.toDataURL('image/png');
@@ -1313,7 +1615,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     setChatMessages((prev) => [...prev, newMsg]);
     setChatInput('');
 
-    // Broadcast chat to friend
     if (socket && isOpponentConnected) {
       socket.emit('paint:chat', {
         sessionCode,
@@ -1322,7 +1623,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       });
     }
 
-    // Show 2-second toast locally too
     showFloatingToast(myName, text);
   };
 
@@ -1526,74 +1826,92 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </button>
       </div>
 
-      {/* 2. Main Studio Canvas Work Area */}
-      <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center p-2 sm:p-4">
-        {/* The Painting Canvas Container with chosen Frame */}
+      {/* 2. Main Studio Canvas Work Area with Authentic Photo Frame */}
+      <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center p-2 sm:p-5">
+        {/* Photo Frame Container */}
         <div
-          ref={containerRef}
-          className={`relative w-full h-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
-            currentPage.frame === 'polaroid'
-              ? 'border-[12px] border-b-[40px] border-white shadow-xl'
+          className={`relative flex items-center justify-center transition-all duration-300 ${
+            currentPage.canvasRatio === '1:1'
+              ? 'aspect-square h-full max-h-[75vh]'
+              : currentPage.canvasRatio === '3:4'
+              ? 'aspect-[3/4] h-full max-h-[75vh]'
+              : currentPage.canvasRatio === '16:9'
+              ? 'aspect-[16/9] w-full max-w-5xl'
+              : 'w-full h-full max-w-5xl'
+          } ${
+            currentPage.frame === 'wood'
+              ? 'p-3 sm:p-4 bg-[#f8f5ee] rounded-2xl border-[14px] border-[#5c3a21] shadow-[0_20px_50px_rgba(0,0,0,0.85)] ring-2 ring-[#3b2312]'
               : currentPage.frame === 'gold'
-              ? 'border-[10px] border-amber-500 ring-2 ring-amber-300 shadow-amber-500/20'
-              : currentPage.frame === 'sunset'
-              ? 'border-[8px] border-transparent bg-gradient-to-r from-rose-500 via-amber-500 to-purple-600 bg-origin-border'
-              : currentPage.frame === 'wood'
-              ? 'border-[12px] border-amber-900 shadow-inner'
-              : currentPage.frame === 'neon'
-              ? 'border-[6px] border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.5)]'
-              : 'border border-slate-800'
+              ? 'p-3 sm:p-4 bg-[#fdfbf7] rounded-2xl border-[14px] border-[#d97706] shadow-[0_20px_50px_rgba(0,0,0,0.85)] ring-2 ring-[#fef08a]'
+              : currentPage.frame === 'black'
+              ? 'p-3 sm:p-4 bg-white rounded-2xl border-[12px] border-[#18181b] shadow-[0_20px_50px_rgba(0,0,0,0.85)]'
+              : currentPage.frame === 'minimal'
+              ? 'rounded-2xl border-2 border-slate-700/60 shadow-2xl overflow-hidden'
+              : 'rounded-xl border border-slate-800 shadow-xl overflow-hidden'
           }`}
-          style={{ touchAction: 'none' }}
         >
-          <canvas
-            ref={canvasRef}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            className="w-full h-full cursor-crosshair block"
+          {/* Inner Canvas Mount with Drop Shadow */}
+          <div
+            ref={containerRef}
+            className="relative w-full h-full rounded-lg overflow-hidden shadow-inner"
             style={{ touchAction: 'none' }}
-          />
+          >
+            {/* Layer 1: Background Canvas (Paper Color & Scenery Outline) */}
+            <canvas
+              ref={bgCanvasRef}
+              className="absolute inset-0 w-full h-full pointer-events-none block"
+            />
 
-          {/* Remote Friend's Cursor Indicator */}
-          {remoteCursor && (
-            <div
-              className="absolute pointer-events-none transition-all duration-75 ease-out z-20"
-              style={{
-                left: `${remoteCursor.x}px`,
-                top: `${remoteCursor.y}px`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <div className="w-4 h-4 rounded-full border-2 border-white bg-rose-500 shadow-md" />
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-white whitespace-nowrap ml-2">
-                {remoteCursor.name}
-              </span>
-            </div>
-          )}
+            {/* Layer 2: Transparent Drawing Canvas (Non-Destructive Smooth Strokes) */}
+            <canvas
+              ref={drawCanvasRef}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className="absolute inset-0 w-full h-full cursor-crosshair block z-10"
+              style={{ touchAction: 'none' }}
+            />
 
-          {/* 2-Second Floating Chat Toast Over Canvas (Exact User Request) */}
-          <AnimatePresence>
-            {floatingToast && (
-              <motion.div
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-sm sm:max-w-md w-auto px-4 py-2.5 rounded-full bg-slate-900/90 border border-amber-500/40 backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none"
+            {/* Remote Friend's Cursor Indicator */}
+            {remoteCursor && (
+              <div
+                className="absolute pointer-events-none transition-all duration-75 ease-out z-20"
+                style={{
+                  left: `${remoteCursor.x}px`,
+                  top: `${remoteCursor.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                }}
               >
-                <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping flex-none" />
-                <span className="text-xs font-black text-amber-300 flex-none">{floatingToast.sender}:</span>
-                <span className="text-xs font-medium text-slate-100 truncate">{floatingToast.text}</span>
-              </motion.div>
+                <div className="w-4 h-4 rounded-full border-2 border-white bg-rose-500 shadow-md" />
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-white whitespace-nowrap ml-2">
+                  {remoteCursor.name}
+                </span>
+              </div>
             )}
-          </AnimatePresence>
+
+            {/* 2-Second Floating Chat Toast Over Canvas (Exact User Request) */}
+            <AnimatePresence>
+              {floatingToast && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-sm sm:max-w-md w-auto px-4 py-2.5 rounded-full bg-slate-900/90 border border-amber-500/40 backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none"
+                >
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping flex-none" />
+                  <span className="text-xs font-black text-amber-300 flex-none">{floatingToast.sender}:</span>
+                  <span className="text-xs font-medium text-slate-100 truncate">{floatingToast.text}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      {/* 3. Floating Bottom Tools Dock (Responsive & Zero Tearing) */}
-      <footer className="flex-none bg-slate-900/90 backdrop-blur-md border-t border-slate-800/80 px-2 sm:px-6 py-2 sm:py-3 z-30">
+      {/* 3. Floating Bottom Tools Dock (Clean, Non-Clipping, Fully Categorized) */}
+      <footer className="flex-none bg-slate-900/95 backdrop-blur-md border-t border-slate-800/80 px-2 sm:px-6 py-2 z-30">
         <div className="max-w-5xl mx-auto flex flex-col gap-2">
           {/* Sub-Panel: Dynamic Options Based on Active Tab */}
           <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1">
@@ -1674,7 +1992,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
             {activeTab === 'color' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
-                {SUNSET_PALETTE.map((c) => (
+                {BRUSH_PALETTE.map((c) => (
                   <button
                     key={c}
                     onClick={() => setBrushColor(c)}
@@ -1694,6 +2012,80 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   />
                   <span className="text-xs font-mono uppercase">{brushColor}</span>
                 </div>
+              </div>
+            )}
+
+            {/* PAGE TAB: Page Color & Canvas Size */}
+            {activeTab === 'page' && (
+              <div className="flex items-center gap-3 overflow-x-auto py-1 w-full justify-between sm:justify-start">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400 flex-none">Paper Color:</span>
+                  {PAGE_COLORS.map((pc) => (
+                    <button
+                      key={pc.color}
+                      onClick={() => handleSelectPageColor(pc.color)}
+                      title={pc.label}
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex-none border-2 transition-transform ${
+                        currentPage.pageColor === pc.color ? 'border-amber-400 scale-110 shadow-md' : 'border-slate-600'
+                      }`}
+                      style={{ backgroundColor: pc.color }}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={currentPage.pageColor}
+                    onChange={(e) => handleSelectPageColor(e.target.value)}
+                    className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 flex-none ml-1"
+                    title="Custom paper color"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none ml-2">
+                  <span className="text-[11px] font-bold text-slate-400 px-1">Size:</span>
+                  {[
+                    { key: 'fit', label: 'Fit' },
+                    { key: '1:1', label: '1:1' },
+                    { key: '3:4', label: '3:4' },
+                    { key: '16:9', label: '16:9' },
+                  ].map((sz) => (
+                    <button
+                      key={sz.key}
+                      onClick={() => handleSelectCanvasRatio(sz.key as CanvasRatio)}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
+                        currentPage.canvasRatio === sz.key
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {sz.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* SCENERY TAB: Prebuilt Scenery Outlines Ready for Coloring */}
+            {activeTab === 'scenery' && (
+              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
+                {[
+                  { key: 'blank', label: 'Blank Canvas' },
+                  { key: 'sunset-lake', label: 'Sunset Lake & Mountains' },
+                  { key: 'beach-sunset', label: 'Tropical Beach Sunset' },
+                  { key: 'forest-stars', label: 'Forest Campfire & Moon' },
+                  { key: 'desert-dunes', label: 'Desert Dunes & Sun' },
+                ].map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => handleSelectSceneryPreset(s.key as SceneryPreset)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
+                      currentPage.sceneryPreset === s.key
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -1736,6 +2128,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
+            {/* STICKERS TAB: Instant Placement on Tap & Canvas Drop */}
             {activeTab === 'sticker' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {SCENERY_STICKERS.map((st) => {
@@ -1743,7 +2136,14 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   return (
                     <button
                       key={st.key}
-                      onClick={() => setSelectedSticker(st.key)}
+                      onClick={() => {
+                        setSelectedSticker(st.key);
+                        // Instant center placement for convenience!
+                        const c = drawCanvasRef.current;
+                        const w = c ? c.width / 4 : 200;
+                        const h = c ? c.height / 4 : 200;
+                        handlePlaceSticker(st.key, w, h);
+                      }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
                         selectedSticker === st.key
                           ? 'bg-amber-500 text-slate-950'
@@ -1758,39 +2158,15 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {activeTab === 'bg' && (
-              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
-                {[
-                  { key: 'sunset', label: 'Sunset Sky' },
-                  { key: 'golden', label: 'Golden Dawn' },
-                  { key: 'midnight', label: 'Midnight Stars' },
-                  { key: 'scenery', label: 'Scenery Sketch' },
-                  { key: 'blank', label: 'Blank Canvas' },
-                ].map((b) => (
-                  <button
-                    key={b.key}
-                    onClick={() => handleSelectBgPreset(b.key as BgPreset)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
-                      currentPage.bgPreset === b.key
-                        ? 'bg-amber-500 text-slate-950'
-                        : 'bg-slate-800/80 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
+            {/* FRAMES TAB: Authentic Photo Frames */}
             {activeTab === 'frame' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {[
-                  { key: 'polaroid', label: 'Polaroid Art' },
-                  { key: 'gold', label: 'Gold Gallery' },
-                  { key: 'sunset', label: 'Sunset Glow' },
-                  { key: 'wood', label: 'Wood Border' },
-                  { key: 'neon', label: 'Cyber Neon' },
-                  { key: 'none', label: 'No Frame' },
+                  { key: 'wood', label: 'Walnut Wood Frame' },
+                  { key: 'gold', label: 'Gallery Gold Frame' },
+                  { key: 'black', label: 'Modern Studio Black' },
+                  { key: 'minimal', label: 'Minimal Studio Border' },
+                  { key: 'none', label: 'Frameless Canvas' },
                 ].map((f) => (
                   <button
                     key={f.key}
@@ -1830,6 +2206,28 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               <span>Colors</span>
             </button>
 
+            {/* Page & Size Tab */}
+            <button
+              onClick={() => setActiveTab('page')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'page' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-5 h-5" />
+              <span>Page & Size</span>
+            </button>
+
+            {/* Scenery Line Art Outlines */}
+            <button
+              onClick={() => setActiveTab('scenery')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'scenery' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ImageIcon className="w-5 h-5" />
+              <span>Scenery</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('shape')}
               className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
@@ -1851,23 +2249,13 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
             </button>
 
             <button
-              onClick={() => setActiveTab('bg')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'bg' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <ImageIcon className="w-5 h-5" />
-              <span>Scenery</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('frame')}
               className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
                 activeTab === 'frame' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <Layers className="w-5 h-5" />
-              <span>Frames</span>
+              <span>Photo Frames</span>
             </button>
           </div>
         </div>
