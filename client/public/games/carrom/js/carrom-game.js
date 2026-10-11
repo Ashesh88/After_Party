@@ -85,10 +85,10 @@ class CarromGame {
             MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.ROTATE
         };
-        // Mobile / Touchscreens: 1 finger is 100% dedicated to board interactions (striker sliding & aiming). 2 fingers pinch / orbit!
+        // Mobile / Touchscreens: Swipe outside board to orbit 3D table, touch board to aim/move pieces
         this.controls.touches = {
-            ONE: null,
-            TWO: THREE.TOUCH.DOLLY_ROTATE
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
         };
 
         // Glare-Free Warm Diffuse Studio Lighting (Balanced levels so white pieces are crisp and never bleached)
@@ -484,8 +484,8 @@ class CarromGame {
                 } else {
                     orbitDist = (boardExtent * 1.25) / (2 * tanHalfFov);
                 }
-                // Rock-solid 3D perspective angle matching 8-ball pool
-                this.camera.position.set(0, orbitDist * 0.70, orbitDist * 0.75);
+                // Distinctive 3D perspective angle (shows real 3D depth of rails, nets, and pieces)
+                this.camera.position.set(orbitDist * 0.22, orbitDist * 0.72, orbitDist * 0.78);
                 this.camera.lookAt(0, 0, 0);
                 this.controls.target.set(0, 0, 0);
                 this.controls.update();
@@ -1045,23 +1045,28 @@ class CarromGame {
         if (!isMyTurn) return;
 
         const pt = this.getBoardPlaneIntersection(e);
-        if (!pt) return;
 
-        // Pointer clicked/touched inside the playing field bounds
-        if (Math.abs(pt.x) <= 35 && Math.abs(pt.z) <= 35) {
-            // Temporarily disable OrbitControls so touch interaction never destabilizes or wobbles the 3D table on phones
+        // Pointer clicked/touched inside the playing field bounds (-35 to +35)
+        if (pt && Math.abs(pt.x) <= 35 && Math.abs(pt.z) <= 35) {
+            // Temporarily disable OrbitControls so board interaction never wobbles the camera
             if (this.controls) this.controls.enabled = false;
 
-            const baselineZ = this.currentTurn === 'p1' ? 26.0 : -26.0;
+            const striker = this.piecesManager.striker;
+            const distToStriker = striker ? Math.hypot(pt.x - striker.x, pt.z - striker.z) : 999;
 
-            // If pointer clicked on or near the baseline (z within 8.5 units of baseline)
-            if (Math.abs(pt.z - baselineZ) < 8.5) {
+            // Striker ONLY moves when specifically clicking/touching directly ON the striker!
+            if (distToStriker <= (striker?.radius || 1.95) * 2.2) {
                 this.isDraggingStriker = true;
                 this.updateStrikerPositionFromCoord(pt.x);
             } else {
-                // Anywhere else on board: aiming
+                // Anywhere else on the board: ALWAYS AIM (TARGET)!
                 this.isAiming = true;
                 this.updateAimAngleFromCoord(pt.x, pt.z);
+            }
+        } else {
+            // Touched outside playing field: OrbitControls handles rotating the 3D table smoothly!
+            if (this.controls && this.currentView === 'orbit') {
+                this.controls.enabled = true;
             }
         }
     }

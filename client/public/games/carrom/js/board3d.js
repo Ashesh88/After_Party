@@ -264,7 +264,7 @@ class CarromBoard3D {
 
         [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4].forEach(angle => drawArrow(angle));
 
-        // 6. Corner Pocket Hole Cutouts:
+        // 6. Corner Pocket Hole Cutouts (Single clean authentic carrom pocket hole, eliminates double-circle bug)
         const pxPerUnit = size / this.playWidth;
         const pocketPixelR = this.pocketRadius * pxPerUnit;
 
@@ -273,14 +273,16 @@ class CarromBoard3D {
             const cy = half + pos.z * pxPerUnit;
 
             // Recessed dark pocket well
-            ctx.fillStyle = '#060403';
+            ctx.fillStyle = '#0a0503';
             ctx.beginPath();
             ctx.arc(cx, cy, pocketPixelR, 0, Math.PI * 2);
             ctx.fill();
 
-            // Polished brass inner collar ring (matches reference photo corner)
-            ctx.strokeStyle = '#c89d42';
-            ctx.lineWidth = 8;
+            // Clean dark sheesham wood bevel rim (matches dark wood border)
+            ctx.strokeStyle = '#241108';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(cx, cy, pocketPixelR, 0, Math.PI * 2);
             ctx.stroke();
         });
 
@@ -370,31 +372,18 @@ class CarromBoard3D {
     }
 
     createCornerPockets() {
-        const pocketGeo = new THREE.CylinderGeometry(this.pocketRadius, this.pocketRadius * 0.9, 2.5, 32);
+        const pocketGeo = new THREE.CylinderGeometry(this.pocketRadius, this.pocketRadius * 0.85, 2.5, 32);
         const pocketMat = new THREE.MeshStandardMaterial({
             color: 0x050302,
             roughness: 0.95,
             metalness: 0.05
         });
 
-        // 4 Dark pocket net wells flush with board cutout (no double-circle artifact)
+        // 4 Dark pocket net wells flush underneath board
         this.pocketPositions.forEach(pos => {
             const pocketMesh = new THREE.Mesh(pocketGeo, pocketMat);
             pocketMesh.position.set(pos.x, -1.25, pos.z);
             this.boardGroup.add(pocketMesh);
-
-            // Sleek dark pocket collar (matching dark sheesham wood bevel)
-            const collarGeo = new THREE.RingGeometry(this.pocketRadius * 0.98, this.pocketRadius * 1.08, 32);
-            const collarMat = new THREE.MeshStandardMaterial({
-                color: 0x1b0e07,
-                roughness: 0.6,
-                metalness: 0.1,
-                side: THREE.DoubleSide
-            });
-            const collar = new THREE.Mesh(collarGeo, collarMat);
-            collar.rotation.x = Math.PI / 2;
-            collar.position.set(pos.x, 0.02, pos.z);
-            this.boardGroup.add(collar);
         });
     }
 
