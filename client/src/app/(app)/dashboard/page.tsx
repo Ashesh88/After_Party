@@ -354,12 +354,12 @@ export default function DashboardPage() {
 
         {/* Top Profile Row */}
         <div className="flex items-center justify-between gap-3 relative z-10">
-          <div className="flex items-center gap-3.5 min-w-0">
-            {/* Avatar with luxury glowing rotating ring */}
+          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+            {/* Avatar with luxury glowing rotating ring - strictly constrained dimensions */}
             <button 
               onClick={() => setShowAvatarModal(true)}
               title="Change Profile Avatar"
-              className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-400 to-purple-600 p-[2.5px] shadow-[0_0_25px_rgba(244,63,142,0.5)] group hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="relative w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] sm:w-14 sm:h-14 sm:min-w-[56px] sm:min-h-[56px] sm:max-w-[56px] sm:max-h-[56px] rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-400 to-purple-600 p-[2.5px] shadow-[0_0_25px_rgba(244,63,142,0.5)] group hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <div className="w-full h-full rounded-[13px] bg-[#0c0c17] flex items-center justify-center overflow-hidden">
                 {user?.avatar ? (
@@ -375,101 +375,103 @@ export default function DashboardPage() {
 
             {/* Greeting & Name with High-End Detailing */}
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider uppercase text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Online</span>
                 </span>
                 <span className="text-[10px] text-slate-400 font-semibold hidden sm:inline">• Room Active</span>
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight truncate">
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-black text-white tracking-tight truncate">
                 {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-300 drop-shadow-[0_2px_10px_rgba(244,63,142,0.3)]">{user?.displayName}</span>
               </h1>
             </div>
           </div>
 
           {/* Action Buttons Cluster - Sculpted 3D Jewel Glass Buttons */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Palette Button */}
             <button
               onClick={openMoodModal}
               title={`Mood Theme: ${currentMoodConfig.label}`}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-purple-500/25 to-pink-500/15 hover:from-purple-500/40 hover:to-pink-500/30 border border-pink-400/40 hover:border-pink-300 shadow-[0_4px_16px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.35)] flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-purple-500/25 to-pink-500/15 hover:from-purple-500/40 hover:to-pink-500/30 border border-pink-400/40 hover:border-pink-300 shadow-[0_4px_16px_rgba(244,63,142,0.3),inset_0_1px_1px_rgba(255,255,255,0.35)] flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              <Palette size={17} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 group-hover:rotate-12 transition-transform drop-shadow" />
+              <Palette size={16} style={{ color: currentMoodConfig.primaryColor }} className="group-hover:scale-110 group-hover:rotate-12 transition-transform drop-shadow" />
             </button>
 
             {/* Room Settings Key Button */}
             <button
               onClick={() => setShowRoomModal(true)}
               title="Room Settings"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-amber-500/20 to-pink-500/15 hover:from-amber-500/35 hover:to-pink-500/30 border border-amber-400/40 hover:border-amber-300 shadow-[0_4px_16px_rgba(245,158,11,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-amber-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-amber-500/20 to-pink-500/15 hover:from-amber-500/35 hover:to-pink-500/30 border border-amber-400/40 hover:border-amber-300 shadow-[0_4px_16px_rgba(245,158,11,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-amber-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              <KeyRound size={17} className="group-hover:scale-110 group-hover:-rotate-12 transition-transform drop-shadow" />
+              <KeyRound size={16} className="group-hover:scale-110 group-hover:-rotate-12 transition-transform drop-shadow" />
             </button>
 
             {/* Logout Button */}
             <button
               onClick={handleLogout}
               title="Sign Out"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-rose-500/20 to-red-500/10 hover:from-rose-500/35 hover:to-red-500/25 border border-rose-500/35 hover:border-rose-400 shadow-[0_4px_16px_rgba(244,63,94,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-rose-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-b from-rose-500/20 to-red-500/10 hover:from-rose-500/35 hover:to-red-500/25 border border-rose-500/35 hover:border-rose-400 shadow-[0_4px_16px_rgba(244,63,94,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)] text-rose-300 flex items-center justify-center transition-all cursor-pointer group active:scale-90 active:translate-y-0.5 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none" />
-              <LogOut size={17} className="group-hover:scale-110 group-hover:translate-x-0.5 transition-transform drop-shadow" />
+              <LogOut size={16} className="group-hover:scale-110 group-hover:translate-x-0.5 transition-transform drop-shadow" />
             </button>
           </div>
         </div>
 
         {/* Bottom Metadata & Interactive Badges */}
-        <div className="flex items-center gap-2.5 flex-wrap pt-2 border-t border-white/[0.08] relative z-10">
-          {/* User ID Pill Badge */}
-          <button
-            type="button"
-            onClick={handleCopyMyId}
-            title="Click to copy your unique User ID"
-            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent hover:from-cyan-500/25 border border-cyan-400/40 hover:border-cyan-300 text-cyan-200 text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-all shadow-[0_2px_12px_rgba(6,182,212,0.2),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95"
-          >
-            <ShieldCheck size={13} className="text-cyan-400" />
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-sans font-bold">User ID:</span>
-            <span>{user?.friendId || '...'}</span>
-            {copiedMyId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} className="text-slate-400" />}
-          </button>
+        <div className="flex items-center justify-between gap-2 flex-wrap pt-2.5 border-t border-white/[0.08] relative z-10">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* User ID Pill Badge */}
+            <button
+              type="button"
+              onClick={handleCopyMyId}
+              title="Click to copy your unique User ID"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent hover:from-cyan-500/25 border border-cyan-400/40 hover:border-cyan-300 text-cyan-200 text-xs font-mono font-bold flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all shadow-[0_2px_12px_rgba(6,182,212,0.2),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95"
+            >
+              <ShieldCheck size={13} className="text-cyan-400 shrink-0" />
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-sans font-bold">ID:</span>
+              <span>{user?.friendId || '...'}</span>
+              {copiedMyId ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="text-slate-400 shrink-0" />}
+            </button>
 
-          {/* Room Code Pill Badge */}
-          {room?.inviteCode ? (
-            <button
-              onClick={handleCopyCode}
-              title="Click to copy Room Code"
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500/20 via-purple-500/15 to-transparent hover:from-pink-500/30 border border-pink-400/40 hover:border-pink-300 text-xs font-medium text-white shadow-[0_2px_12px_rgba(244,63,142,0.25),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <KeyRound size={12} className="text-pink-400" />
-              <span className="text-[10px] text-slate-400 uppercase font-sans font-bold">Room:</span>
-              <span className="font-mono font-bold text-pink-300 tracking-wider">{room.inviteCode}</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/30 text-pink-200 font-extrabold flex items-center gap-1 border border-pink-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                <span>{room.members?.length || 1}</span>
-              </span>
-              {copiedCode ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} className="text-slate-400" />}
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowRoomModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_4px_15px_rgba(244,63,142,0.3)] active:scale-95"
-            >
-              <KeyRound size={12} />
-              <span>Create Room</span>
-            </button>
-          )}
+            {/* Room Code Pill Badge */}
+            {room?.inviteCode ? (
+              <button
+                onClick={handleCopyCode}
+                title="Click to copy Room Code"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500/20 via-purple-500/15 to-transparent hover:from-pink-500/30 border border-pink-400/40 hover:border-pink-300 text-xs font-medium text-white shadow-[0_2px_12px_rgba(244,63,142,0.25),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer"
+              >
+                <KeyRound size={12} className="text-pink-400 shrink-0" />
+                <span className="text-[10px] text-slate-400 uppercase font-sans font-bold">Room:</span>
+                <span className="font-mono font-bold text-pink-300 tracking-wider">{room.inviteCode}</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/30 text-pink-200 font-extrabold flex items-center gap-1 border border-pink-400/30 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>{room.members?.length || 1}</span>
+                </span>
+                {copiedCode ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="text-slate-400 shrink-0" />}
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowRoomModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_4px_15px_rgba(244,63,142,0.3)] active:scale-95"
+              >
+                <KeyRound size={12} />
+                <span>Create Room</span>
+              </button>
+            )}
+          </div>
 
           {/* Connections Pill Button */}
           <button
             type="button"
             onClick={() => setShowFriendsModal(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 via-teal-500/15 to-emerald-500/15 hover:from-cyan-500/30 hover:to-emerald-500/25 border border-cyan-400/40 hover:border-cyan-300 text-white text-xs font-extrabold flex items-center gap-2 shadow-[0_2px_12px_rgba(6,182,212,0.3),inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 transition-all cursor-pointer ml-auto"
+            className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 via-teal-500/15 to-emerald-500/15 hover:from-cyan-500/30 hover:to-emerald-500/25 border border-cyan-400/40 hover:border-cyan-300 text-white text-xs font-extrabold flex items-center gap-2 shadow-[0_2px_12px_rgba(6,182,212,0.3),inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 transition-all cursor-pointer shrink-0"
           >
-            <Users size={14} className="text-cyan-300" />
+            <Users size={13} className="text-cyan-300" />
             <span>Connections</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           </button>
@@ -560,7 +562,7 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white truncate drop-shadow-md">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white break-words line-clamp-2 drop-shadow-md">
               {room?.plannedEvent?.title || eventTitle}
             </h3>
           </div>
