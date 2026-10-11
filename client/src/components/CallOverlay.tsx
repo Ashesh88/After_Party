@@ -38,6 +38,7 @@ export default function CallOverlay() {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const miniRemoteVideoRef = useRef<HTMLVideoElement>(null);
   const dragConstraintsRef = useRef<HTMLDivElement>(null);
+  const expandedStageRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
 
   // Bind local stream
@@ -385,18 +386,21 @@ export default function CallOverlay() {
               </div>
 
               {/* Main Stage Video Display */}
-              <div className="flex-1 relative bg-black overflow-hidden flex items-center justify-center">
+              <div 
+                ref={expandedStageRef} 
+                className="flex-1 relative bg-black overflow-hidden flex items-center justify-center"
+              >
                 {/* Remote Partner Stream */}
                 <video
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover pointer-events-none"
                 />
 
                 {/* Fallback Avatar view if audio call or camera off */}
                 {(!remoteStream || callType === 'audio') && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gradient-to-tr from-[#0a0a14] via-[#101026] to-[#0a0a14]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gradient-to-tr from-[#0a0a14] via-[#101026] to-[#0a0a14] pointer-events-none select-none">
                     <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-tr from-pink-500/30 to-purple-600/30 border border-pink-500/40 p-2 shadow-[0_0_50px_rgba(244,63,142,0.3)] animate-float mb-4">
                       <div className="w-full h-full rounded-full bg-[#0a0a14] flex items-center justify-center overflow-hidden">
                         {partnerInfo?.avatar ? (
@@ -415,64 +419,116 @@ export default function CallOverlay() {
                   </div>
                 )}
 
-                {/* Local User PiP Tile */}
+                {/* Local User PiP Tile - Draggable Anywhere Like WhatsApp */}
                 {callType === 'video' && (
-                  <div className="absolute bottom-4 right-4 w-28 h-40 sm:w-36 sm:h-48 rounded-2xl overflow-hidden glass-panel border border-white/20 shadow-2xl z-20 bg-black">
+                  <motion.div
+                    drag
+                    dragConstraints={expandedStageRef}
+                    dragElastic={0.08}
+                    dragMomentum={false}
+                    className="absolute bottom-24 right-4 sm:bottom-24 sm:right-6 w-32 h-44 sm:w-40 sm:h-52 rounded-2xl overflow-hidden glass-panel border border-white/25 shadow-2xl z-20 bg-black cursor-grab active:cursor-grabbing touch-none select-none flex flex-col group"
+                    title="Drag anywhere on screen"
+                  >
+                    {/* Drag Handle Indicator */}
+                    <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                      <div className="w-6 h-1 rounded-full bg-white/40 shadow-sm" />
+                    </div>
+
                     <video
                       ref={localVideoRef}
                       autoPlay
                       playsInline
                       muted
-                      className={`w-full h-full object-cover ${isVideoOff ? 'hidden' : 'block'}`}
+                      className={`w-full h-full object-cover pointer-events-none ${isVideoOff ? 'hidden' : 'block'}`}
                     />
+
                     {isVideoOff && (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0d0d18] p-2 text-center">
-                        <VideoOff size={20} className="text-slate-500 mb-1" />
-                        <span className="text-[10px] text-slate-400">Camera Off</span>
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0d0d18] p-2 text-center select-none pointer-events-none">
+                        <VideoOff size={22} className="text-rose-400 mb-1" />
+                        <span className="text-[10px] font-bold text-slate-300">Camera Off</span>
+                        <span className="text-[9px] text-slate-500">Tap below to turn on</span>
                       </div>
                     )}
-                  </div>
+
+                    {/* Quick Mini Toggle Overlay on hover/tap */}
+                    <div className="absolute bottom-1.5 right-1.5 left-1.5 flex items-center justify-between z-30 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleVideo();
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className={`p-1.5 rounded-lg border text-xs shadow-md transition-all cursor-pointer ${
+                          isVideoOff
+                            ? 'bg-rose-500/80 text-white border-rose-400'
+                            : 'bg-black/60 text-white border-white/20 hover:bg-black/80'
+                        }`}
+                        title={isVideoOff ? 'Turn camera on' : 'Turn camera off'}
+                      >
+                        {isVideoOff ? <VideoOff size={12} /> : <Video size={12} />}
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMute();
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className={`p-1.5 rounded-lg border text-xs shadow-md transition-all cursor-pointer ${
+                          isMuted
+                            ? 'bg-rose-500/80 text-white border-rose-400'
+                            : 'bg-black/60 text-white border-white/20 hover:bg-black/80'
+                        }`}
+                        title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                      >
+                        {isMuted ? <MicOff size={12} /> : <Mic size={12} />}
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
 
-              {/* Bottom WhatsApp-Style Control Dock - Cleanly raised and clearly unobstructed */}
-              <div className="shrink-0 py-4 sm:py-5 px-6 bg-[#090913]/95 backdrop-blur-2xl border-t border-white/[0.08] flex items-center justify-center gap-5 sm:gap-7 z-20">
-                {/* 1. Mute / Unmute Button */}
-                <button
-                  onClick={toggleMute}
-                  className={`w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
-                    isMuted
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-rose-500/20'
-                      : 'bg-white/[0.1] hover:bg-white/[0.18] text-white border border-white/10'
-                  }`}
-                  title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+                {/* Floating WhatsApp-Style Bottom Control Dock - Always 100% visible & centered */}
+                <div 
+                  className="absolute bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-[#090913]/90 backdrop-blur-2xl border border-white/15 shadow-[0_15px_45px_rgba(0,0,0,0.85)] pointer-events-auto"
+                  onPointerDown={(e) => e.stopPropagation()}
                 >
-                  {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
-                </button>
-
-                {/* 2. Video Toggle Button */}
-                {callType === 'video' && (
+                  {/* 1. Mute / Unmute Button */}
                   <button
-                    onClick={toggleVideo}
-                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
-                      isVideoOff
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-rose-500/20'
-                        : 'bg-white/[0.1] hover:bg-white/[0.18] text-white border border-white/10'
+                    onClick={toggleMute}
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+                      isMuted
+                        ? 'bg-rose-500/25 text-rose-300 border-2 border-rose-500/60 shadow-rose-500/20'
+                        : 'bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/15'
                     }`}
-                    title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
+                    title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
                   >
-                    {isVideoOff ? <VideoOff size={22} /> : <Video size={22} />}
+                    {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
                   </button>
-                )}
 
-                {/* 3. Red End Call Button */}
-                <button
-                  onClick={() => endCall(socket)}
-                  className="w-16 h-16 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-xl shadow-rose-500/40 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                  title="End Call"
-                >
-                  <PhoneOff size={26} />
-                </button>
+                  {/* 2. Video Toggle Button */}
+                  {callType === 'video' && (
+                    <button
+                      onClick={toggleVideo}
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+                        isVideoOff
+                          ? 'bg-rose-500/25 text-rose-300 border-2 border-rose-500/60 shadow-rose-500/20'
+                          : 'bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/15'
+                      }`}
+                      title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
+                    >
+                      {isVideoOff ? <VideoOff size={22} /> : <Video size={22} />}
+                    </button>
+                  )}
+
+                  {/* 3. Red End Call Button */}
+                  <button
+                    onClick={() => endCall(socket)}
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-xl shadow-rose-500/50 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    title="End Call"
+                  >
+                    <PhoneOff size={26} />
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
