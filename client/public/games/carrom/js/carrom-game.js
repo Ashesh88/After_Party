@@ -59,7 +59,6 @@ class CarromGame {
 
         // Camera
         this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 1, 1000);
-        this.setCameraView('top');
 
         // Renderer with soft shadow maps
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -112,6 +111,9 @@ class CarromGame {
         // Physics callbacks
         this.physics.onPiecePocketed = (piece) => this.handlePiecePocketed(piece);
         this.physics.onAllStopped = () => this.handleShotComplete();
+
+        // Establish proper initial top-down camera view AFTER controls & scene are ready
+        this.setCameraView('top');
 
         // Render Loop
         this.clock = new THREE.Clock();
@@ -222,22 +224,35 @@ class CarromGame {
         const activeBtn = document.getElementById(`btn-view-${view}`);
         if (activeBtn) activeBtn.classList.add('active');
 
+        const isMobile = window.innerWidth < 640;
+        const isPortrait = window.innerHeight > window.innerWidth;
+
         if (view === 'top') {
-            this.controls.enabled = false;
-            this.camera.position.set(0, 92, 0.01);
+            if (this.controls) this.controls.enabled = false;
+            // Direct Top-Down Bird's Eye View with proper orientation (up: 0, 0, -1)
+            this.camera.up.set(0, 0, -1);
+            const camHeight = isPortrait ? (isMobile ? 135 : 120) : (isMobile ? 110 : 96);
+            this.camera.position.set(0, camHeight, 0);
             this.camera.lookAt(0, 0, 0);
+            if (this.controls) this.controls.target.set(0, 0, 0);
         } else if (view === 'aim') {
-            this.controls.enabled = false;
+            if (this.controls) this.controls.enabled = false;
+            this.camera.up.set(0, 1, 0);
             const sz = this.piecesManager?.striker?.z || 26;
             const sx = this.piecesManager?.striker?.x || 0;
             const sign = sz > 0 ? 1 : -1;
-            this.camera.position.set(sx * 0.35, 26, sz + sign * 36);
+            const camDist = isPortrait ? 44 : 36;
+            this.camera.position.set(sx * 0.35, 28, sz + sign * camDist);
             this.camera.lookAt(sx, 0, sz - sign * 25);
+            if (this.controls) this.controls.target.set(sx, 0, sz - sign * 25);
         } else if (view === 'orbit') {
-            this.controls.enabled = true;
-            this.camera.position.set(0, 55, 68);
-            this.controls.target.set(0, 0, 0);
-            this.controls.update();
+            this.camera.up.set(0, 1, 0);
+            if (this.controls) {
+                this.controls.enabled = true;
+                this.camera.position.set(0, 55, 68);
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
+            }
         }
     }
 
@@ -590,6 +605,7 @@ class CarromGame {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.setCameraView(this.currentView);
         });
 
         // View Toggles

@@ -199,6 +199,7 @@ class CarromBoard3D {
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.anisotropy = 16;
+        texture.needsUpdate = true;
         return texture;
     }
 
