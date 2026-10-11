@@ -19,7 +19,6 @@ import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/stor
 import FriendsModal from '../../../components/FriendsModal';
 import SavedSpacesModal from '../../../components/SavedSpacesModal';
 import EditProfileModal from '../../../components/EditProfileModal';
-import PushNotificationBanner from '../../../components/PushNotificationBanner';
 
 const CUTE_AVATARS = [
   { id: 'cat', emoji: '🐱', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Angel&backgroundColor=ffb6c1', name: 'Pink Bot' },
@@ -354,9 +353,6 @@ export default function DashboardPage() {
       {/* Subtle ambient lighting */}
       <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple top-64 -right-28 pointer-events-none" />
-
-      {/* Offline Web Push Notification Status & Enable Banner */}
-      <PushNotificationBanner />
 
       {/* Header Profile - Luxury Modern Architecture with Rich Detailing */}
       <header className="relative p-5 sm:p-6 rounded-[32px] glass-panel z-30 border border-white/[0.14] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.18)] space-y-4 group">
