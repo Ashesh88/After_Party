@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { 
   Heart, Sparkles, MessageSquareHeart, Phone, PhoneOff, MonitorUp, 
   Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon, Search, Loader2, Play,
-  ExternalLink, RefreshCw, ShieldAlert, Rewind, FastForward, Pause
+  ExternalLink, RefreshCw, ShieldAlert
 } from 'lucide-react';
 import { soundService } from '../../../lib/soundService';
 import api from '../../../lib/api';
@@ -273,51 +273,6 @@ export default function WatchPage() {
 
     return () => clearInterval(interval);
   }, [mediaState, socket]);
-
-  const handleSeekDelta = (deltaSeconds: number) => {
-    let newTime = 0;
-    if (mediaState?.type === 'youtube' && ytPlayerRef.current) {
-      try {
-        const current = ytPlayerRef.current.getCurrentTime() || 0;
-        newTime = Math.max(0, current + deltaSeconds);
-        ytPlayerRef.current.seekTo(newTime, true);
-      } catch {}
-    } else if (mediaState?.type === 'direct' && videoRef.current) {
-      const current = videoRef.current.currentTime || 0;
-      newTime = Math.max(0, current + deltaSeconds);
-      videoRef.current.currentTime = newTime;
-    }
-    socket?.emit('watch:state', { action: 'seek', currentTime: newTime });
-    toast.success(`${deltaSeconds > 0 ? `+${deltaSeconds}s` : `${deltaSeconds}s`} synced with partner`);
-  };
-
-  const handleTogglePlayPause = () => {
-    let action = 'play';
-    let currentTime = 0;
-    if (mediaState?.type === 'youtube' && ytPlayerRef.current) {
-      try {
-        const state = ytPlayerRef.current.getPlayerState();
-        currentTime = ytPlayerRef.current.getCurrentTime() || 0;
-        if (state === 1) {
-          ytPlayerRef.current.pauseVideo();
-          action = 'pause';
-        } else {
-          ytPlayerRef.current.playVideo();
-          action = 'play';
-        }
-      } catch {}
-    } else if (mediaState?.type === 'direct' && videoRef.current) {
-      currentTime = videoRef.current.currentTime || 0;
-      if (!videoRef.current.paused) {
-        videoRef.current.pause();
-        action = 'pause';
-      } else {
-        videoRef.current.play().catch(() => {});
-        action = 'play';
-      }
-    }
-    socket?.emit('watch:state', { action, currentTime });
-  };
 
   const handleCloseVideo = () => {
     setMediaState(null);
@@ -678,54 +633,6 @@ export default function WatchPage() {
                 </div>
               </div>
             )}
-
-            {/* Real-time Synced Controls Bar */}
-            <div className="flex items-center justify-center gap-2 sm:gap-2.5 py-1.5 px-3 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md shadow-md flex-wrap w-full max-w-lg">
-              <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
-                Live Synced
-              </span>
-
-              <button
-                type="button"
-                onClick={() => handleSeekDelta(-10)}
-                title="Rewind 10s for both"
-                className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-bold text-white flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/5"
-              >
-                <Rewind size={13} className="text-pink-400" />
-                <span>-10s</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleTogglePlayPause}
-                title="Play/Pause for both"
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:brightness-110 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
-              >
-                <Play size={12} className="fill-white" />
-                <span>Play / Pause</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSeekDelta(10)}
-                title="Fast forward 10s for both"
-                className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-bold text-white flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/5"
-              >
-                <span>+10s</span>
-                <FastForward size={13} className="text-pink-400" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSeekDelta(30)}
-                title="Fast forward 30s for both"
-                className="px-3 py-1.5 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs font-extrabold text-pink-300 flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-sm"
-              >
-                <span>+30s</span>
-                <FastForward size={13} className="text-pink-400" />
-              </button>
-            </div>
 
             {/* Quick Switch / Close Bar */}
             <div className="flex items-center gap-2 sm:gap-3 py-1 flex-wrap justify-center">
