@@ -12,7 +12,8 @@ import CardsGame from '../../../components/games/CardsGame';
 import BowlingGame from '../../../components/games/BowlingGame';
 import CarromGame from '../../../components/games/CarromGame';
 import UnoGame from '../../../components/games/UnoGame';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Disc, Target, Layers } from 'lucide-react';
+import CoPaintStudio from '../../../components/games/CoPaintStudio';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Spade, Disc, Target, Layers, Palette } from 'lucide-react';
 
 const games = [
   { 
@@ -96,6 +97,16 @@ const games = [
     thumb: '/videos/uno-thumb.jpg'
   },
   { 
+    id: 'paint', 
+    name: 'Sunset Canvas Studio', 
+    desc: 'Co-op painting, scenery, shapes & real-time chat',
+    icon: Palette, 
+    color: 'from-amber-500 via-rose-500 to-purple-600', 
+    tag: 'CO-OP ART',
+    video: '/videos/painting-preview.mp4',
+    thumb: '/videos/painting-thumb.jpg'
+  },
+  { 
     id: 'tictactoe', 
     name: 'Tic-Tac-Toe', 
     desc: 'Quick 3-in-a-row showdown',
@@ -140,6 +151,7 @@ export default function GamesPage() {
   if (activeGame === 'racer') return <TurboRacer onBack={() => setActiveGame(null)} />;
   if (activeGame === 'carrom') return <CarromGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'uno') return <UnoGame onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'paint') return <CoPaintStudio onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tictactoe') return <TicTacToe onBack={() => setActiveGame(null)} />;
   if (activeGame === 'tod') return <TruthOrDare onBack={() => setActiveGame(null)} />;
   if (activeGame === 'quiz') return <Quiz onBack={() => setActiveGame(null)} />;

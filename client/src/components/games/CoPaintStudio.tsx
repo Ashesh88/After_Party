@@ -1,0 +1,2071 @@
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  ArrowLeft,
+  Paintbrush,
+  Pen,
+  Sparkles,
+  Eraser,
+  Download,
+  Share2,
+  Users,
+  MessageSquare,
+  Undo2,
+  Redo2,
+  Trash2,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  Check,
+  Copy,
+  X,
+  Send,
+  Square,
+  Circle,
+  Star,
+  Heart,
+  Cloud,
+  Sun,
+  Mountain,
+  Waves,
+  Trees,
+  Palette,
+  Layers,
+  Image as ImageIcon,
+  Flame,
+  Search,
+  CheckCircle2,
+  Clock,
+  Compass,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '../../lib/store/authStore';
+import { useSocketStore } from '../../lib/store/socketStore';
+import { useGameStore } from '../../lib/store/gameStore';
+import api from '../../lib/api';
+import { Friend } from '../../lib/types';
+
+// Types
+type ToolType = 'pen' | 'brush' | 'neon' | 'spray' | 'eraser';
+type ShapeType = 'line' | 'rectangle' | 'circle' | 'star' | 'heart' | 'cloud' | 'mountain';
+type FrameType = 'none' | 'polaroid' | 'gold' | 'sunset' | 'wood' | 'neon';
+type BgPreset = 'blank' | 'sunset' | 'midnight' | 'golden' | 'scenery';
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Stroke {
+  id: string;
+  tool: ToolType;
+  color: string;
+  size: number;
+  opacity: number;
+  points: Point[];
+  author: string;
+}
+
+interface ShapeItem {
+  id: string;
+  type: ShapeType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  strokeColor: string;
+  fillColor: string | null;
+  strokeWidth: number;
+  author: string;
+}
+
+interface StickerItem {
+  id: string;
+  stickerKey: string;
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  author: string;
+}
+
+interface CanvasPage {
+  id: string;
+  title: string;
+  strokes: Stroke[];
+  shapes: ShapeItem[];
+  stickers: StickerItem[];
+  bgPreset: BgPreset;
+  frame: FrameType;
+  history: Array<{ strokes: Stroke[]; shapes: ShapeItem[]; stickers: StickerItem[] }>;
+  historyStep: number;
+}
+
+interface ChatMessage {
+  id: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isMe: boolean;
+}
+
+interface CoPaintStudioProps {
+  onBack: () => void;
+}
+
+// Curated Color Palettes (Rich Sunset & Scenery)
+const SUNSET_PALETTE = [
+  '#ff4500', // Sunset Coral Red
+  '#ff8c00', // Dark Orange
+  '#ffd700', // Sun Gold
+  '#ff69b4', // Hot Pink
+  '#8a2be2', // Twilight Violet
+  '#4b0082', // Indigo Night
+  '#1e90ff', // Ocean Blue
+  '#00ced1', // Lagoon Turquoise
+  '#2e8b57', // Forest Pine
+  '#8b4513', // Saddle Earth
+  '#ffffff', // Pure White
+  '#111827', // Midnight Obsidian
+];
+
+const SCENERY_STICKERS = [
+  { key: 'sun', label: 'Sun', icon: Sun },
+  { key: 'cloud', label: 'Cloud', icon: Cloud },
+  { key: 'mountain', label: 'Mountain', icon: Mountain },
+  { key: 'waves', label: 'Waves', icon: Waves },
+  { key: 'trees', label: 'Pine Trees', icon: Trees },
+  { key: 'star', label: 'Star', icon: Star },
+  { key: 'sparkle', label: 'Sparkle', icon: Sparkles },
+  { key: 'heart', label: 'Heart', icon: Heart },
+  { key: 'flame', label: 'Campfire', icon: Flame },
+  { key: 'compass', label: 'Compass', icon: Compass },
+];
+
+export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
+  const user = useAuthStore((state) => state.user);
+  const socket = useSocketStore((state) => state.socket);
+  const { sessionData, setSessionData } = useGameStore();
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+  const currentPointsRef = useRef<Point[]>([]);
+
+  // Session & Multiplayer State
+  const [sessionCode, setSessionCode] = useState<string>(() => {
+    return sessionData?.sessionCode || 'ART-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+  });
+  const [playerRole, setPlayerRole] = useState<'host' | 'guest'>('host');
+  const [opponentName, setOpponentName] = useState<string | null>(null);
+  const [isOpponentConnected, setIsOpponentConnected] = useState(false);
+  const [isWaitingForFriend, setIsWaitingForFriend] = useState(false);
+  const [remoteCursor, setRemoteCursor] = useState<{ x: number; y: number; name: string } | null>(null);
+
+  // Active Tool Settings
+  const [activeTab, setActiveTab] = useState<'brush' | 'color' | 'shape' | 'sticker' | 'bg' | 'frame'>('brush');
+  const [selectedTool, setSelectedTool] = useState<ToolType>('brush');
+  const [brushColor, setBrushColor] = useState<string>('#ff4500');
+  const [brushSize, setBrushSize] = useState<number>(8);
+  const [brushOpacity, setBrushOpacity] = useState<number>(100);
+  const [selectedShape, setSelectedShape] = useState<ShapeType>('rectangle');
+  const [shapeFilled, setShapeFilled] = useState<boolean>(false);
+  const [selectedSticker, setSelectedSticker] = useState<string>('sun');
+
+  // Multi-Page Canvas Management
+  const [pages, setPages] = useState<CanvasPage[]>([
+    {
+      id: 'page-1',
+      title: 'Page 1',
+      strokes: [],
+      shapes: [],
+      stickers: [],
+      bgPreset: 'sunset',
+      frame: 'polaroid',
+      history: [{ strokes: [], shapes: [], stickers: [] }],
+      historyStep: 0,
+    },
+  ]);
+  const [activePageIndex, setActivePageIndex] = useState<number>(0);
+  const currentPage = pages[activePageIndex] || pages[0];
+
+  // Chat State & 2-Second Screen Toast
+  const [showChatModal, setShowChatModal] = useState<boolean>(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      senderName: 'Studio Host',
+      text: 'Welcome to Sunset Canvas Studio! Start painting or invite a friend.',
+      timestamp: Date.now(),
+      isMe: false,
+    },
+  ]);
+  const [chatInput, setChatInput] = useState<string>('');
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [floatingToast, setFloatingToast] = useState<{ sender: string; text: string } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Friends Invite Modal State
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [friendsList, setFriendsList] = useState<Friend[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState<boolean>(false);
+  const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, boolean>>({});
+  const [searchFilter, setSearchFilter] = useState<string>('');
+  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [customJoinCode, setCustomJoinCode] = useState<string>('');
+
+  // Shape placement drag state
+  const [shapeDragStart, setShapeDragStart] = useState<Point | null>(null);
+  const [currentShapePreview, setCurrentShapePreview] = useState<ShapeItem | null>(null);
+
+  // -------------------------------------------------------------
+  // MULTIPLAYER INITIALIZATION & SOCKET ROUTING
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (sessionData?.sessionCode) {
+      const code = sessionData.sessionCode;
+      const role = (sessionData.role as 'host' | 'guest') || 'guest';
+      const opp = sessionData.opponentName || 'Friend';
+      setSessionCode(code);
+      setPlayerRole(role);
+      setOpponentName(opp);
+      setIsOpponentConnected(true);
+      setIsWaitingForFriend(false);
+
+      if (socket) {
+        socket.emit('paint:join', {
+          sessionCode: code,
+          role,
+          playerName: user?.displayName || 'Artist',
+        });
+      }
+      setSessionData(null);
+    } else {
+      if (socket) {
+        socket.emit('paint:join', {
+          sessionCode,
+          role: 'host',
+          playerName: user?.displayName || 'Host',
+        });
+      }
+    }
+  }, [sessionData, socket, sessionCode, user, setSessionData]);
+
+  // Socket listener registrations
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOpponentJoined = (data: { playerName: string; role: string }) => {
+      setIsWaitingForFriend(false);
+      setIsOpponentConnected(true);
+      if (data.playerName) setOpponentName(data.playerName);
+      toast.success(`${data.playerName || 'Friend'} joined the canvas!`);
+
+      // Host transmits current state to newly joined friend
+      if (playerRole === 'host') {
+        socket.emit('paint:sync_state', {
+          sessionCode,
+          canvasData: { pages, activePageIndex },
+        });
+      }
+    };
+
+    const handleRemoteDraw = (data: { strokeData: Stroke }) => {
+      if (!data?.strokeData) return;
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page) {
+          page.strokes = [...page.strokes, data.strokeData];
+          page.history = [
+            ...page.history.slice(0, page.historyStep + 1),
+            { strokes: page.strokes, shapes: page.shapes, stickers: page.stickers },
+          ];
+          page.historyStep = page.history.length - 1;
+        }
+        return next;
+      });
+    };
+
+    const handleRemoteAction = (data: { actionType: string; payload: any }) => {
+      if (!data) return;
+      const { actionType, payload } = data;
+
+      if (actionType === 'add_shape' && payload?.shape) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) {
+            page.shapes = [...page.shapes, payload.shape];
+          }
+          return next;
+        });
+      } else if (actionType === 'add_sticker' && payload?.sticker) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) {
+            page.stickers = [...page.stickers, payload.sticker];
+          }
+          return next;
+        });
+      } else if (actionType === 'clear_canvas') {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) {
+            page.strokes = [];
+            page.shapes = [];
+            page.stickers = [];
+          }
+          return next;
+        });
+        toast('Friend cleared the canvas');
+      } else if (actionType === 'set_bg' && payload?.bgPreset) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) page.bgPreset = payload.bgPreset;
+          return next;
+        });
+      } else if (actionType === 'set_frame' && payload?.frame) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) page.frame = payload.frame;
+          return next;
+        });
+      } else if (actionType === 'switch_page' && typeof payload?.pageIndex === 'number') {
+        setActivePageIndex(payload.pageIndex);
+      } else if (actionType === 'add_page' && payload?.newPage) {
+        setPages((prev) => [...prev, payload.newPage]);
+      }
+    };
+
+    const handleRemoteCursor = (data: { cursorPosition: { x: number; y: number }; playerName: string }) => {
+      if (data?.cursorPosition) {
+        setRemoteCursor({
+          x: data.cursorPosition.x,
+          y: data.cursorPosition.y,
+          name: data.playerName || 'Friend',
+        });
+      }
+    };
+
+    const handleSyncState = (data: { canvasData: { pages: CanvasPage[]; activePageIndex: number } }) => {
+      if (data?.canvasData?.pages) {
+        setPages(data.canvasData.pages);
+        if (typeof data.canvasData.activePageIndex === 'number') {
+          setActivePageIndex(data.canvasData.activePageIndex);
+        }
+        toast.success('Canvas synchronized with host!');
+      }
+    };
+
+    const handleRemoteChat = (data: { message: string; senderName: string; timestamp: number }) => {
+      if (!data?.message) return;
+      const newMsg: ChatMessage = {
+        id: Math.random().toString(),
+        senderName: data.senderName || 'Friend',
+        text: data.message,
+        timestamp: data.timestamp || Date.now(),
+        isMe: false,
+      };
+
+      setChatMessages((prev) => [...prev, newMsg]);
+
+      // Trigger 2-second floating popup toast
+      showFloatingToast(data.senderName || 'Friend', data.message);
+
+      if (!showChatModal) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    };
+
+    const handleOpponentLeft = () => {
+      setIsOpponentConnected(false);
+      setOpponentName(null);
+      toast('Friend disconnected from studio');
+    };
+
+    // Friend accepted in-game invite
+    const handleInviteAccepted = (data: { acceptedBy: string; sessionCode: string; game: string }) => {
+      if (data.sessionCode === sessionCode && (data.game === 'paint' || data.game === 'painting')) {
+        setIsWaitingForFriend(false);
+        setIsOpponentConnected(true);
+        toast.success(`${opponentName || 'Friend'} joined your art canvas!`);
+      }
+    };
+
+    const handleInviteDeclined = (data: { game: string }) => {
+      if (data.game === 'paint' || data.game === 'painting') {
+        setIsWaitingForFriend(false);
+        toast.error('Friend declined the art session invitation.');
+      }
+    };
+
+    socket.on('paint:opponent_joined', handleOpponentJoined);
+    socket.on('paint:draw', handleRemoteDraw);
+    socket.on('paint:action', handleRemoteAction);
+    socket.on('paint:cursor', handleRemoteCursor);
+    socket.on('paint:sync_state', handleSyncState);
+    socket.on('paint:chat', handleRemoteChat);
+    socket.on('paint:opponent_left', handleOpponentLeft);
+    socket.on('game:invite:accepted', handleInviteAccepted);
+    socket.on('game:invite:declined', handleInviteDeclined);
+
+    return () => {
+      socket.off('paint:opponent_joined', handleOpponentJoined);
+      socket.off('paint:draw', handleRemoteDraw);
+      socket.off('paint:action', handleRemoteAction);
+      socket.off('paint:cursor', handleRemoteCursor);
+      socket.off('paint:sync_state', handleSyncState);
+      socket.off('paint:chat', handleRemoteChat);
+      socket.off('paint:opponent_left', handleOpponentLeft);
+      socket.off('game:invite:accepted', handleInviteAccepted);
+      socket.off('game:invite:declined', handleInviteDeclined);
+    };
+  }, [socket, sessionCode, playerRole, pages, activePageIndex, showChatModal, opponentName, user]);
+
+  // Presence Query
+  const fetchFriends = useCallback(async () => {
+    setLoadingFriends(true);
+    try {
+      const res = await api.get('/friends');
+      const friends: Friend[] = res.data.friends || [];
+      setFriendsList(friends);
+
+      if (socket && friends.length > 0) {
+        const friendIds = friends.map((f) => f._id);
+        socket.emit('presence:query', { targetUserIds: friendIds });
+      }
+    } catch (err) {
+      console.error('Failed to load friends:', err);
+    } finally {
+      setLoadingFriends(false);
+    }
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handlePresenceStatus = (statusMap: Record<string, boolean>) => {
+      setOnlineUsersMap((prev) => ({ ...prev, ...statusMap }));
+    };
+    const handleUserOnline = ({ userId }: { userId: string }) => {
+      setOnlineUsersMap((prev) => ({ ...prev, [userId]: true }));
+    };
+    const handleUserOffline = ({ userId }: { userId: string }) => {
+      setOnlineUsersMap((prev) => ({ ...prev, [userId]: false }));
+    };
+
+    socket.on('presence:status', handlePresenceStatus);
+    socket.on('presence:online', handleUserOnline);
+    socket.on('presence:offline', handleUserOffline);
+
+    return () => {
+      socket.off('presence:status', handlePresenceStatus);
+      socket.off('presence:online', handleUserOnline);
+      socket.off('presence:offline', handleUserOffline);
+    };
+  }, [socket]);
+
+  // -------------------------------------------------------------
+  // 2-SECOND FLOATING TOAST LOGIC
+  // -------------------------------------------------------------
+  const showFloatingToast = (sender: string, text: string) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setFloatingToast({ sender, text });
+    toastTimeoutRef.current = setTimeout(() => {
+      setFloatingToast(null);
+      toastTimeoutRef.current = null;
+    }, 2000); // Exactly 2 seconds as requested by the user
+  };
+
+  // -------------------------------------------------------------
+  // CANVAS RENDERING ENGINE
+  // -------------------------------------------------------------
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Draw Background
+    drawBackgroundPreset(ctx, width, height, currentPage.bgPreset);
+
+    // 2. Draw Vector Shapes
+    currentPage.shapes.forEach((shape) => {
+      drawShapeOnCanvas(ctx, shape);
+    });
+
+    // 2.1 Draw Live Shape Preview during drag
+    if (currentShapePreview) {
+      drawShapeOnCanvas(ctx, currentShapePreview, true);
+    }
+
+    // 3. Draw Brush Strokes
+    currentPage.strokes.forEach((stroke) => {
+      drawStrokeOnCanvas(ctx, stroke);
+    });
+
+    // 4. Draw Stickers & Stamps
+    currentPage.stickers.forEach((sticker) => {
+      drawStickerOnCanvas(ctx, sticker);
+    });
+  }, [currentPage, currentShapePreview]);
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [redrawCanvas]);
+
+  // Canvas resize with retina scaling
+  useEffect(() => {
+    const updateCanvasDimensions = () => {
+      const container = containerRef.current;
+      const canvas = canvasRef.current;
+      if (!container || !canvas) return;
+
+      const rect = container.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      const targetWidth = Math.floor(rect.width);
+      const targetHeight = Math.floor(rect.height);
+
+      if (targetWidth > 0 && targetHeight > 0) {
+        canvas.width = targetWidth * dpr;
+        canvas.height = targetHeight * dpr;
+        canvas.style.width = `${targetWidth}px`;
+        canvas.style.height = `${targetHeight}px`;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+        redrawCanvas();
+      }
+    };
+
+    updateCanvasDimensions();
+    window.addEventListener('resize', updateCanvasDimensions);
+    return () => window.removeEventListener('resize', updateCanvasDimensions);
+  }, [redrawCanvas]);
+
+  // -------------------------------------------------------------
+  // DRAWING HELPER FUNCTIONS
+  // -------------------------------------------------------------
+  const drawBackgroundPreset = (ctx: CanvasRenderingContext2D, w: number, h: number, preset: BgPreset) => {
+    if (preset === 'blank') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+    } else if (preset === 'sunset') {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#2e0854'); // Twilight purple
+      grad.addColorStop(0.35, '#8b1e4f'); // Magenta sunset
+      grad.addColorStop(0.65, '#d35400'); // Amber orange
+      grad.addColorStop(0.9, '#f39c12'); // Golden glow
+      grad.addColorStop(1, '#f1c40f'); // Horizon yellow
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Distant horizon mountain silhouette
+      ctx.fillStyle = 'rgba(40, 10, 60, 0.4)';
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.72);
+      ctx.lineTo(w * 0.25, h * 0.62);
+      ctx.lineTo(w * 0.55, h * 0.68);
+      ctx.lineTo(w * 0.85, h * 0.58);
+      ctx.lineTo(w, h * 0.66);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fill();
+    } else if (preset === 'midnight') {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#060919'); // Deep space
+      grad.addColorStop(0.5, '#0f172a'); // Navy
+      grad.addColorStop(1, '#1e1b4b'); // Twilight violet
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle starlight dots
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      const seedPoints = [
+        { x: 0.12, y: 0.15 },
+        { x: 0.35, y: 0.08 },
+        { x: 0.65, y: 0.22 },
+        { x: 0.85, y: 0.12 },
+        { x: 0.45, y: 0.32 },
+        { x: 0.22, y: 0.42 },
+      ];
+      seedPoints.forEach((p) => {
+        ctx.beginPath();
+        ctx.arc(w * p.x, h * p.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (preset === 'golden') {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#b45309'); // Amber
+      grad.addColorStop(0.5, '#f59e0b'); // Golden
+      grad.addColorStop(1, '#fef3c7'); // Soft dawn
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    } else if (preset === 'scenery') {
+      // Scenery line art template
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      // Sunset sun outline
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.45, Math.min(w, h) * 0.16, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Mountain ridge outline
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.65);
+      ctx.lineTo(w * 0.28, h * 0.42);
+      ctx.lineTo(w * 0.52, h * 0.58);
+      ctx.lineTo(w * 0.76, h * 0.38);
+      ctx.lineTo(w, h * 0.62);
+      ctx.stroke();
+
+      // Water waves outline
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.75);
+      ctx.bezierCurveTo(w * 0.3, h * 0.72, w * 0.7, h * 0.78, w, h * 0.75);
+      ctx.moveTo(0, h * 0.86);
+      ctx.bezierCurveTo(w * 0.4, h * 0.83, w * 0.8, h * 0.89, w, h * 0.86);
+      ctx.stroke();
+    }
+  };
+
+  const drawStrokeOnCanvas = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+    if (!stroke.points || stroke.points.length < 2) return;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (stroke.tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = stroke.size * 1.5;
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else if (stroke.tool === 'neon') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = stroke.size;
+      ctx.strokeStyle = stroke.color;
+      ctx.shadowColor = stroke.color;
+      ctx.shadowBlur = stroke.size * 2;
+      ctx.globalAlpha = stroke.opacity / 100;
+    } else if (stroke.tool === 'spray') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = stroke.color;
+      ctx.globalAlpha = (stroke.opacity / 100) * 0.6;
+      stroke.points.forEach((pt) => {
+        const radius = stroke.size * 1.5;
+        for (let i = 0; i < 8; i++) {
+          const offsetX = (Math.random() - 0.5) * radius * 2;
+          const offsetY = (Math.random() - 0.5) * radius * 2;
+          ctx.beginPath();
+          ctx.arc(pt.x + offsetX, pt.y + offsetY, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+      ctx.restore();
+      return;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = stroke.size;
+      ctx.strokeStyle = stroke.color;
+      ctx.globalAlpha = stroke.opacity / 100;
+      if (stroke.tool === 'brush') {
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = 2;
+      }
+    }
+
+    // Smooth quadratic Bézier curves
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+
+    for (let i = 1; i < stroke.points.length - 1; i++) {
+      const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+      const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
+    }
+
+    const last = stroke.points[stroke.points.length - 1];
+    ctx.lineTo(last.x, last.y);
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
+  const drawShapeOnCanvas = (ctx: CanvasRenderingContext2D, shape: ShapeItem, isPreview = false) => {
+    ctx.save();
+    ctx.strokeStyle = shape.strokeColor;
+    ctx.lineWidth = shape.strokeWidth;
+    ctx.fillStyle = shape.fillColor || 'transparent';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (isPreview) {
+      ctx.setLineDash([6, 6]);
+      ctx.globalAlpha = 0.8;
+    }
+
+    const { x, y, width: w, height: h, type } = shape;
+
+    ctx.beginPath();
+    if (type === 'rectangle') {
+      ctx.rect(x, y, w, h);
+    } else if (type === 'circle') {
+      const radiusX = Math.abs(w / 2);
+      const radiusY = Math.abs(h / 2);
+      ctx.ellipse(x + w / 2, y + h / 2, radiusX, radiusY, 0, 0, Math.PI * 2);
+    } else if (type === 'line') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y + h);
+    } else if (type === 'heart') {
+      const topCurveHeight = h * 0.3;
+      ctx.moveTo(x + w / 2, y + h * 0.25);
+      ctx.bezierCurveTo(x + w / 2, y, x, y, x, y + topCurveHeight);
+      ctx.bezierCurveTo(x, y + (h + topCurveHeight) / 2, x + w / 2, y + (h + topCurveHeight) / 1.3, x + w / 2, y + h);
+      ctx.bezierCurveTo(x + w / 2, y + (h + topCurveHeight) / 1.3, x + w, y + (h + topCurveHeight) / 2, x + w, y + topCurveHeight);
+      ctx.bezierCurveTo(x + w, y, x + w / 2, y, x + w / 2, y + h * 0.25);
+    } else if (type === 'star') {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const spikes = 5;
+      const outerRadius = Math.min(Math.abs(w), Math.abs(h)) / 2;
+      const innerRadius = outerRadius * 0.45;
+      let rot = (Math.PI / 2) * 3;
+      let step = Math.PI / spikes;
+
+      ctx.moveTo(cx, cy - outerRadius);
+      for (let i = 0; i < spikes; i++) {
+        let sx = cx + Math.cos(rot) * outerRadius;
+        let sy = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(sx, sy);
+        rot += step;
+
+        sx = cx + Math.cos(rot) * innerRadius;
+        sy = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(sx, sy);
+        rot += step;
+      }
+      ctx.lineTo(cx, cy - outerRadius);
+      ctx.closePath();
+    } else if (type === 'mountain') {
+      ctx.moveTo(x, y + h);
+      ctx.lineTo(x + w * 0.5, y);
+      ctx.lineTo(x + w, y + h);
+      ctx.closePath();
+    } else if (type === 'cloud') {
+      const r = Math.min(Math.abs(w), Math.abs(h)) * 0.22;
+      ctx.arc(x + w * 0.3, y + h * 0.5, r, Math.PI * 0.5, Math.PI * 1.5);
+      ctx.arc(x + w * 0.5, y + h * 0.35, r * 1.3, Math.PI * 0.8, Math.PI * 2.2);
+      ctx.arc(x + w * 0.7, y + h * 0.5, r, Math.PI * 1.5, Math.PI * 0.5);
+      ctx.closePath();
+    }
+
+    if (shape.fillColor) {
+      ctx.fill();
+    }
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const drawStickerOnCanvas = (ctx: CanvasRenderingContext2D, sticker: StickerItem) => {
+    ctx.save();
+    ctx.translate(sticker.x, sticker.y);
+    ctx.fillStyle = sticker.color;
+    ctx.strokeStyle = sticker.color;
+    ctx.lineWidth = 2.5;
+
+    const s = sticker.size;
+
+    if (sticker.stickerKey === 'sun') {
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * s * 0.45, Math.sin(angle) * s * 0.45);
+        ctx.lineTo(Math.cos(angle) * s * 0.65, Math.sin(angle) * s * 0.65);
+        ctx.stroke();
+      }
+    } else if (sticker.stickerKey === 'cloud') {
+      ctx.beginPath();
+      ctx.arc(-s * 0.2, 0, s * 0.2, Math.PI * 0.5, Math.PI * 1.5);
+      ctx.arc(0, -s * 0.15, s * 0.28, Math.PI * 0.8, Math.PI * 2.2);
+      ctx.arc(s * 0.2, 0, s * 0.2, Math.PI * 1.5, Math.PI * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    } else if (sticker.stickerKey === 'mountain') {
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.5, s * 0.4);
+      ctx.lineTo(0, -s * 0.4);
+      ctx.lineTo(s * 0.5, s * 0.4);
+      ctx.closePath();
+      ctx.fill();
+    } else if (sticker.stickerKey === 'waves') {
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.5, 0);
+      ctx.bezierCurveTo(-s * 0.25, -s * 0.3, 0, s * 0.3, s * 0.25, 0);
+      ctx.bezierCurveTo(s * 0.35, -s * 0.2, s * 0.45, 0, s * 0.5, 0);
+      ctx.stroke();
+    } else if (sticker.stickerKey === 'trees') {
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.5);
+      ctx.lineTo(-s * 0.3, -s * 0.1);
+      ctx.lineTo(-s * 0.15, -s * 0.1);
+      ctx.lineTo(-s * 0.4, s * 0.3);
+      ctx.lineTo(s * 0.4, s * 0.3);
+      ctx.lineTo(s * 0.15, -s * 0.1);
+      ctx.lineTo(s * 0.3, -s * 0.1);
+      ctx.closePath();
+      ctx.fill();
+    } else if (sticker.stickerKey === 'heart') {
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.35);
+      ctx.bezierCurveTo(-s * 0.5, -s * 0.1, -s * 0.4, -s * 0.4, 0, -s * 0.2);
+      ctx.bezierCurveTo(s * 0.4, -s * 0.4, s * 0.5, -s * 0.1, 0, s * 0.35);
+      ctx.fill();
+    } else if (sticker.stickerKey === 'star' || sticker.stickerKey === 'sparkle') {
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.5);
+      ctx.lineTo(s * 0.12, -s * 0.12);
+      ctx.lineTo(s * 0.5, 0);
+      ctx.lineTo(s * 0.12, s * 0.12);
+      ctx.lineTo(0, s * 0.5);
+      ctx.lineTo(-s * 0.12, s * 0.12);
+      ctx.lineTo(-s * 0.5, 0);
+      ctx.lineTo(-s * 0.12, -s * 0.12);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  };
+
+  // -------------------------------------------------------------
+  // POINTER & TOUCH EVENT HANDLING
+  // -------------------------------------------------------------
+  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    canvasRef.current?.setPointerCapture(e.pointerId);
+
+    const pt = getCanvasCoords(e);
+
+    if (activeTab === 'shape') {
+      setShapeDragStart(pt);
+      setCurrentShapePreview({
+        id: Math.random().toString(),
+        type: selectedShape,
+        x: pt.x,
+        y: pt.y,
+        width: 0,
+        height: 0,
+        strokeColor: brushColor,
+        fillColor: shapeFilled ? brushColor : null,
+        strokeWidth: brushSize,
+        author: user?.displayName || 'Me',
+      });
+      return;
+    }
+
+    if (activeTab === 'sticker') {
+      // Place sticker directly on click
+      const newSticker: StickerItem = {
+        id: Math.random().toString(),
+        stickerKey: selectedSticker,
+        x: pt.x,
+        y: pt.y,
+        size: brushSize * 4,
+        color: brushColor,
+        author: user?.displayName || 'Me',
+      };
+
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page) {
+          page.stickers = [...page.stickers, newSticker];
+        }
+        return next;
+      });
+
+      if (socket && isOpponentConnected) {
+        socket.emit('paint:action', {
+          sessionCode,
+          actionType: 'add_sticker',
+          payload: { sticker: newSticker },
+        });
+      }
+      return;
+    }
+
+    isDrawingRef.current = true;
+    currentPointsRef.current = [pt];
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const pt = getCanvasCoords(e);
+
+    // Broadcast cursor position to friend
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:cursor', {
+        sessionCode,
+        cursorPosition: pt,
+        playerName: user?.displayName || 'Artist',
+      });
+    }
+
+    if (activeTab === 'shape' && shapeDragStart) {
+      setCurrentShapePreview({
+        id: 'preview',
+        type: selectedShape,
+        x: Math.min(shapeDragStart.x, pt.x),
+        y: Math.min(shapeDragStart.y, pt.y),
+        width: Math.abs(pt.x - shapeDragStart.x),
+        height: Math.abs(pt.y - shapeDragStart.y),
+        strokeColor: brushColor,
+        fillColor: shapeFilled ? brushColor : null,
+        strokeWidth: brushSize,
+        author: user?.displayName || 'Me',
+      });
+      return;
+    }
+
+    if (!isDrawingRef.current) return;
+
+    currentPointsRef.current.push(pt);
+
+    // Live preview of stroke currently being drawn
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const tempStroke: Stroke = {
+      id: 'current',
+      tool: selectedTool,
+      color: brushColor,
+      size: brushSize,
+      opacity: brushOpacity,
+      points: currentPointsRef.current,
+      author: user?.displayName || 'Me',
+    };
+
+    redrawCanvas();
+    drawStrokeOnCanvas(ctx, tempStroke);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    canvasRef.current?.releasePointerCapture(e.pointerId);
+
+    if (activeTab === 'shape' && currentShapePreview) {
+      if (currentShapePreview.width > 5 || currentShapePreview.height > 5) {
+        const finalShape: ShapeItem = {
+          ...currentShapePreview,
+          id: Math.random().toString(),
+        };
+
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) {
+            page.shapes = [...page.shapes, finalShape];
+            page.history = [
+              ...page.history.slice(0, page.historyStep + 1),
+              { strokes: page.strokes, shapes: page.shapes, stickers: page.stickers },
+            ];
+            page.historyStep = page.history.length - 1;
+          }
+          return next;
+        });
+
+        if (socket && isOpponentConnected) {
+          socket.emit('paint:action', {
+            sessionCode,
+            actionType: 'add_shape',
+            payload: { shape: finalShape },
+          });
+        }
+      }
+      setShapeDragStart(null);
+      setCurrentShapePreview(null);
+      return;
+    }
+
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
+
+    if (currentPointsRef.current.length >= 2) {
+      const newStroke: Stroke = {
+        id: Math.random().toString(),
+        tool: selectedTool,
+        color: brushColor,
+        size: brushSize,
+        opacity: brushOpacity,
+        points: [...currentPointsRef.current],
+        author: user?.displayName || 'Me',
+      };
+
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page) {
+          page.strokes = [...page.strokes, newStroke];
+          page.history = [
+            ...page.history.slice(0, page.historyStep + 1),
+            { strokes: page.strokes, shapes: page.shapes, stickers: page.stickers },
+          ];
+          page.historyStep = page.history.length - 1;
+        }
+        return next;
+      });
+
+      // Transmit stroke live to friend
+      if (socket && isOpponentConnected) {
+        socket.emit('paint:draw', {
+          sessionCode,
+          strokeData: newStroke,
+        });
+      }
+    }
+
+    currentPointsRef.current = [];
+  };
+
+  // -------------------------------------------------------------
+  // UNDO, REDO & CLEAR
+  // -------------------------------------------------------------
+  const handleUndo = () => {
+    if (currentPage.historyStep > 0) {
+      const prevStep = currentPage.historyStep - 1;
+      const snapshot = currentPage.history[prevStep];
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page && snapshot) {
+          page.strokes = [...snapshot.strokes];
+          page.shapes = [...snapshot.shapes];
+          page.stickers = [...snapshot.stickers];
+          page.historyStep = prevStep;
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleRedo = () => {
+    if (currentPage.historyStep < currentPage.history.length - 1) {
+      const nextStep = currentPage.historyStep + 1;
+      const snapshot = currentPage.history[nextStep];
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page && snapshot) {
+          page.strokes = [...snapshot.strokes];
+          page.shapes = [...snapshot.shapes];
+          page.stickers = [...snapshot.stickers];
+          page.historyStep = nextStep;
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleClearCanvas = () => {
+    if (confirm('Clear the current canvas page?')) {
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page) {
+          page.strokes = [];
+          page.shapes = [];
+          page.stickers = [];
+          page.history = [
+            ...page.history.slice(0, page.historyStep + 1),
+            { strokes: [], shapes: [], stickers: [] },
+          ];
+          page.historyStep = page.history.length - 1;
+        }
+        return next;
+      });
+
+      if (socket && isOpponentConnected) {
+        socket.emit('paint:action', {
+          sessionCode,
+          actionType: 'clear_canvas',
+          payload: {},
+        });
+      }
+      toast.success('Canvas cleared');
+    }
+  };
+
+  // -------------------------------------------------------------
+  // PAGE MANAGEMENT
+  // -------------------------------------------------------------
+  const handleAddPage = () => {
+    const newPageNum = pages.length + 1;
+    const newPage: CanvasPage = {
+      id: `page-${Date.now()}`,
+      title: `Page ${newPageNum}`,
+      strokes: [],
+      shapes: [],
+      stickers: [],
+      bgPreset: 'sunset',
+      frame: 'polaroid',
+      history: [{ strokes: [], shapes: [], stickers: [] }],
+      historyStep: 0,
+    };
+
+    setPages((prev) => [...prev, newPage]);
+    setActivePageIndex(pages.length);
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'add_page',
+        payload: { newPage },
+      });
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'switch_page',
+        payload: { pageIndex: pages.length },
+      });
+    }
+
+    toast.success(`Created Page ${newPageNum}`);
+  };
+
+  const handleSwitchPage = (index: number) => {
+    if (index >= 0 && index < pages.length) {
+      setActivePageIndex(index);
+      if (socket && isOpponentConnected) {
+        socket.emit('paint:action', {
+          sessionCode,
+          actionType: 'switch_page',
+          payload: { pageIndex: index },
+        });
+      }
+    }
+  };
+
+  // -------------------------------------------------------------
+  // BACKGROUND & FRAME SELECTION
+  // -------------------------------------------------------------
+  const handleSelectBgPreset = (preset: BgPreset) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.bgPreset = preset;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_bg',
+        payload: { bgPreset: preset },
+      });
+    }
+  };
+
+  const handleSelectFrame = (frame: FrameType) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.frame = frame;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_frame',
+        payload: { frame },
+      });
+    }
+  };
+
+  // -------------------------------------------------------------
+  // HIGH-RESOLUTION ARTWORK DOWNLOAD
+  // -------------------------------------------------------------
+  const handleDownloadArtwork = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create high-res export canvas
+    const exportCanvas = document.createElement('canvas');
+    const width = canvas.width;
+    const height = canvas.height;
+    exportCanvas.width = width;
+    exportCanvas.height = height;
+
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // Draw background
+    drawBackgroundPreset(ctx, width, height, currentPage.bgPreset);
+
+    // Draw shapes
+    currentPage.shapes.forEach((shape) => drawShapeOnCanvas(ctx, shape));
+
+    // Draw strokes
+    currentPage.strokes.forEach((stroke) => drawStrokeOnCanvas(ctx, stroke));
+
+    // Draw stickers
+    currentPage.stickers.forEach((sticker) => drawStickerOnCanvas(ctx, sticker));
+
+    // Draw Frame overlay if chosen
+    if (currentPage.frame === 'polaroid') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, height - 70, width, 70);
+      ctx.fillStyle = '#334155';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Sunset Canvas Studio - After Party', width / 2, height - 28);
+    } else if (currentPage.frame === 'gold') {
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 18;
+      ctx.strokeRect(9, 9, width - 18, height - 18);
+      ctx.strokeStyle = '#fef3c7';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(18, 18, width - 36, height - 36);
+    } else if (currentPage.frame === 'sunset') {
+      const grad = ctx.createLinearGradient(0, 0, width, height);
+      grad.addColorStop(0, '#f43f5e');
+      grad.addColorStop(0.5, '#f59e0b');
+      grad.addColorStop(1, '#8b5cf6');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 14;
+      ctx.strokeRect(7, 7, width - 14, height - 14);
+    } else if (currentPage.frame === 'wood') {
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 20;
+      ctx.strokeRect(10, 10, width - 20, height - 20);
+      ctx.strokeStyle = '#451a03';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(20, 20, width - 40, height - 40);
+    }
+
+    const dataUrl = exportCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `Sunset_Studio_Artwork_${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+
+    toast.success('Artwork downloaded successfully!');
+  };
+
+  // -------------------------------------------------------------
+  // CHAT SYSTEM
+  // -------------------------------------------------------------
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const myName = user?.displayName || 'You';
+    const text = chatInput.trim();
+
+    const newMsg: ChatMessage = {
+      id: Math.random().toString(),
+      senderName: myName,
+      text,
+      timestamp: Date.now(),
+      isMe: true,
+    };
+
+    setChatMessages((prev) => [...prev, newMsg]);
+    setChatInput('');
+
+    // Broadcast chat to friend
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:chat', {
+        sessionCode,
+        message: text,
+        senderName: myName,
+      });
+    }
+
+    // Show 2-second toast locally too
+    showFloatingToast(myName, text);
+  };
+
+  // -------------------------------------------------------------
+  // FRIEND INVITATION HANDLERS
+  // -------------------------------------------------------------
+  const handleInviteFriend = (friend: Friend) => {
+    if (!socket) {
+      toast.error('Socket disconnected');
+      return;
+    }
+
+    socket.emit('game:invite', {
+      targetUserId: friend._id,
+      senderName: user?.displayName || 'Your Friend',
+      senderAvatar: user?.avatar,
+      game: 'paint',
+      sessionCode,
+    });
+
+    setIsWaitingForFriend(true);
+    setOpponentName(friend.displayName);
+    setShowInviteModal(false);
+    toast.success(`Invitation sent to ${friend.displayName}!`);
+  };
+
+  const handleCopyInviteLink = () => {
+    const inviteLink = `${window.location.origin}/games?game=paint&code=${sessionCode}`;
+    navigator.clipboard.writeText(inviteLink);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+    toast.success('Session invite link copied!');
+  };
+
+  const handleJoinCustomCode = () => {
+    if (!customJoinCode.trim()) return;
+    const cleanCode = customJoinCode.trim().toUpperCase();
+    setSessionCode(cleanCode);
+    setPlayerRole('guest');
+
+    if (socket) {
+      socket.emit('paint:join', {
+        sessionCode: cleanCode,
+        role: 'guest',
+        playerName: user?.displayName || 'Artist',
+      });
+    }
+
+    setShowInviteModal(false);
+    toast.success(`Joined room ${cleanCode}!`);
+  };
+
+  return (
+    <div className="relative flex flex-col h-[100dvh] w-full bg-slate-950 text-slate-100 overflow-hidden select-none font-sans">
+      {/* 1. Sleek Header Bar */}
+      <header className="flex-none flex items-center justify-between px-3 sm:px-6 py-2.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 z-30">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 transition-all text-slate-300 hover:text-white"
+            title="Back to games"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
+          <div>
+            <h1 className="text-sm sm:text-base font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-rose-400 to-purple-400">
+              Sunset Canvas Studio
+            </h1>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{isOpponentConnected ? `Live with ${opponentName || 'Friend'}` : 'Solo Creative Canvas'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Page Selector */}
+        <div className="hidden md:flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
+          <button
+            onClick={() => handleSwitchPage(activePageIndex - 1)}
+            disabled={activePageIndex === 0}
+            className="p-1 rounded-full text-slate-300 disabled:opacity-30 hover:bg-slate-700"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-semibold px-2">
+            Page {activePageIndex + 1} of {pages.length}
+          </span>
+          <button
+            onClick={() => handleSwitchPage(activePageIndex + 1)}
+            disabled={activePageIndex === pages.length - 1}
+            className="p-1 rounded-full text-slate-300 disabled:opacity-30 hover:bg-slate-700"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleAddPage}
+            className="flex items-center gap-1 text-[11px] font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 px-2.5 py-0.5 rounded-full border border-amber-500/40 ml-1"
+          >
+            <Plus className="w-3 h-3" />
+            <span>New Page</span>
+          </button>
+        </div>
+
+        {/* Right Header Action Icons */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Undo / Redo */}
+          <button
+            onClick={handleUndo}
+            disabled={currentPage.historyStep <= 0}
+            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 disabled:opacity-30 active:scale-95 text-slate-300"
+            title="Undo"
+          >
+            <Undo2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={currentPage.historyStep >= currentPage.history.length - 1}
+            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 disabled:opacity-30 active:scale-95 text-slate-300"
+            title="Redo"
+          >
+            <Redo2 className="w-4 h-4" />
+          </button>
+
+          {/* Clear Canvas */}
+          <button
+            onClick={handleClearCanvas}
+            className="p-2 rounded-xl bg-slate-800/60 hover:bg-red-500/20 hover:text-red-300 active:scale-95 text-slate-400"
+            title="Clear Page"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          {/* Chat with unread badge */}
+          <button
+            onClick={() => {
+              setShowChatModal(true);
+              setUnreadCount(0);
+            }}
+            className="relative p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 active:scale-95 text-slate-300"
+            title="Studio Chat"
+          >
+            <MessageSquare className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] font-black flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Invite Friend */}
+          <button
+            onClick={() => {
+              fetchFriends();
+              setShowInviteModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-xs font-bold active:scale-95 transition-all shadow-lg shadow-rose-500/20"
+          >
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Invite Friend</span>
+          </button>
+
+          {/* Download Image */}
+          <button
+            onClick={handleDownloadArtwork}
+            className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 active:scale-95"
+            title="Download Artwork"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Page Strip (< 768px) */}
+      <div className="flex md:hidden flex-none items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800/60 text-xs">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleSwitchPage(activePageIndex - 1)}
+            disabled={activePageIndex === 0}
+            className="p-1 rounded text-slate-400 disabled:opacity-30"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="font-semibold px-1">
+            Page {activePageIndex + 1} / {pages.length}
+          </span>
+          <button
+            onClick={() => handleSwitchPage(activePageIndex + 1)}
+            disabled={activePageIndex === pages.length - 1}
+            className="p-1 rounded text-slate-400 disabled:opacity-30"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <button
+          onClick={handleAddPage}
+          className="flex items-center gap-1 bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-bold text-[11px]"
+        >
+          <Plus className="w-3 h-3" />
+          <span>New Page</span>
+        </button>
+      </div>
+
+      {/* 2. Main Studio Canvas Work Area */}
+      <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center p-2 sm:p-4">
+        {/* The Painting Canvas Container with chosen Frame */}
+        <div
+          ref={containerRef}
+          className={`relative w-full h-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
+            currentPage.frame === 'polaroid'
+              ? 'border-[12px] border-b-[40px] border-white shadow-xl'
+              : currentPage.frame === 'gold'
+              ? 'border-[10px] border-amber-500 ring-2 ring-amber-300 shadow-amber-500/20'
+              : currentPage.frame === 'sunset'
+              ? 'border-[8px] border-transparent bg-gradient-to-r from-rose-500 via-amber-500 to-purple-600 bg-origin-border'
+              : currentPage.frame === 'wood'
+              ? 'border-[12px] border-amber-900 shadow-inner'
+              : currentPage.frame === 'neon'
+              ? 'border-[6px] border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.5)]'
+              : 'border border-slate-800'
+          }`}
+          style={{ touchAction: 'none' }}
+        >
+          <canvas
+            ref={canvasRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            className="w-full h-full cursor-crosshair block"
+            style={{ touchAction: 'none' }}
+          />
+
+          {/* Remote Friend's Cursor Indicator */}
+          {remoteCursor && (
+            <div
+              className="absolute pointer-events-none transition-all duration-75 ease-out z-20"
+              style={{
+                left: `${remoteCursor.x}px`,
+                top: `${remoteCursor.y}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div className="w-4 h-4 rounded-full border-2 border-white bg-rose-500 shadow-md" />
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-white whitespace-nowrap ml-2">
+                {remoteCursor.name}
+              </span>
+            </div>
+          )}
+
+          {/* 2-Second Floating Chat Toast Over Canvas (Exact User Request) */}
+          <AnimatePresence>
+            {floatingToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-sm sm:max-w-md w-auto px-4 py-2.5 rounded-full bg-slate-900/90 border border-amber-500/40 backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none"
+              >
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping flex-none" />
+                <span className="text-xs font-black text-amber-300 flex-none">{floatingToast.sender}:</span>
+                <span className="text-xs font-medium text-slate-100 truncate">{floatingToast.text}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* 3. Floating Bottom Tools Dock (Responsive & Zero Tearing) */}
+      <footer className="flex-none bg-slate-900/90 backdrop-blur-md border-t border-slate-800/80 px-2 sm:px-6 py-2 sm:py-3 z-30">
+        <div className="max-w-5xl mx-auto flex flex-col gap-2">
+          {/* Sub-Panel: Dynamic Options Based on Active Tab */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1">
+            {activeTab === 'brush' && (
+              <div className="flex items-center gap-3 w-full justify-between sm:justify-start">
+                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl">
+                  <button
+                    onClick={() => setSelectedTool('pen')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedTool === 'pen' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Pen
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('brush')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedTool === 'brush' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Brush
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('neon')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedTool === 'neon' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Neon
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('spray')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedTool === 'spray' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Spray
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('eraser')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedTool === 'eraser' ? 'bg-rose-500 text-white' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Eraser
+                  </button>
+                </div>
+
+                {/* Size Slider */}
+                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-400">Size</span>
+                  <input
+                    type="range"
+                    min="2"
+                    max="50"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="w-20 sm:w-28 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-mono text-amber-300 w-5">{brushSize}</span>
+                </div>
+
+                {/* Opacity Slider */}
+                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-400">Opacity</span>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={brushOpacity}
+                    onChange={(e) => setBrushOpacity(Number(e.target.value))}
+                    className="w-20 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-mono text-amber-300 w-8">{brushOpacity}%</span>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'color' && (
+              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
+                {SUNSET_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setBrushColor(c)}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-none transition-transform active:scale-90 border-2 ${
+                      brushColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+                {/* Custom Hex Color Input */}
+                <div className="flex items-center gap-1.5 ml-2 bg-slate-800/80 px-2 py-1 rounded-xl flex-none">
+                  <input
+                    type="color"
+                    value={brushColor}
+                    onChange={(e) => setBrushColor(e.target.value)}
+                    className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                  />
+                  <span className="text-xs font-mono uppercase">{brushColor}</span>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'shape' && (
+              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
+                {[
+                  { key: 'rectangle', label: 'Rectangle', icon: Square },
+                  { key: 'circle', label: 'Circle', icon: Circle },
+                  { key: 'star', label: 'Star', icon: Star },
+                  { key: 'heart', label: 'Heart', icon: Heart },
+                  { key: 'cloud', label: 'Cloud', icon: Cloud },
+                  { key: 'mountain', label: 'Mountain', icon: Mountain },
+                ].map((s) => {
+                  const IconComponent = s.icon;
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => setSelectedShape(s.key as ShapeType)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
+                        selectedShape === s.key
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-800/80 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <IconComponent className="w-3.5 h-3.5" />
+                      <span>{s.label}</span>
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setShapeFilled(!shapeFilled)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border ml-2 flex-none ${
+                    shapeFilled
+                      ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                      : 'bg-slate-800/80 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  {shapeFilled ? 'Fill: On' : 'Fill: Off'}
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'sticker' && (
+              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
+                {SCENERY_STICKERS.map((st) => {
+                  const IconComp = st.icon;
+                  return (
+                    <button
+                      key={st.key}
+                      onClick={() => setSelectedSticker(st.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
+                        selectedSticker === st.key
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-800/80 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <IconComp className="w-4 h-4" />
+                      <span>{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === 'bg' && (
+              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
+                {[
+                  { key: 'sunset', label: 'Sunset Sky' },
+                  { key: 'golden', label: 'Golden Dawn' },
+                  { key: 'midnight', label: 'Midnight Stars' },
+                  { key: 'scenery', label: 'Scenery Sketch' },
+                  { key: 'blank', label: 'Blank Canvas' },
+                ].map((b) => (
+                  <button
+                    key={b.key}
+                    onClick={() => handleSelectBgPreset(b.key as BgPreset)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
+                      currentPage.bgPreset === b.key
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'frame' && (
+              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
+                {[
+                  { key: 'polaroid', label: 'Polaroid Art' },
+                  { key: 'gold', label: 'Gold Gallery' },
+                  { key: 'sunset', label: 'Sunset Glow' },
+                  { key: 'wood', label: 'Wood Border' },
+                  { key: 'neon', label: 'Cyber Neon' },
+                  { key: 'none', label: 'No Frame' },
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => handleSelectFrame(f.key as FrameType)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
+                      currentPage.frame === f.key
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Primary Tool Categories Switcher */}
+          <div className="flex items-center justify-around sm:justify-center gap-2 sm:gap-6 pt-1 border-t border-slate-800/60">
+            <button
+              onClick={() => setActiveTab('brush')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'brush' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Paintbrush className="w-5 h-5" />
+              <span>Brushes</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('color')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'color' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <div className="w-5 h-5 rounded-full border border-slate-500" style={{ backgroundColor: brushColor }} />
+              <span>Colors</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('shape')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'shape' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Square className="w-5 h-5" />
+              <span>Shapes</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('sticker')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'sticker' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sun className="w-5 h-5" />
+              <span>Stickers</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('bg')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'bg' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ImageIcon className="w-5 h-5" />
+              <span>Scenery</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('frame')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
+                activeTab === 'frame' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Layers className="w-5 h-5" />
+              <span>Frames</span>
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      {/* 4. Chat Modal Drawer (Full History & Messaging) */}
+      <AnimatePresence>
+        {showChatModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
+          >
+            <motion.div
+              initial={{ x: 350 }}
+              animate={{ x: 0 }}
+              exit={{ x: 350 }}
+              className="w-full max-w-sm h-full bg-slate-900 border-l border-slate-800 flex flex-col p-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-extrabold text-sm text-slate-100">Studio Live Chat</h3>
+                </div>
+                <button
+                  onClick={() => setShowChatModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Chat Message Scroll */}
+              <div className="flex-1 overflow-y-auto space-y-3 py-4">
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
+                    <span className="text-[10px] text-slate-400 px-1 mb-0.5">{msg.senderName}</span>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs font-medium ${
+                        msg.isMe
+                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-tr-none'
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Chat Input */}
+              <form onSubmit={handleSendChat} className="flex gap-2 pt-2 border-t border-slate-800">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="submit"
+                  className="p-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold active:scale-95 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 5. Invite Friends Modal */}
+      <AnimatePresence>
+        {showInviteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-100">Invite a Friend to Paint</h3>
+                  <p className="text-xs text-slate-400">Collaborate live on the same canvas in real-time</p>
+                </div>
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Room Code & Copy Link */}
+              <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 flex flex-col gap-2">
+                <span className="text-[11px] font-bold text-slate-400">Session Room Code</span>
+                <div className="flex items-center justify-between bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
+                  <span className="font-mono font-black text-amber-400 tracking-wider text-sm">{sessionCode}</span>
+                  <button
+                    onClick={handleCopyInviteLink}
+                    className="flex items-center gap-1 text-xs font-bold text-slate-300 hover:text-white"
+                  >
+                    {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedCode ? 'Copied' : 'Copy Link'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Join Existing Room Code */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customJoinCode}
+                  onChange={(e) => setCustomJoinCode(e.target.value)}
+                  placeholder="Or enter friend's Room Code"
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono tracking-wider focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  onClick={handleJoinCustomCode}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-white active:scale-95"
+                >
+                  Join
+                </button>
+              </div>
+
+              {/* Friends List for Direct 1-Click Invites */}
+              <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300">Online Friends</span>
+                  <span className="text-[11px] text-slate-500">{friendsList.length} total</span>
+                </div>
+
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    placeholder="Search friend..."
+                    className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {loadingFriends ? (
+                    <div className="text-center py-4 text-xs text-slate-500">Loading friends...</div>
+                  ) : friendsList.length === 0 ? (
+                    <div className="text-center py-4 text-xs text-slate-500">No friends added yet. Share room code above!</div>
+                  ) : (
+                    friendsList
+                      .filter((f) => f.displayName.toLowerCase().includes(searchFilter.toLowerCase()))
+                      .map((f) => {
+                        const isOnline = onlineUsersMap[f._id] || false;
+                        return (
+                          <div
+                            key={f._id}
+                            className="flex items-center justify-between p-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs text-amber-400">
+                                  {f.displayName.substring(0, 1).toUpperCase()}
+                                </div>
+                                <span
+                                  className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-slate-900 ${
+                                    isOnline ? 'bg-emerald-500' : 'bg-slate-500'
+                                  }`}
+                                />
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold text-slate-200 block">{f.displayName}</span>
+                                <span className="text-[10px] text-slate-400">{isOnline ? 'Online now' : 'Offline'}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleInviteFriend(f)}
+                              className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold active:scale-95 transition-all"
+                            >
+                              Invite
+                            </button>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

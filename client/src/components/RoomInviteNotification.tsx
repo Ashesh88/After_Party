@@ -79,17 +79,24 @@ export default function RoomInviteNotification() {
       soundService.playMessageTone();
       setCurrentGameInvite(data);
 
-      const gameLabel = data.game === 'ludo' ? 'Ludo 🎲' : data.game === 'pool' ? '8-Ball Pool 🎱' : data.game === 'chess' ? 'Chess ♟️' : data.game === 'carrom' ? 'Carrom 🎯' : 'UNO 🃏';
+      let gameLabel = 'Game';
+      if (data.game === 'paint' || data.game === 'painting') gameLabel = 'Co-Paint Studio';
+      else if (data.game === 'uno') gameLabel = 'UNO Party';
+      else if (data.game === 'carrom') gameLabel = 'Carrom';
+      else if (data.game === 'ludo') gameLabel = 'Ludo';
+      else if (data.game === 'pool') gameLabel = '8-Ball Pool';
+      else if (data.game === 'chess') gameLabel = 'Chess';
+
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          new Notification(`${data.senderName} challenged you to ${gameLabel}! ⚔️`, {
-            body: 'Click to accept match challenge!',
+          new Notification(`${data.senderName} invited you to ${gameLabel}!`, {
+            body: 'Click to accept invitation!',
             icon: data.senderAvatar || '/icon-192x192.png',
             tag: 'game-challenge',
           });
         } catch {}
       }
-      toast(`${data.senderName} challenged you to ${gameLabel}! ⚔️`, { icon: '🎮' });
+      toast(`${data.senderName} invited you to ${gameLabel}!`);
     };
 
     socket.on('room:invite', handleRoomInvite);
@@ -147,11 +154,37 @@ export default function RoomInviteNotification() {
       });
     }
 
+    const isPaint = currentGameInvite.game === 'paint' || currentGameInvite.game === 'painting';
+    const isUno = currentGameInvite.game === 'uno';
+    const isCarrom = currentGameInvite.game === 'carrom';
     const isLudo = currentGameInvite.game === 'ludo';
     const isPool = currentGameInvite.game === 'pool';
-    const gameLabel = isLudo ? 'Ludo Match 🎲' : isPool ? '8-Ball Pool Match 🎱' : 'Chess Match ♟️';
-    const gameId = isLudo ? 'ludo' : isPool ? 'pool' : 'chess';
-    const guestRole = isLudo ? 'yellow' : isPool ? 'p2' : 'b';
+
+    let gameId = 'chess';
+    let gameLabel = 'Chess Match';
+    let guestRole = 'b';
+
+    if (isPaint) {
+      gameId = 'paint';
+      gameLabel = 'Co-Paint Studio';
+      guestRole = 'guest';
+    } else if (isUno) {
+      gameId = 'uno';
+      gameLabel = 'UNO Party';
+      guestRole = 'p2';
+    } else if (isCarrom) {
+      gameId = 'carrom';
+      gameLabel = 'Carrom Match';
+      guestRole = 'p2';
+    } else if (isLudo) {
+      gameId = 'ludo';
+      gameLabel = 'Ludo Match';
+      guestRole = 'yellow';
+    } else if (isPool) {
+      gameId = 'pool';
+      gameLabel = '8-Ball Pool Match';
+      guestRole = 'p2';
+    }
 
     toast.success(`Joining ${currentGameInvite.senderName}'s ${gameLabel}!`);
 

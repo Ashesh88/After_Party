@@ -11,6 +11,7 @@ const ludoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, pla
 const poolRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 const carromRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 const unoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
+const paintRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 
 const setupSocket = (io) => {
   io.use((socket, next) => {
@@ -1108,6 +1109,102 @@ const setupSocket = (io) => {
         if (room.players.length === 0) unoRooms.delete(sessionCode);
       }
       socket.to(`uno:${sessionCode}`).emit('uno:opponent_left', {
+        senderId: userId,
+        players: room ? room.players : [],
+      });
+    });
+
+    // Real-Time Co-Paint Studio Events
+    socket.on('paint:join', ({ sessionCode, role, playerName }) => {
+      if (!sessionCode) return;
+      socket.join(`paint:${sessionCode}`);
+
+      let room = paintRooms.get(sessionCode);
+      if (!room) {
+        room = { hostId: userId, players: [] };
+        paintRooms.set(sessionCode, room);
+      }
+
+      const existingIdx = room.players.findIndex(p => p.userId?.toString() === userId?.toString());
+      const playerInfo = {
+        userId,
+        playerName: playerName || 'Artist',
+        role: role || (room.players.length === 0 ? 'host' : 'guest'),
+        socketId: socket.id,
+      };
+
+      if (existingIdx >= 0) {
+        room.players[existingIdx] = playerInfo;
+      } else {
+        room.players.push(playerInfo);
+      }
+
+      socket.emit('paint:joined_ack', {
+        sessionCode,
+        assignedRole: playerInfo.role,
+        players: room.players,
+      });
+
+      socket.to(`paint:${sessionCode}`).emit('paint:opponent_joined', {
+        playerName: playerInfo.playerName,
+        role: playerInfo.role,
+        players: room.players,
+      });
+    });
+
+    socket.on('paint:draw', ({ sessionCode, strokeData }) => {
+      if (!sessionCode) return;
+      socket.to(`paint:${sessionCode}`).emit('paint:draw', {
+        strokeData,
+        senderId: userId,
+      });
+    });
+
+    socket.on('paint:action', ({ sessionCode, actionType, payload }) => {
+      if (!sessionCode) return;
+      socket.to(`paint:${sessionCode}`).emit('paint:action', {
+        actionType,
+        payload,
+        senderId: userId,
+      });
+    });
+
+    socket.on('paint:cursor', ({ sessionCode, cursorPosition, playerName }) => {
+      if (!sessionCode) return;
+      socket.to(`paint:${sessionCode}`).emit('paint:cursor', {
+        cursorPosition,
+        playerName,
+        senderId: userId,
+      });
+    });
+
+    socket.on('paint:sync_state', ({ sessionCode, canvasData }) => {
+      if (!sessionCode) return;
+      socket.to(`paint:${sessionCode}`).emit('paint:sync_state', {
+        canvasData,
+        senderId: userId,
+      });
+    });
+
+    socket.on('paint:chat', ({ sessionCode, message, senderName }) => {
+      if (!sessionCode) return;
+      socket.to(`paint:${sessionCode}`).emit('paint:chat', {
+        message,
+        senderName,
+        senderId: userId,
+        timestamp: Date.now(),
+      });
+    });
+
+    socket.on('paint:leave', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.leave(`paint:${sessionCode}`);
+      const room = paintRooms.get(sessionCode);
+      if (room) {
+        room.players = room.players.filter(p => p.userId?.toString() !== userId?.toString());
+        if (room.players.length === 0) paintRooms.delete(sessionCode);
+      }
+      socket.to(`paint:${sessionCode}`).emit('paint:opponent_left', {
         senderId: userId,
         players: room ? room.players : [],
       });
