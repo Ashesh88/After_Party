@@ -15,7 +15,9 @@ async function leaveCurrentRoom(user, io) {
     const oldRoom = await Room.findById(oldRoomId);
     if (oldRoom) {
       oldRoom.members = oldRoom.members.filter(id => id.toString() !== user._id.toString());
-      if (oldRoom.members.length === 0) {
+      // Prevent deleting room if it is saved in any user's savedRooms list
+      const isSavedByAnyone = await User.exists({ 'savedRooms.roomId': oldRoomId });
+      if (oldRoom.members.length === 0 && !isSavedByAnyone) {
         await Room.findByIdAndDelete(oldRoomId);
       } else {
         await oldRoom.save();
@@ -56,6 +58,12 @@ router.post('/create', async (req, res, next) => {
     await room.save();
 
     user.roomId = room._id;
+    if (!user.savedRooms) user.savedRooms = [];
+    user.savedRooms.push({
+      roomId: room._id,
+      customName: 'My Space',
+      savedAt: new Date(),
+    });
     await user.save();
 
     await room.populate('members', 'displayName email avatar friendId lastSeen');
@@ -108,6 +116,14 @@ router.post('/join', async (req, res, next) => {
     await targetRoom.save();
 
     user.roomId = targetRoom._id;
+    if (!user.savedRooms) user.savedRooms = [];
+    if (!user.savedRooms.some(sr => sr.roomId?.toString() === targetRoom._id.toString())) {
+      user.savedRooms.push({
+        roomId: targetRoom._id,
+        customName: targetRoom.name || 'Joined Space',
+        savedAt: new Date(),
+      });
+    }
     await user.save();
 
     await targetRoom.populate('members', 'displayName email avatar friendId lastSeen');
@@ -596,6 +612,167 @@ router.delete('/memories/:id', async (req, res, next) => {
     }
 
     res.json({ message: 'Memory removed successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/rooms/saved - List all saved spaces for the user
+router.get('/saved', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const savedEntries = user.savedRooms || [];
+    const spaces = [];
+
+    for (const entry of savedEntries) {
+      if (!entry.roomId) continue;
+      const room = await Room.findById(entry.roomId)
+        .populate('members', 'displayName avatar friendId lastSeen')
+        .populate('host', 'displayName avatar friendId');
+
+      if (!room) continue;
+
+      const otherMembers = (room.members || []).filter(m => m._id.toString() !== user._id.toString());
+      const partner = otherMembers[0] || null;
+
+      spaces.push({
+        roomId: room._id.toString(),
+        customName: entry.customName || room.name || (partner ? `Space with ${partner.displayName}` : 'My Space'),
+        roomName: room.name || 'Private Space',
+        inviteCode: room.inviteCode,
+        partner: partner ? { _id: partner._id, displayName: partner.displayName, avatar: partner.avatar } : null,
+        memberCount: (room.members || []).length,
+        moodTheme: room.moodTheme?.current || 'love',
+        plannedEvent: room.plannedEvent || null,
+        isActive: user.roomId?.toString() === room._id.toString(),
+        savedAt: entry.savedAt,
+      });
+    }
+
+    res.json({ spaces });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/rooms/save - Save or update custom nickname of a room
+router.post('/save', async (req, res, next) => {
+  try {
+    const { roomId, customName } = req.body;
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const targetRoomId = roomId || user.roomId;
+    if (!targetRoomId) {
+      return res.status(400).json({ message: 'No active room to save' });
+    }
+
+    const room = await Room.findById(targetRoomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    if (!user.savedRooms) user.savedRooms = [];
+    const existingIndex = user.savedRooms.findIndex(sr => sr.roomId?.toString() === targetRoomId.toString());
+
+    const nameToSave = (customName && customName.trim()) || room.name || 'Private Space';
+
+    if (existingIndex >= 0) {
+      user.savedRooms[existingIndex].customName = nameToSave;
+    } else {
+      user.savedRooms.push({
+        roomId: room._id,
+        customName: nameToSave,
+        savedAt: new Date(),
+      });
+    }
+
+    await user.save();
+    res.json({ message: 'Space saved successfully', customName: nameToSave });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/rooms/switch/:roomId - Seamlessly switch active room
+router.post('/switch/:roomId', async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const targetRoom = await Room.findById(roomId);
+    if (!targetRoom) {
+      return res.status(404).json({ message: 'Target space not found' });
+    }
+
+    const io = req.app.get('io');
+    const oldRoomId = user.roomId;
+
+    // Leave old room socket channel if switching
+    if (oldRoomId && oldRoomId.toString() !== roomId.toString()) {
+      if (io) {
+        io.to(`room:${oldRoomId}`).emit('room:member-left', {
+          userId: user._id.toString(),
+          displayName: user.displayName,
+        });
+      }
+    }
+
+    // Add to members of target room if not present
+    const isMember = targetRoom.members.some(id => id.toString() === user._id.toString());
+    if (!isMember) {
+      targetRoom.members.push(user._id);
+      await targetRoom.save();
+    }
+
+    // Set new active roomId
+    user.roomId = targetRoom._id;
+    // Auto-save to savedRooms if not present
+    if (!user.savedRooms) user.savedRooms = [];
+    if (!user.savedRooms.some(sr => sr.roomId?.toString() === targetRoom._id.toString())) {
+      user.savedRooms.push({
+        roomId: targetRoom._id,
+        customName: targetRoom.name || 'Private Space',
+        savedAt: new Date(),
+      });
+    }
+    await user.save();
+
+    await targetRoom.populate('members', 'displayName email avatar friendId lastSeen');
+    await targetRoom.populate('host', 'displayName email avatar friendId lastSeen');
+
+    if (io) {
+      io.to(`room:${targetRoom._id}`).emit('room:member-joined', {
+        user: user.toSafeObject(),
+      });
+      io.to(`room:${targetRoom._id}`).emit('room:updated', { room: targetRoom });
+    }
+
+    res.json({
+      room: targetRoom,
+      message: `Switched to ${targetRoom.name || 'Space'}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/rooms/saved/:roomId - Remove space from user's saved spaces list
+router.delete('/saved/:roomId', async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.savedRooms = (user.savedRooms || []).filter(
+      sr => sr.roomId?.toString() !== roomId.toString()
+    );
+    await user.save();
+
+    res.json({ message: 'Space removed from saved list' });
   } catch (error) {
     next(error);
   }

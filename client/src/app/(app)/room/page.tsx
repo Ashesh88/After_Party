@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Crown, Copy, Check, UserMinus, UserPlus, 
   LogOut, ShieldAlert, Sparkles, Circle, Clock, RefreshCw, Send,
-  Lock, Unlock, Edit3, Volume2, Mic
+  Lock, Unlock, Edit3, Volume2, Mic, Layers
 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -13,6 +13,7 @@ import { useAuthStore } from '../../../lib/store/authStore';
 import { useSocketStore } from '../../../lib/store/socketStore';
 import { useCallStore } from '../../../lib/store/callStore';
 import { Room, User } from '../../../lib/types';
+import SavedSpacesModal from '../../../components/SavedSpacesModal';
 
 function formatLastSeen(lastSeen: string | Date | undefined, isOnline: boolean): string {
   if (isOnline) return 'Active now';
@@ -45,6 +46,7 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [showSpacesModal, setShowSpacesModal] = useState(false);
   const [connections, setConnections] = useState<any[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [invitingId, setInvitingId] = useState<string | null>(null);
@@ -568,6 +570,14 @@ export default function RoomPage() {
               </button>
 
               <button
+                onClick={() => setShowSpacesModal(true)}
+                className="w-full py-3 px-4 rounded-2xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                <Layers size={16} className="text-purple-400" />
+                <span>Switch / View Saved Spaces</span>
+              </button>
+
+              <button
                 onClick={openInviteModal}
                 className="w-full py-3 px-4 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white font-semibold text-xs transition-all flex items-center justify-center gap-2"
               >
@@ -695,6 +705,15 @@ export default function RoomPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <SavedSpacesModal
+        isOpen={showSpacesModal}
+        onClose={() => setShowSpacesModal(false)}
+        onSpaceSwitched={(switchedRoom) => {
+          setRoom(switchedRoom);
+          setRoomInStore(switchedRoom);
+        }}
+      />
     </div>
   );
 }

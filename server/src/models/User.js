@@ -48,6 +48,22 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    savedRooms: [
+      {
+        roomId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Room',
+        },
+        customName: {
+          type: String,
+          default: '',
+        },
+        savedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

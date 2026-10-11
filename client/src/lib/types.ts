@@ -71,6 +71,19 @@ export interface Room {
   createdAt: string;
 }
 
+export interface SavedSpace {
+  roomId: string;
+  customName: string;
+  roomName: string;
+  inviteCode: string;
+  partner?: { _id: string; displayName: string; avatar?: string } | null;
+  memberCount: number;
+  moodTheme: string;
+  plannedEvent?: { title: string; targetDate: string } | null;
+  isActive: boolean;
+  savedAt: string;
+}
+
 export interface Message {
   _id: string;
   roomId: string;

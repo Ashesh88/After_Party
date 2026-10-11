@@ -12,10 +12,11 @@ import {
   Target, MapPin, CalendarHeart, User, ArrowRight,
   KeyRound, Copy, Check, Users,
   Flame, Heart, AlertCircle, Palette, ShieldCheck, CloudRain,
-  Calendar, Clock, Edit2, Plus, PartyPopper
+  Calendar, Clock, Edit2, Plus, PartyPopper, Layers
 } from 'lucide-react';
 import { useMoodStore, MOOD_CONFIG, formatRelativeTime } from '../../../lib/store/moodStore';
 import FriendsModal from '../../../components/FriendsModal';
+import SavedSpacesModal from '../../../components/SavedSpacesModal';
 
 const CUTE_AVATARS = [
   { id: 'cat', emoji: '🐱', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Angel&backgroundColor=ffb6c1', name: 'Pink Bot' },
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showSpacesModal, setShowSpacesModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [room, setRoom] = useState<any>(null);
@@ -436,6 +438,17 @@ export default function DashboardPage() {
               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-sans font-bold">ID:</span>
               <span>{user?.friendId || '...'}</span>
               {copiedMyId ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="text-slate-400 shrink-0" />}
+            </button>
+
+            {/* My Spaces Switcher Pill Button */}
+            <button
+              type="button"
+              onClick={() => setShowSpacesModal(true)}
+              title="Switch or manage your saved spaces"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-500/20 via-pink-500/15 to-transparent hover:from-purple-500/30 border border-purple-400/40 hover:border-purple-300 text-purple-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_2px_12px_rgba(168,85,247,0.2),inset_0_1px_1px_rgba(255,255,255,0.2)] active:scale-95"
+            >
+              <Layers size={13} className="text-purple-400 shrink-0" />
+              <span>My Spaces</span>
             </button>
           </div>
 
@@ -1034,6 +1047,15 @@ export default function DashboardPage() {
         isOpen={showFriendsModal}
         onClose={() => setShowFriendsModal(false)}
         currentRoomCode={room?.inviteCode}
+      />
+
+      {/* Saved Spaces Multi-Room Switcher Modal */}
+      <SavedSpacesModal
+        isOpen={showSpacesModal}
+        onClose={() => setShowSpacesModal(false)}
+        onSpaceSwitched={(switchedRoom) => {
+          setRoom(switchedRoom);
+        }}
       />
     </div>
   );
