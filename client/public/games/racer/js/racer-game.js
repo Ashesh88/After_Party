@@ -626,38 +626,60 @@ class LuxuryDuelRacer3D {
         bindTouch('touch-p1-nitro', () => { this.triggerNitro(this.p1, true); }, () => { this.triggerNitro(this.p1, false); });
 
         // Mode Switch: 2-Player vs Friend Bot
-        document.getElementById('btn-mode-2p').addEventListener('click', () => {
-            this.isBotMode = false;
-            document.getElementById('btn-mode-2p').classList.add('active');
-            document.getElementById('btn-mode-bot').classList.remove('active');
-            this.restartRace();
-        });
+        const btn2p = document.getElementById('btn-mode-2p');
+        const btnBot = document.getElementById('btn-mode-bot');
+        if (btn2p) {
+            btn2p.addEventListener('click', () => {
+                this.isBotMode = false;
+                btn2p.classList.add('active');
+                if (btnBot) btnBot.classList.remove('active');
+                this.restartRace();
+            });
+        }
 
-        document.getElementById('btn-mode-bot').addEventListener('click', () => {
-            this.isBotMode = true;
-            document.getElementById('btn-mode-bot').classList.add('active');
-            document.getElementById('btn-mode-2p').classList.remove('active');
-            this.restartRace();
-        });
+        if (btnBot) {
+            btnBot.addEventListener('click', () => {
+                this.isBotMode = true;
+                btnBot.classList.add('active');
+                if (btn2p) btn2p.classList.remove('active');
+                this.restartRace();
+            });
+        }
 
         // Camera, Audio, Restart buttons
-        document.getElementById('btn-cam').addEventListener('click', () => {
-            this.cameraMode = (this.cameraMode + 1) % 3;
-        });
+        const btnCam = document.getElementById('btn-cam');
+        if (btnCam) {
+            btnCam.addEventListener('click', () => {
+                this.cameraMode = (this.cameraMode + 1) % 3;
+            });
+        }
 
-        document.getElementById('btn-mute').addEventListener('click', (e) => {
-            if (window.racerAudio) {
-                window.racerAudio.muted = !window.racerAudio.muted;
-                const icon = e.currentTarget.querySelector('i');
-                icon.className = window.racerAudio.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
-            }
-        });
+        const btnMute = document.getElementById('btn-mute');
+        if (btnMute) {
+            btnMute.addEventListener('click', (e) => {
+                if (window.racerAudio) {
+                    window.racerAudio.muted = !window.racerAudio.muted;
+                    const icon = e.currentTarget.querySelector('i');
+                    if (icon) {
+                        icon.className = window.racerAudio.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+                    }
+                }
+            });
+        }
 
-        document.getElementById('btn-restart').addEventListener('click', () => this.restartRace());
-        document.getElementById('btn-race-again').addEventListener('click', () => {
-            document.getElementById('modal-victory').classList.remove('open');
-            this.restartRace();
-        });
+        const btnRestart = document.getElementById('btn-restart');
+        if (btnRestart) {
+            btnRestart.addEventListener('click', () => this.restartRace());
+        }
+
+        const btnRaceAgain = document.getElementById('btn-race-again');
+        if (btnRaceAgain) {
+            btnRaceAgain.addEventListener('click', () => {
+                const modal = document.getElementById('modal-victory');
+                if (modal) modal.classList.remove('open');
+                this.restartRace();
+            });
+        }
 
         // Listen for Partner Moves from socket via parent component
         window.addEventListener('message', (e) => {
@@ -719,35 +741,39 @@ class LuxuryDuelRacer3D {
     }
 
     updatePhysics() {
-        if (!this.raceStarted || this.raceFinished) return;
-
-        // Auto-gas enabled for Player 1 on mobile or when pressing Up
-        const p1Gas = this.input.p1Gas || window.innerWidth < 650;
-        this.updateCarPhysics(this.p1, {
-            left: this.input.p1Left,
-            right: this.input.p1Right,
-            gas: p1Gas,
-            brake: this.input.p1Brake
-        });
-
-        // Player 2 Controls (Friend)
-        if (this.isBotMode) {
-            // Intelligent Friend AI Bot
-            this.updateBotAI();
-        } else {
-            // 2nd Human Player (WASD)
-            this.updateCarPhysics(this.p2, {
-                left: this.input.p2Left,
-                right: this.input.p2Right,
-                gas: this.input.p2Gas,
-                brake: this.input.p2Brake
+        if (this.raceStarted && !this.raceFinished) {
+            // Auto-gas enabled for Player 1 on mobile or when pressing Up
+            const p1Gas = this.input.p1Gas || window.innerWidth < 650;
+            this.updateCarPhysics(this.p1, {
+                left: this.input.p1Left,
+                right: this.input.p1Right,
+                gas: p1Gas,
+                brake: this.input.p1Brake
             });
+
+            // Player 2 Controls (Friend)
+            if (this.isBotMode) {
+                // Intelligent Friend AI Bot
+                this.updateBotAI();
+            } else {
+                // 2nd Human Player (WASD)
+                this.updateCarPhysics(this.p2, {
+                    left: this.input.p2Left,
+                    right: this.input.p2Right,
+                    gas: this.input.p2Gas,
+                    brake: this.input.p2Brake
+                });
+            }
         }
 
         // Relative Car Meshes on Infinite Track
         // The track scrolls relative to Player 1 distance
-        this.p1.mesh.position.set(this.p1.laneX, 0, 0);
-        this.p2.mesh.position.set(this.p2.laneX, 0, this.p2.distance - this.p1.distance);
+        if (this.p1.mesh) {
+            this.p1.mesh.position.set(this.p1.laneX, 0, 0);
+        }
+        if (this.p2.mesh) {
+            this.p2.mesh.position.set(this.p2.laneX, 0, this.p2.distance - this.p1.distance);
+        }
 
         // Infinite Road Segment Scrolling
         const totalSpan = this.segmentCount * this.segmentLength;
@@ -757,7 +783,9 @@ class LuxuryDuelRacer3D {
         });
 
         // Finish Arch relative distance
-        this.finishArch.position.z = this.trackLength - this.p1.distance;
+        if (this.finishArch) {
+            this.finishArch.position.z = this.trackLength - this.p1.distance;
+        }
 
         // Check if either car crossed the finish line (1500m)
         if (this.p1.distance >= this.trackLength || this.p2.distance >= this.trackLength) {
@@ -867,6 +895,7 @@ class LuxuryDuelRacer3D {
     }
 
     updateCamera() {
+        if (!this.p1.mesh || !this.p2.mesh) return;
         const targetX = this.p1.laneX * 0.5;
         const targetY = 3.6;
         const targetZ = this.p1.mesh.position.z - (this.p1.isNitroActive ? 8.6 : 7.2);
@@ -982,6 +1011,14 @@ class LuxuryDuelRacer3D {
     }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    window.luxuryDuelRacer = new LuxuryDuelRacer3D();
-});
+function initGame() {
+    if (!window.luxuryDuelRacer) {
+        window.luxuryDuelRacer = new LuxuryDuelRacer3D();
+    }
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initGame);
+} else {
+    initGame();
+}
