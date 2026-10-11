@@ -597,14 +597,27 @@ class LuxuryDuelRacer3D {
             if (e.key === ' ') this.triggerNitro(this.p2, false);
         });
 
-        // Touch buttons for mobile
+        // Reliable Touch buttons for mobile & tablets (pointer + touch fallback)
         const bindTouch = (id, onDown, onUp) => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.addEventListener('pointerdown', (e) => { e.preventDefault(); onDown(); });
-            el.addEventListener('pointerup', (e) => { e.preventDefault(); onUp(); });
-            el.addEventListener('pointerleave', (e) => { e.preventDefault(); onUp(); });
-            el.addEventListener('pointercancel', (e) => { e.preventDefault(); onUp(); });
+
+            const handleDown = (e) => {
+                if (e.cancelable) e.preventDefault();
+                onDown();
+            };
+            const handleUp = (e) => {
+                if (e.cancelable) e.preventDefault();
+                onUp();
+            };
+
+            el.addEventListener('pointerdown', handleDown, { passive: false });
+            el.addEventListener('pointerup', handleUp, { passive: false });
+            el.addEventListener('pointercancel', handleUp, { passive: false });
+            el.addEventListener('touchstart', handleDown, { passive: false });
+            el.addEventListener('touchend', handleUp, { passive: false });
+            el.addEventListener('touchcancel', handleUp, { passive: false });
+            el.addEventListener('contextmenu', (e) => e.preventDefault());
         };
 
         bindTouch('touch-p1-left', () => { this.input.p1Left = true; }, () => { this.input.p1Left = false; });
@@ -789,27 +802,30 @@ class LuxuryDuelRacer3D {
             car.nitro = Math.min(100, car.nitro + 0.14);
         }
 
-        // Steer
-        const steerSpeed = 0.12 * (car.speed / 1.0);
+        // Steer Logic - Responsive & Crisp Handling (works smoothly at all speeds)
+        const effectiveSpeedFactor = Math.max(0.45, Math.min(1.2, car.speed / 0.8));
+        const steerSpeed = 0.16 * effectiveSpeedFactor;
+
         if (ctrl.left) {
             car.laneX -= steerSpeed;
-            car.steerAngle = Math.max(-0.24, car.steerAngle - 0.04);
-            if (car.speed > 1.2 && Math.random() < 0.04 && window.racerAudio) window.racerAudio.playDrift();
+            car.steerAngle = Math.max(-0.28, car.steerAngle - 0.06);
+            if (car.speed > 0.9 && Math.random() < 0.05 && window.racerAudio) window.racerAudio.playDrift();
         } else if (ctrl.right) {
             car.laneX += steerSpeed;
-            car.steerAngle = Math.min(0.24, car.steerAngle + 0.04);
-            if (car.speed > 1.2 && Math.random() < 0.04 && window.racerAudio) window.racerAudio.playDrift();
+            car.steerAngle = Math.min(0.28, car.steerAngle + 0.06);
+            if (car.speed > 0.9 && Math.random() < 0.05 && window.racerAudio) window.racerAudio.playDrift();
         } else {
-            car.steerAngle *= 0.8;
+            // Smoothly auto-center the steering wheel and body rotation
+            car.steerAngle *= 0.75;
         }
 
-        // Track boundary clamping
-        const limit = this.roadWidth / 2 - 1.2;
+        // Track boundary clamping (Keep car on asphalt)
+        const limit = this.roadWidth / 2 - 1.4;
         car.laneX = Math.max(-limit, Math.min(limit, car.laneX));
 
         car.distance += car.speed;
         car.mesh.rotation.y = car.steerAngle;
-        car.mesh.rotation.z = -car.steerAngle * 0.35; // body roll
+        car.mesh.rotation.z = -car.steerAngle * 0.45; // Enhanced dynamic body roll
 
         // Wheels spin
         car.wheels.forEach(w => {

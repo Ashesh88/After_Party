@@ -384,10 +384,10 @@ html, body {
     white-space: nowrap;
 }
 
-/* Touch Controls on Mobile */
+/* Touch Controls on Mobile - Ergonomic, Large, High-Tech Gamepad */
 .touch-overlay {
     position: absolute;
-    bottom: 120px;
+    bottom: 24px;
     left: 0;
     right: 0;
     padding: 0 16px;
@@ -395,11 +395,12 @@ html, body {
     justify-content: space-between;
     align-items: flex-end;
     pointer-events: none;
+    z-index: 50;
 }
 
 .touch-group {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     pointer-events: auto;
 }
 
@@ -407,70 +408,115 @@ html, body {
     border: none;
     outline: none;
     cursor: pointer;
-    border-radius: 20px;
-    font-weight: 800;
+    border-radius: 24px;
+    font-weight: 900;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    transition: transform 0.1s ease;
-    touch-action: manipulation;
+    gap: 4px;
+    transition: transform 0.08s ease, background 0.15s ease;
+    touch-action: none;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
 }
 
 .btn-touch:active {
-    transform: scale(0.92);
+    transform: scale(0.90) translateY(2px);
 }
 
 .btn-steer {
-    width: 54px;
-    height: 54px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 68px;
+    height: 68px;
+    background: rgba(18, 18, 36, 0.88);
+    border: 2px solid rgba(255, 255, 255, 0.25);
     color: #ffffff;
-    font-size: 18px;
-    backdrop-filter: blur(10px);
+    font-size: 24px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.btn-steer:active {
+    background: rgba(244, 63, 142, 0.45);
+    border-color: #f43f5e;
+    color: #ffffff;
+    box-shadow: 0 0 20px rgba(244, 63, 142, 0.6);
 }
 
 .btn-gas {
-    width: 58px;
-    height: 58px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    border: 1px solid rgba(16, 185, 129, 0.4);
+    width: 68px;
+    height: 68px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: 2px solid rgba(52, 211, 153, 0.5);
     color: #ffffff;
-    font-size: 10px;
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    font-size: 11px;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.btn-gas i {
+    font-size: 18px;
 }
 
 .btn-nitro {
-    width: 54px;
-    height: 54px;
-    background: linear-gradient(135deg, #ec4899, #8b5cf6);
-    border: 1px solid rgba(236, 72, 153, 0.4);
+    width: 68px;
+    height: 68px;
+    background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+    border: 2px solid rgba(244, 63, 142, 0.5);
     color: #ffffff;
-    font-size: 10px;
-    box-shadow: 0 4px 14px rgba(236, 72, 153, 0.4);
+    font-size: 11px;
+    box-shadow: 0 8px 25px rgba(236, 72, 153, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.4);
 }
 
-@media (min-width: 800px) {
+.btn-nitro i {
+    font-size: 18px;
+}
+
+@media (min-width: 900px) {
     .touch-overlay {
         display: none;
     }
 }
 
-@media (max-width: 799px) {
+@media (max-width: 899px) {
+    .top-dock-panel {
+        padding: 6px 10px;
+    }
+    .top-row {
+        margin-bottom: 4px;
+    }
+    .mode-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+    .status-pill {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+    .racers-hud {
+        bottom: 105px;
+        left: 10px;
+        right: 10px;
+        gap: 8px;
+    }
     .racer-card {
-        width: 155px;
-        padding: 8px 12px;
+        width: 140px;
+        padding: 6px 10px;
+        border-radius: 16px;
     }
     .speed-number {
-        font-size: 22px;
+        font-size: 20px;
     }
     .controls-hint {
         display: none;
     }
     .touch-overlay {
-        bottom: 96px;
+        bottom: 16px;
+        padding: 0 12px;
+    }
+    .btn-steer, .btn-gas, .btn-nitro {
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
     }
 }
 
