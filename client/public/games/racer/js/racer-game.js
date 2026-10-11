@@ -24,9 +24,9 @@ class LuxuryDuelRacer3D {
         this.elapsedTime = 0;
         this.winner = null;
 
-        // Track Themes: 0 = Neon City Night, 1 = Sunset Desert
+        // Track Themes: 0 = Dark Mode (Cyber Night), 1 = Light Mode (Cyber Daylight)
         this.currentTheme = 0;
-        this.themeNames = ['Neon City Night', 'Sunset Desert'];
+        this.themeNames = ['Cyber Dark Mode', 'Cyber Light Mode'];
 
         // Quality Preset: 0 = Low, 1 = Medium, 2 = High (Auto adapts if FPS < 35)
         this.qualityLevel = 2; // High default
@@ -193,13 +193,33 @@ class LuxuryDuelRacer3D {
 
     applyThemeFogAndSky() {
         if (this.currentTheme === 0) {
-            // Neon City Night (Cyber Indigo / Violet)
+            // Dark Mode: Deep Midnight Cyberpunk Night
             this.scene.fog = new THREE.FogExp2(0x0a091a, 0.0075);
             if (this.renderer) this.renderer.setClearColor(0x0a091a);
+            if (this.hemiLight) {
+                this.hemiLight.color.setHex(0x38bdf8);
+                this.hemiLight.groundColor.setHex(0xec4899);
+                this.hemiLight.intensity = 0.55;
+            }
+            if (this.dirLight) {
+                this.dirLight.color.setHex(0xffffff);
+                this.dirLight.intensity = 0.9;
+            }
+            document.body.classList.remove('theme-light');
         } else {
-            // Sunset Desert (Warm Amber / Magenta Horizon)
-            this.scene.fog = new THREE.FogExp2(0x1a0c1a, 0.007);
-            if (this.renderer) this.renderer.setClearColor(0x1a0c1a);
+            // Light Mode: Vibrant Cyber Daylight / Dawn Highway
+            this.scene.fog = new THREE.FogExp2(0xbae6fd, 0.0048);
+            if (this.renderer) this.renderer.setClearColor(0xbae6fd);
+            if (this.hemiLight) {
+                this.hemiLight.color.setHex(0xffffff);
+                this.hemiLight.groundColor.setHex(0x94a3b8);
+                this.hemiLight.intensity = 0.95;
+            }
+            if (this.dirLight) {
+                this.dirLight.color.setHex(0xfff7ed);
+                this.dirLight.intensity = 1.35;
+            }
+            document.body.classList.add('theme-light');
         }
     }
 
@@ -207,38 +227,59 @@ class LuxuryDuelRacer3D {
         if (this.horizonGroup) this.scene.remove(this.horizonGroup);
         this.horizonGroup = new THREE.Group();
 
-        // 1. Deep Celestial Starfield (500 glittering stars)
-        const starGeo = new THREE.BufferGeometry();
-        const starCoords = [];
-        for (let i = 0; i < 550; i++) {
-            starCoords.push(
-                (Math.random() - 0.5) * 450,
-                15 + Math.random() * 110,
-                160 + Math.random() * 200
-            );
+        const isLight = this.currentTheme === 1;
+
+        if (!isLight) {
+            // 1. Deep Celestial Starfield (550 glittering stars for night)
+            const starGeo = new THREE.BufferGeometry();
+            const starCoords = [];
+            for (let i = 0; i < 550; i++) {
+                starCoords.push(
+                    (Math.random() - 0.5) * 450,
+                    15 + Math.random() * 110,
+                    160 + Math.random() * 200
+                );
+            }
+            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
+            const starMat = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.9,
+                transparent: true,
+                opacity: 0.85
+            });
+            this.horizonGroup.add(new THREE.Points(starGeo, starMat));
+
+            // 2. Giant Glowing Moon / Cyber Orb
+            const moonGeo = new THREE.SphereGeometry(14, 24, 24);
+            const moonMat = new THREE.MeshBasicMaterial({ color: 0xfdf4ff });
+            const moon = new THREE.Mesh(moonGeo, moonMat);
+            moon.position.set(45, 65, 310);
+            this.horizonGroup.add(moon);
+        } else {
+            // Light Theme: Brilliant Golden Sun & Soft High-Altitude Clouds
+            const sunGeo = new THREE.SphereGeometry(18, 28, 28);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+            const sun = new THREE.Mesh(sunGeo, sunMat);
+            sun.position.set(45, 65, 310);
+            this.horizonGroup.add(sun);
+
+            // Sun Halo Flare
+            const haloGeo = new THREE.RingGeometry(18.5, 27, 32);
+            const haloMat = new THREE.MeshBasicMaterial({
+                color: 0xfef08a,
+                transparent: true,
+                opacity: 0.45,
+                side: THREE.DoubleSide
+            });
+            const halo = new THREE.Mesh(haloGeo, haloMat);
+            halo.position.set(45, 65, 308);
+            this.horizonGroup.add(halo);
         }
-        starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
-        const starMat = new THREE.PointsMaterial({
-            color: this.currentTheme === 0 ? 0xffffff : 0xfde047,
-            size: 0.9,
-            transparent: true,
-            opacity: 0.85
-        });
-        this.horizonGroup.add(new THREE.Points(starGeo, starMat));
 
-        // 2. Giant Glowing Moon / Cyber Orb
-        const moonGeo = new THREE.SphereGeometry(14, 24, 24);
-        const moonMat = new THREE.MeshBasicMaterial({
-            color: this.currentTheme === 0 ? 0xfdf4ff : 0xfb923c
-        });
-        const moon = new THREE.Mesh(moonGeo, moonMat);
-        moon.position.set(45, 65, 310);
-        this.horizonGroup.add(moon);
-
-        // 3. Distant City Skyline Silhouettes with glowing windows
-        const buildingColors = this.currentTheme === 0
-            ? [0x0c0b20, 0x12112e, 0x19183d]
-            : [0x261226, 0x1f0e20, 0x170b18];
+        // 3. Skyline Silhouettes
+        const darkColors = [0x0c0b20, 0x12112e, 0x19183d];
+        const lightColors = [0x38bdf8, 0x0284c7, 0x0369a1]; // Bright cyber glass architecture
+        const buildingColors = isLight ? lightColors : darkColors;
 
         for (let i = 0; i < 42; i++) {
             const h = 25 + Math.random() * 65;
@@ -246,7 +287,11 @@ class LuxuryDuelRacer3D {
             const d = 10;
             const b = new THREE.Mesh(
                 new THREE.BoxGeometry(w, h, d),
-                new THREE.MeshBasicMaterial({ color: buildingColors[i % buildingColors.length] })
+                new THREE.MeshBasicMaterial({
+                    color: buildingColors[i % buildingColors.length],
+                    transparent: isLight,
+                    opacity: isLight ? 0.85 : 1.0
+                })
             );
             const x = (Math.random() - 0.5) * 380;
             b.position.set(x, h / 2 - 2, 240);
@@ -257,9 +302,9 @@ class LuxuryDuelRacer3D {
                 const winPlane = new THREE.Mesh(
                     new THREE.PlaneGeometry(w * 0.7, h * 0.6),
                     new THREE.MeshBasicMaterial({
-                        color: i % 2 === 0 ? 0x06b6d4 : 0xec4899,
+                        color: isLight ? 0xffffff : (i % 2 === 0 ? 0x06b6d4 : 0xec4899),
                         transparent: true,
-                        opacity: 0.35
+                        opacity: isLight ? 0.6 : 0.35
                     })
                 );
                 winPlane.position.set(x, h / 2, 234);
@@ -866,16 +911,18 @@ class LuxuryDuelRacer3D {
         const btnCam = document.getElementById('btn-cam');
         if (btnCam) btnCam.addEventListener('click', () => this.toggleCameraView());
 
-        // Theme toggle
+        // Theme toggle (Dark Mode vs Light Mode)
         const btnTheme = document.getElementById('btn-theme');
         if (btnTheme) {
             btnTheme.addEventListener('click', () => {
                 this.currentTheme = this.currentTheme === 0 ? 1 : 0;
                 const icon = document.getElementById('theme-icon');
-                if (icon) icon.className = this.currentTheme === 0 ? 'fa-solid fa-city' : 'fa-solid fa-sun';
+                if (icon) {
+                    icon.className = this.currentTheme === 0 ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+                }
                 this.applyThemeFogAndSky();
                 this.buildHorizon();
-                this.showToast(`Theme: ${this.themeNames[this.currentTheme]}`);
+                this.showToast(`Theme: ${this.themeNames[this.currentTheme]}`, this.currentTheme === 0 ? '🌙' : '☀️');
                 // Broadcast theme to partner
                 window.parent.postMessage({
                     type: 'RACER_EVENT',
@@ -981,8 +1028,13 @@ class LuxuryDuelRacer3D {
                 const payload = e.data.payload;
                 if (payload && payload.event === 'THEME_SYNC' && typeof payload.theme === 'number') {
                     this.currentTheme = payload.theme;
+                    const icon = document.getElementById('theme-icon');
+                    if (icon) {
+                        icon.className = this.currentTheme === 0 ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+                    }
                     this.applyThemeFogAndSky();
                     this.buildHorizon();
+                    this.showToast(`Theme: ${this.themeNames[this.currentTheme]}`, this.currentTheme === 0 ? '🌙' : '☀️');
                 }
             } else if (e.data.type === 'RACER_PONG') {
                 const roundtrip = Math.round(performance.now() - e.data.time);
