@@ -41,11 +41,16 @@
                     <span class="track-finish-pin">🏆 4000m</span>
                 </div>
 
-                <!-- Utilities (Mode / Sound / Theme / Settings / Restart) -->
+                <!-- Utilities (Mode / Invite / Sound / Theme / Settings / Restart) -->
                 <div class="util-actions">
                     <button class="mode-btn active" id="btn-mode-2p" title="2-Player Realtime Duel">
                         <i class="fa-solid fa-user-group"></i>
                         <span class="mode-txt">2P</span>
+                    </button>
+                    <!-- Invite / Connection Button -->
+                    <button class="mode-btn invite-btn" id="btn-invite" title="Invite Partner / Room Code">
+                        <i class="fa-solid fa-link"></i>
+                        <span class="mode-txt">Invite</span>
                     </button>
                     <button class="mode-btn" id="btn-mode-bot" title="vs AI Friend Bot">
                         <i class="fa-solid fa-robot"></i>
@@ -223,6 +228,36 @@
                 <button class="btn-touch btn-gas" id="touch-p1-gas" aria-label="Accelerate Gas">
                     <i class="fa-solid fa-bolt"></i>
                     <span>GAS</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invite Partner / Room Connection Modal -->
+    <div class="modal-overlay" id="modal-invite">
+        <div class="invite-card interactive">
+            <button class="modal-close-btn" id="btn-close-invite" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="invite-icon-orb">🏎️💨</div>
+            <h2 class="invite-title">Invite Your Partner</h2>
+            <p class="invite-subtitle">Share room invite code to duel live on the 4000m Neon Highway!</p>
+
+            <div class="invite-code-container">
+                <span class="invite-code-label">ROOM DUEL CODE</span>
+                <div class="invite-code-box">
+                    <span class="invite-code-text" id="invite-code-val">PARTY888</span>
+                    <button class="btn-copy-code" id="btn-copy-invite" title="Copy Invite Code">
+                        <i class="fa-solid fa-copy"></i>
+                        <span id="copy-btn-text">Copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="invite-actions">
+                <button class="btn-share-link" id="btn-share-invite">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span>Share Room Link</span>
                 </button>
             </div>
         </div>

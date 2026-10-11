@@ -133,9 +133,9 @@ export default function TurboRacer({ onBack }: { onBack: () => void }) {
       <div className="relative flex-1 w-full h-full overflow-hidden bg-[#08070d]">
         <iframe
           ref={iframeRef}
-          src={`/games/racer/index.html?p1=${encodeURIComponent(userName)}&p2=${encodeURIComponent(partnerName)}`}
+          src={`/games/racer/index.html?p1=${encodeURIComponent(userName)}&p2=${encodeURIComponent(partnerName)}&code=${encodeURIComponent(room?.inviteCode || '')}`}
           className="w-full h-full border-none bg-[#08070d]"
-          allow="fullscreen; autoplay"
+          allow="fullscreen; autoplay; clipboard-write"
           title="Turbo 3D Racer"
         />
       </div>

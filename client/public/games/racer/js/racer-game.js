@@ -8,10 +8,11 @@ class LuxuryDuelRacer3D {
         this.container = document.getElementById('canvas-container');
         this.isBotMode = false;
 
-        // Read query params for names
+        // Read query params for names and invite connection code
         const params = new URLSearchParams(window.location.search);
         this.p1Name = params.get('p1') || 'You';
         this.p2Name = params.get('p2') || 'Friend';
+        this.inviteCode = params.get('code') || 'RACE2P';
 
         // Track & Race Configuration
         this.trackLength = 4000; // 4000m grand sprint to checkered finish arch
@@ -969,6 +970,62 @@ class LuxuryDuelRacer3D {
                 btnBot.classList.add('active');
                 if (btn2p) btn2p.classList.remove('active');
                 this.restartRace();
+            });
+        }
+
+        // Invite Connection Modal
+        const btnInvite = document.getElementById('btn-invite');
+        const modalInvite = document.getElementById('modal-invite');
+        const btnCloseInvite = document.getElementById('btn-close-invite');
+        const inviteCodeVal = document.getElementById('invite-code-val');
+        const btnCopyInvite = document.getElementById('btn-copy-invite');
+        const copyBtnText = document.getElementById('copy-btn-text');
+        const btnShareInvite = document.getElementById('btn-share-invite');
+
+        if (inviteCodeVal) {
+            inviteCodeVal.textContent = this.inviteCode;
+        }
+
+        if (btnInvite && modalInvite) {
+            btnInvite.addEventListener('click', () => {
+                modalInvite.classList.add('open');
+            });
+        }
+
+        if (btnCloseInvite && modalInvite) {
+            btnCloseInvite.addEventListener('click', () => {
+                modalInvite.classList.remove('open');
+            });
+        }
+
+        if (btnCopyInvite) {
+            btnCopyInvite.addEventListener('click', () => {
+                navigator.clipboard.writeText(this.inviteCode).then(() => {
+                    if (copyBtnText) copyBtnText.textContent = 'Copied!';
+                    this.showToast('Room code copied to clipboard! 📋', '✨');
+                    setTimeout(() => {
+                        if (copyBtnText) copyBtnText.textContent = 'Copy';
+                    }, 2000);
+                }).catch(() => {
+                    this.showToast(`Code: ${this.inviteCode}`);
+                });
+            });
+        }
+
+        if (btnShareInvite) {
+            btnShareInvite.addEventListener('click', () => {
+                const shareText = `Join me for a 4000m Turbo 3D Racer duel in After Party! Room Code: ${this.inviteCode}`;
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'After Party - Turbo 3D Racer',
+                        text: shareText,
+                        url: window.location.origin
+                    }).catch(() => {});
+                } else {
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        this.showToast('Invite link copied! Share with your partner 💕', '🚀');
+                    });
+                }
             });
         }
 
