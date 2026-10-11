@@ -14,50 +14,57 @@
 
     <!-- UI Overlay HUD Layer -->
     <div class="ui-layer">
-        <!-- Top Control Bar -->
+        <!-- Top Compact Floating Header Bar -->
         <header class="top-dock-panel interactive">
             <div class="top-row">
-                <!-- 2-Player vs Friend Mode Switch -->
-                <div class="mode-toggle">
-                    <button class="mode-btn active" id="btn-mode-2p" title="2 Players on same keyboard / touch">
-                        <i class="fa-solid fa-users"></i>
-                        <span>2-Player (You & Friend)</span>
-                    </button>
-                    <button class="mode-btn" id="btn-mode-bot" title="Play against Friend AI Bot">
-                        <i class="fa-solid fa-robot"></i>
-                        <span>vs Friend Bot</span>
-                    </button>
+                <!-- Live Track Progress Bar with Car Pins -->
+                <div class="track-progress-container">
+                    <span class="track-start-pin">🏁</span>
+                    <div class="track-line-wrapper">
+                        <div class="track-line-base"></div>
+                        <!-- P1 Pin (You - Pink Hypercar) -->
+                        <div class="track-pin p1-pin" id="pin-p1" style="left: 0%;">
+                            <span class="pin-dot">🏎️</span>
+                            <span class="pin-tag">P1</span>
+                        </div>
+                        <!-- P2 Pin (Friend - Cyan Hypercar) -->
+                        <div class="track-pin p2-pin" id="pin-p2" style="left: 0%;">
+                            <span class="pin-dot">🏎️</span>
+                            <span class="pin-tag">P2</span>
+                        </div>
+                    </div>
+                    <span class="track-finish-pin">🏆 1500m</span>
                 </div>
 
-                <!-- Action Utilities -->
+                <!-- Utilities (Mode / Sound / Restart) -->
                 <div class="util-actions">
-                    <button class="btn-icon" id="btn-cam" title="Switch Camera View">
+                    <button class="mode-btn active" id="btn-mode-2p" title="2-Player Duel">
+                        <i class="fa-solid fa-user-group"></i>
+                        <span class="mode-txt">2P</span>
+                    </button>
+                    <button class="mode-btn" id="btn-mode-bot" title="vs AI Friend Bot">
+                        <i class="fa-solid fa-robot"></i>
+                        <span class="mode-txt">Bot</span>
+                    </button>
+                    <button class="btn-icon" id="btn-cam" title="Camera Angle">
                         <i class="fa-solid fa-video"></i>
                     </button>
-                    <button class="btn-icon" id="btn-mute" title="Toggle Sound">
-                        <i class="fa-solid fa-volume-high"></i>
-                    </button>
-                    <button class="btn-icon" id="btn-restart" title="Restart Race">
+                    <button class="btn-icon" id="btn-restart" title="Restart">
                         <i class="fa-solid fa-rotate-right"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Race Progress & Live Leader Bar -->
-            <div class="race-status-bar">
-                <!-- Leader Status Banner -->
+            <!-- Match Status Banner -->
+            <div class="match-meta-row">
                 <div class="status-pill leader-pill" id="leader-display">
                     <span class="leader-dot"></span>
                     <span id="leader-text">Ready to Race</span>
                 </div>
-
-                <!-- Distance to Finish Line -->
                 <div class="status-pill dist-pill" id="dist-display">
-                    <i class="fa-solid fa-flag-checkered"></i>
+                    <i class="fa-solid fa-gauge-simple-high"></i>
                     <span id="dist-text">0 / 1500m</span>
                 </div>
-
-                <!-- Live Timer -->
                 <div class="status-pill time-pill" id="time-display">00:00.0</div>
             </div>
         </header>
@@ -71,19 +78,21 @@
                 <div class="gantry-light" id="g-light-4"></div>
                 <div class="gantry-light" id="g-light-5"></div>
             </div>
-            <div class="gantry-text" id="gantry-text">GET READY</div>
+            <div class="gantry-text" id="gantry-text">READY</div>
         </div>
 
-        <!-- Dual Speedometers & Nitro Bars for Both Racers -->
+        <!-- Sleek Dual Cockpit Telemetry HUD for Both Racers -->
         <div class="racers-hud interactive">
-            <!-- Player 1 (You - Crimson Hypercar) -->
+            <!-- Player 1 (You - Metallic Rose Supercar) -->
             <div class="racer-card p1-card">
                 <div class="racer-header">
-                    <span class="racer-tag p1-tag">P1</span>
-                    <span class="racer-name" id="p1-name-display">You</span>
+                    <div class="racer-id-badge p1-badge">
+                        <span class="p1-tag">YOU</span>
+                        <span class="racer-name" id="p1-name-display">You</span>
+                    </div>
                     <span class="racer-pos p1-pos" id="p1-pos">1st</span>
                 </div>
-                <div class="speed-row">
+                <div class="speed-cluster">
                     <span class="speed-number" id="p1-speed">0</span>
                     <span class="speed-unit">KM/H</span>
                 </div>
@@ -91,25 +100,20 @@
                     <div class="nitro-bar">
                         <div class="nitro-bar-fill p1-nitro" id="p1-nitro-fill" style="width: 100%;"></div>
                     </div>
-                    <span class="nitro-lbl">NITRO</span>
-                </div>
-                <div class="controls-hint p1-hint">
-                    <span>Steer: [←] [→]</span>
-                    <span>•</span>
-                    <span>Gas: [↑]</span>
-                    <span>•</span>
-                    <span>Nitro: [Shift/Enter]</span>
+                    <span class="nitro-lbl">NITRO BOOST</span>
                 </div>
             </div>
 
-            <!-- Player 2 (Friend - Cobalt Hypercar) -->
+            <!-- Player 2 (Friend / Partner - Metallic Cyan Supercar) -->
             <div class="racer-card p2-card">
                 <div class="racer-header">
-                    <span class="racer-tag p2-tag">P2</span>
-                    <span class="racer-name" id="p2-name-display">Friend</span>
+                    <div class="racer-id-badge p2-badge">
+                        <span class="p2-tag">FRIEND</span>
+                        <span class="racer-name" id="p2-name-display">Friend</span>
+                    </div>
                     <span class="racer-pos p2-pos" id="p2-pos">2nd</span>
                 </div>
-                <div class="speed-row">
+                <div class="speed-cluster">
                     <span class="speed-number" id="p2-speed">0</span>
                     <span class="speed-unit">KM/H</span>
                 </div>
@@ -117,38 +121,31 @@
                     <div class="nitro-bar">
                         <div class="nitro-bar-fill p2-nitro" id="p2-nitro-fill" style="width: 100%;"></div>
                     </div>
-                    <span class="nitro-lbl">NITRO</span>
-                </div>
-                <div class="controls-hint p2-hint">
-                    <span>Steer: [A] [D]</span>
-                    <span>•</span>
-                    <span>Gas: [W]</span>
-                    <span>•</span>
-                    <span>Nitro: [Space]</span>
+                    <span class="nitro-lbl">NITRO BOOST</span>
                 </div>
             </div>
         </div>
 
-        <!-- Mobile Touch Controls (Dual Thumb / 2-Player Touch) -->
+        <!-- Touch Controls - Ergonomic Futuristic Neon Gamepad -->
         <div class="touch-overlay interactive" id="touch-controls">
-            <!-- Left Thumb: Steer Controls -->
+            <!-- Left Thumb: Precision Steering Wheel Buttons -->
             <div class="touch-group touch-left-group">
-                <button class="btn-touch btn-steer" id="touch-p1-left">
-                    <i class="fa-solid fa-arrow-left"></i>
+                <button class="btn-touch btn-steer" id="touch-p1-left" aria-label="Steer Left">
+                    <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <button class="btn-touch btn-steer" id="touch-p1-right">
-                    <i class="fa-solid fa-arrow-right"></i>
+                <button class="btn-touch btn-steer" id="touch-p1-right" aria-label="Steer Right">
+                    <i class="fa-solid fa-chevron-right"></i>
                 </button>
             </div>
 
-            <!-- Right Thumb: Gas & Nitro -->
+            <!-- Right Thumb: Gas & Nitro Thrust -->
             <div class="touch-group touch-right-group">
-                <button class="btn-touch btn-nitro" id="touch-p1-nitro">
-                    <i class="fa-solid fa-bolt"></i>
-                    <span>NITRO</span>
+                <button class="btn-touch btn-nitro" id="touch-p1-nitro" aria-label="Nitro Thrust">
+                    <i class="fa-solid fa-fire-flame-curved"></i>
+                    <span>BOOST</span>
                 </button>
-                <button class="btn-touch btn-gas" id="touch-p1-gas">
-                    <i class="fa-solid fa-gauge-high"></i>
+                <button class="btn-touch btn-gas" id="touch-p1-gas" aria-label="Accelerate Gas">
+                    <i class="fa-solid fa-bolt"></i>
                     <span>GAS</span>
                 </button>
             </div>

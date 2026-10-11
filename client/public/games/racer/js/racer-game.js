@@ -911,10 +911,17 @@ class LuxuryDuelRacer3D {
             if (timeEl) timeEl.textContent = `${mins}:${secs}`;
         }
 
-        // Track Distance Progress
+        // Track Distance Progress & Live Mini-Map Pins
         const maxDist = Math.max(this.p1.distance, this.p2.distance);
         const distText = document.getElementById('dist-text');
         if (distText) distText.textContent = `${Math.min(this.trackLength, Math.round(maxDist))} / ${this.trackLength}m`;
+
+        const p1Pct = Math.min(100, Math.max(0, (this.p1.distance / this.trackLength) * 100));
+        const p2Pct = Math.min(100, Math.max(0, (this.p2.distance / this.trackLength) * 100));
+        const pinP1 = document.getElementById('pin-p1');
+        const pinP2 = document.getElementById('pin-p2');
+        if (pinP1) pinP1.style.left = `${p1Pct}%`;
+        if (pinP2) pinP2.style.left = `${p2Pct}%`;
 
         // Race Positions & Gap Banner
         const p1PosEl = document.getElementById('p1-pos');
