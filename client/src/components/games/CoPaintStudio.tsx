@@ -54,9 +54,20 @@ import { Friend } from '../../lib/types';
 // Types
 type ToolType = 'pen' | 'brush' | 'neon' | 'spray' | 'eraser';
 type ShapeType = 'line' | 'rectangle' | 'circle' | 'star' | 'heart' | 'cloud' | 'mountain';
-type FrameType = 'wood' | 'gold' | 'black' | 'minimal' | 'none';
+type FrameType =
+  | 'floral-daisy'
+  | 'victorian-lace'
+  | 'rose-garland'
+  | 'peach-botanical'
+  | 'baroque-gold'
+  | 'rustic-wood'
+  | 'antique-parchment'
+  | 'red-ribbon'
+  | 'minimal'
+  | 'none';
 type SceneryPreset =
   | 'blank'
+  | 'coffee-date'
   | 'mountain-cabin'
   | 'capybara-halloween'
   | 'rainy-frog'
@@ -174,12 +185,37 @@ const SCENERY_STICKERS = [
 ];
 
 const SCENERY_IMAGE_MAP: Record<string, string> = {
+  'coffee-date': '/scenery/scenery-coffee-date.png',
   'mountain-cabin': '/scenery/scenery-mountain-cabin.png',
   'capybara-halloween': '/scenery/scenery-capybara-halloween.png',
   'rainy-frog': '/scenery/scenery-rainy-frog.png',
   'elemental-touch': '/scenery/scenery-elemental-touch.png',
   'balloon-house': '/scenery/scenery-balloon-house.png',
 };
+
+const FRAME_IMAGE_MAP: Record<string, string> = {
+  'floral-daisy': '/frames/frame-floral-daisy.png',
+  'victorian-lace': '/frames/frame-victorian-lace.png',
+  'rose-garland': '/frames/frame-rose-garland.png',
+  'peach-botanical': '/frames/frame-peach-botanical.png',
+  'baroque-gold': '/frames/frame-baroque-gold.png',
+  'rustic-wood': '/frames/frame-rustic-wood.png',
+  'antique-parchment': '/frames/frame-antique-parchment.png',
+  'red-ribbon': '/frames/frame-red-ribbon.png',
+};
+
+const PHOTO_FRAMES: Array<{ key: FrameType; label: string }> = [
+  { key: 'floral-daisy', label: 'Vintage Daisy Meadow' },
+  { key: 'victorian-lace', label: 'Victorian Lace Filigree' },
+  { key: 'rose-garland', label: 'Rose Garland & Scroll' },
+  { key: 'peach-botanical', label: 'Peach Botanical Floral' },
+  { key: 'baroque-gold', label: 'Baroque Gilded Gold' },
+  { key: 'rustic-wood', label: 'Rustic Wood & Passepartout' },
+  { key: 'antique-parchment', label: 'Antique Ornate Parchment' },
+  { key: 'red-ribbon', label: 'Red Ribbon & Blossom' },
+  { key: 'minimal', label: 'Minimal Studio Border' },
+  { key: 'none', label: 'Frameless Clean' },
+];
 
 export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const user = useAuthStore((state) => state.user);
@@ -223,7 +259,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       pageColor: '#ffffff', // Default pure white page
       sceneryPreset: 'blank', // Default clean blank sheet
       customSceneryUrl: null,
-      frame: 'wood', // Real walnut photo frame by default
+      frame: 'floral-daisy', // Real vintage daisy photo frame by default
       canvasRatio: 'fit', // Responsive fit
       strokes: [],
       shapes: [],
@@ -1474,7 +1510,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       pageColor: '#ffffff',
       sceneryPreset: 'blank',
       customSceneryUrl: null,
-      frame: 'wood',
+      frame: 'floral-daisy',
       canvasRatio: 'fit',
       strokes: [],
       shapes: [],
@@ -1586,7 +1622,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   // -------------------------------------------------------------
   // HIGH-RESOLUTION ARTWORK DOWNLOAD
   // -------------------------------------------------------------
-  const handleDownloadArtwork = () => {
+  const handleDownloadArtwork = async () => {
     const bgCanvas = bgCanvasRef.current;
     const drawCanvas = drawCanvasRef.current;
     if (!bgCanvas || !drawCanvas) return;
@@ -1607,25 +1643,23 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     // 2. Draw Drawings on top
     ctx.drawImage(drawCanvas, 0, 0);
 
-    // 3. Draw Realistic Frame Overlay if selected
-    if (currentPage.frame === 'wood') {
-      ctx.strokeStyle = '#5c3a21';
-      ctx.lineWidth = 28;
-      ctx.strokeRect(14, 14, width - 28, height - 28);
-      ctx.strokeStyle = '#3b2312';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(28, 28, width - 56, height - 56);
-    } else if (currentPage.frame === 'gold') {
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 26;
-      ctx.strokeRect(13, 13, width - 26, height - 26);
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(26, 26, width - 52, height - 52);
-    } else if (currentPage.frame === 'black') {
-      ctx.strokeStyle = '#18181b';
-      ctx.lineWidth = 24;
-      ctx.strokeRect(12, 12, width - 24, height - 24);
+    // 3. Draw Authentic Photo Frame Overlay if selected
+    const frameUrl = FRAME_IMAGE_MAP[currentPage.frame];
+    if (frameUrl) {
+      await new Promise<void>((resolve) => {
+        const frameImg = new Image();
+        frameImg.crossOrigin = 'anonymous';
+        frameImg.onload = () => {
+          ctx.drawImage(frameImg, 0, 0, width, height);
+          resolve();
+        };
+        frameImg.onerror = () => resolve();
+        frameImg.src = frameUrl;
+      });
+    } else if (currentPage.frame === 'minimal') {
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(4, 4, width - 8, height - 8);
     }
 
     const dataUrl = exportCanvas.toDataURL('image/png');
@@ -1882,15 +1916,11 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               ? 'aspect-[16/9] w-full max-w-5xl'
               : 'w-full h-full max-w-5xl'
           } ${
-            currentPage.frame === 'wood'
-              ? 'p-3 sm:p-4 bg-[#f8f5ee] rounded-2xl border-[14px] border-[#5c3a21] shadow-[0_20px_50px_rgba(0,0,0,0.85)] ring-2 ring-[#3b2312]'
-              : currentPage.frame === 'gold'
-              ? 'p-3 sm:p-4 bg-[#fdfbf7] rounded-2xl border-[14px] border-[#d97706] shadow-[0_20px_50px_rgba(0,0,0,0.85)] ring-2 ring-[#fef08a]'
-              : currentPage.frame === 'black'
-              ? 'p-3 sm:p-4 bg-white rounded-2xl border-[12px] border-[#18181b] shadow-[0_20px_50px_rgba(0,0,0,0.85)]'
-              : currentPage.frame === 'minimal'
+            currentPage.frame === 'minimal'
               ? 'rounded-2xl border-2 border-slate-700/60 shadow-2xl overflow-hidden'
-              : 'rounded-xl border border-slate-800 shadow-xl overflow-hidden'
+              : currentPage.frame === 'none'
+              ? 'rounded-xl border border-slate-800 shadow-xl overflow-hidden'
+              : 'rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden'
           }`}
         >
           {/* Inner Canvas Mount with Drop Shadow */}
@@ -1915,6 +1945,16 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               className="absolute inset-0 w-full h-full cursor-crosshair block z-10"
               style={{ touchAction: 'none' }}
             />
+
+            {/* Layer 3: Authentic Photo Frame Image Overlay */}
+            {FRAME_IMAGE_MAP[currentPage.frame] && (
+              <img
+                src={FRAME_IMAGE_MAP[currentPage.frame]}
+                alt="Photo Frame"
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none"
+                style={{ zIndex: 15 }}
+              />
+            )}
 
             {/* Remote Friend's Cursor Indicator */}
             {remoteCursor && (
@@ -2112,6 +2152,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {[
                   { key: 'blank', label: 'Blank Canvas' },
+                  { key: 'coffee-date', label: 'Romantic Cafe Date' },
                   { key: 'mountain-cabin', label: 'Mountain Cabin River' },
                   { key: 'capybara-halloween', label: 'Halloween Capybaras' },
                   { key: 'rainy-frog', label: 'Cute Rainy Frog' },
@@ -2209,16 +2250,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
             {/* FRAMES TAB: Authentic Photo Frames */}
             {activeTab === 'frame' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
-                {[
-                  { key: 'wood', label: 'Walnut Wood Frame' },
-                  { key: 'gold', label: 'Gallery Gold Frame' },
-                  { key: 'black', label: 'Modern Studio Black' },
-                  { key: 'minimal', label: 'Minimal Studio Border' },
-                  { key: 'none', label: 'Frameless Canvas' },
-                ].map((f) => (
+                {PHOTO_FRAMES.map((f) => (
                   <button
                     key={f.key}
-                    onClick={() => handleSelectFrame(f.key as FrameType)}
+                    onClick={() => handleSelectFrame(f.key)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
                       currentPage.frame === f.key
                         ? 'bg-amber-500 text-slate-950'
