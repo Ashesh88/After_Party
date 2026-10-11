@@ -223,6 +223,22 @@ export default function WatchPage() {
     socket?.emit('watch:reaction', { emoji });
   };
 
+  const lastTapRef = useRef<number>(0);
+
+  const handleDoubleTapReaction = () => {
+    sendReaction('❤️');
+  };
+
+  const handleTouchEnd = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 350) {
+      handleDoubleTapReaction();
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-[#07070f] text-slate-100 flex flex-col overflow-y-auto pb-44 sm:pb-36">
       {/* Ambient Romantic Orbs */}
@@ -422,13 +438,10 @@ export default function WatchPage() {
         {mediaState ? (
           <div className="w-full flex flex-col items-center gap-3">
             <div 
-              onDoubleClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-                sendReaction('❤️');
-              }}
-              title="Double tap to send floating heart ❤️"
-              className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black"
+              onDoubleClick={handleDoubleTapReaction}
+              onTouchEnd={handleTouchEnd}
+              title="Double tap / double click to send floating heart reaction"
+              className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black cursor-pointer"
             >
               {mediaState.type === 'youtube' && (
                 <iframe
