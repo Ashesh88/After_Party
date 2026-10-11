@@ -1,5 +1,7 @@
-// 3D UNO Party - Official Rule Engine & Turn Arbiter
-// Implements 108-card official deck, action cards, wild shifts, uno calls, and smart bot AI
+// 3D UNO Party - Official Classic Rule Engine & Turn Arbiter
+// Strict Classic UNO rules: 108 cards, exact distribution, same-symbol matching,
+// turn order, Skip, 2p Reverse as Skip, Draw Two (+2, no stacking), Wild,
+// Wild Draw Four (+4) Challenge system, UNO call and catch penalties, and 500-pt scoring.
 
 const UNO_COLORS = ['red', 'blue', 'green', 'yellow'];
 const UNO_COLOR_HEX = {
@@ -53,18 +55,34 @@ class UnoGameLogic {
         this.playersHands = []; // Array of card arrays
         this.currentPlayer = 0;
         this.direction = 1; // 1 = clockwise / forward, -1 = counter-clockwise
-        this.activeColor = null; // Current color that must be matched
-        this.cardCount = 0;
+        this.activeColor = null; // Current active color that must be matched
         this.saidUno = [false, false, false, false];
         this.unoCatchWindow = null; // tracks if player can be caught for missing UNO
         this.isGameOver = false;
         this.winner = null;
-        this.scores = [0, 0, 0, 0];
+        this.scores = Array.from({ length: this.playersCount }, () => 0);
+        this.matchTargetScore = 500;
+        this.matchWinner = null;
+
+        // Turn draw status
+        this.hasDrawnThisTurn = false;
+        this.drawnCardId = null;
+
+        // Pending Wild Draw 4 challenge
+        this.pendingChallenge = null;
 
         this.initDeck();
     }
 
-    // Build standard 108 cards
+    // Build standard 108 cards:
+    // 4 Colors (25 cards each = 100):
+    //   - One 0 per color (4)
+    //   - Two each of 1-9 per color (72)
+    //   - Two each of Skip, Reverse, Draw2 per color (24)
+    // 8 Wild cards:
+    //   - 4 Wild
+    //   - 4 Wild Draw Four
+    // Total = 108 cards
     initDeck() {
         this.deck = [];
         let idCounter = 1;
@@ -103,8 +121,15 @@ class UnoGameLogic {
         }
     }
 
-    // Start a fresh round
+    // Start a fresh match (resets cumulative scores to 0)
     startNewGame() {
+        this.scores = Array.from({ length: this.playersCount }, () => 0);
+        this.matchWinner = null;
+        this.startNewRound();
+    }
+
+    // Start a new round (preserves cumulative scores)
+    startNewRound() {
         this.initDeck();
         this.discardPile = [];
         this.playersHands = Array.from({ length: this.playersCount }, () => []);
@@ -114,6 +139,9 @@ class UnoGameLogic {
         this.unoCatchWindow = null;
         this.isGameOver = false;
         this.winner = null;
+        this.hasDrawnThisTurn = false;
+        this.drawnCardId = null;
+        this.pendingChallenge = null;
 
         // Deal 7 cards to each player
         for (let i = 0; i < 7; i++) {
@@ -132,7 +160,7 @@ class UnoGameLogic {
 
         this.discardPile.push(firstCard);
         this.activeColor = firstCard.color;
-        this.currentPlayer = 0; // Human always starts round cleanly!
+        this.currentPlayer = 0; // Human always starts round cleanly
 
         this.notifyState();
     }
@@ -141,7 +169,7 @@ class UnoGameLogic {
         if (this.deck.length === 0) {
             // Reshuffle discard pile except top card
             if (this.discardPile.length <= 1) {
-                // Failsafe: recreate deck if discard is empty
+                // Failsafe: recreate deck if discard is completely empty
                 this.initDeck();
             } else {
                 const top = this.discardPile.pop();
@@ -170,7 +198,7 @@ class UnoGameLogic {
             this.playersHands[playerIdx].push(card);
             drawn.push(card);
         }
-        // If player had UNO protection, reset it since they have >1 card
+        // If player had UNO protection, reset it since they now have >1 card
         if (this.playersHands[playerIdx].length > 1) {
             this.saidUno[playerIdx] = false;
         }
@@ -178,8 +206,19 @@ class UnoGameLogic {
     }
 
     // Check if card is legally playable
-    isCardPlayable(card) {
+    // Classic rules:
+    // 1. Wild cards can always be played
+    // 2. Card color matches activeColor
+    // 3. Card value matches topCard.value (number on number OR symbol on symbol: reverse on reverse, skip on skip, draw2 on draw2 across any colors)
+    // 4. If player has already drawn a card this turn, only that drawn card can be played!
+    isCardPlayable(card, playerIdx = null) {
         if (!card) return false;
+
+        // If checking for the active player and they have already drawn this turn, only the drawn card is legal
+        if (playerIdx !== null && playerIdx === this.currentPlayer && this.hasDrawnThisTurn) {
+            if (card.id !== this.drawnCardId) return false;
+        }
+
         const top = this.getTopCard();
         if (!top) return true;
 
@@ -189,7 +228,7 @@ class UnoGameLogic {
         // Match active color
         if (card.color === this.activeColor) return true;
 
-        // Match card value / symbol (e.g., 7 on 7, skip on skip)
+        // Match card value / symbol (e.g., 7 on 7, skip on skip, reverse on reverse, draw2 on draw2)
         if (card.value === top.value) return true;
 
         return false;
@@ -197,7 +236,7 @@ class UnoGameLogic {
 
     getPlayableCards(playerIdx) {
         const hand = this.playersHands[playerIdx] || [];
-        return hand.filter(c => this.isCardPlayable(c));
+        return hand.filter(c => this.isCardPlayable(c, playerIdx));
     }
 
     // Player action: Call UNO!
@@ -245,22 +284,41 @@ class UnoGameLogic {
     playCard(playerIdx, cardId, chosenColor = null) {
         if (this.isGameOver) return { success: false, reason: 'game_over' };
         if (playerIdx !== this.currentPlayer) return { success: false, reason: 'not_your_turn' };
+        if (this.pendingChallenge) return { success: false, reason: 'pending_challenge' };
 
         const hand = this.playersHands[playerIdx];
         const cardIndex = hand.findIndex(c => c.id === cardId);
         if (cardIndex === -1) return { success: false, reason: 'card_not_found' };
 
         const card = hand[cardIndex];
-        if (!this.isCardPlayable(card)) return { success: false, reason: 'illegal_card' };
+        if (!this.isCardPlayable(card, playerIdx)) return { success: false, reason: 'illegal_card' };
 
-        // Handle Uno flag: if playing leaves player with 1 card and they didn't call UNO, flag for catch
+        // If player has drawn this turn, only that drawn card can be played
+        if (this.hasDrawnThisTurn && cardId !== this.drawnCardId) {
+            return { success: false, reason: 'can_only_play_drawn_card' };
+        }
+
+        const prevActiveColor = this.activeColor;
+
+        // Check if playing leaves player with 1 card and they didn't call UNO
         if (hand.length === 2 && !this.saidUno[playerIdx]) {
             this.unoCatchWindow = playerIdx;
+        }
+
+        // Check if Wild+4 play is illegal under official Classic UNO rules:
+        // A Wild+4 is illegal if the player currently holds any other card matching prevActiveColor
+        let wasWild4Illegal = false;
+        if (card.value === 'wild4') {
+            wasWild4Illegal = hand.some(c => c.id !== cardId && c.color === prevActiveColor);
         }
 
         // Remove card from hand and push to discard
         hand.splice(cardIndex, 1);
         this.discardPile.push(card);
+
+        // Reset drawn status for the turn
+        this.hasDrawnThisTurn = false;
+        this.drawnCardId = null;
 
         // Check victory
         if (hand.length === 0) {
@@ -275,10 +333,29 @@ class UnoGameLogic {
         if (card.isWild()) {
             this.activeColor = chosenColor || UNO_COLORS[Math.floor(Math.random() * 4)];
             if (card.value === 'wild4') {
-                const victim = this.getNextPlayerIndex(1);
-                this.giveCardsToPlayer(victim, 4);
-                nextPlayerStep = 2; // victim skips turn
                 effect = 'wild4';
+                const challenger = this.getNextPlayerIndex(1);
+
+                // Set pending challenge
+                this.pendingChallenge = {
+                    playerIdx,
+                    challengerIdx: challenger,
+                    card,
+                    chosenColor: this.activeColor,
+                    wasIllegal: wasWild4Illegal
+                };
+
+                if (this.onEvent) {
+                    this.onEvent('wild4_played', {
+                        playerIdx,
+                        challengerIdx: challenger,
+                        activeColor: this.activeColor,
+                        wasIllegal: wasWild4Illegal
+                    });
+                }
+
+                this.notifyState();
+                return { success: true, card, effect: 'wild4', pendingChallenge: true };
             } else {
                 effect = 'wild';
             }
@@ -301,7 +378,7 @@ class UnoGameLogic {
             } else if (card.value === 'draw2') {
                 const victim = this.getNextPlayerIndex(1);
                 this.giveCardsToPlayer(victim, 2);
-                nextPlayerStep = 2; // victim skips turn
+                nextPlayerStep = 2; // victim draws 2 and skips turn (NO STACKING allowed)
                 effect = 'draw2';
             }
         }
@@ -321,20 +398,80 @@ class UnoGameLogic {
         return { success: true, card, effect, nextPlayer: this.currentPlayer };
     }
 
+    // Resolve Wild Draw Four challenge
+    // didChallenge = true: Challenger checks if +4 player had a matching color
+    // didChallenge = false: Challenger accepts +4 penalty without challenge
+    resolveWild4Challenge(challengerIdx, didChallenge) {
+        if (!this.pendingChallenge) return false;
+        const { playerIdx, wasIllegal, card } = this.pendingChallenge;
+        this.pendingChallenge = null;
+
+        if (didChallenge) {
+            if (wasIllegal) {
+                // Succeeded! The player who played +4 was guilty (held matching activeColor)
+                // Guilty player draws 4 penalty cards
+                this.giveCardsToPlayer(playerIdx, 4);
+                // Challenger loses NO turn and draws NO cards! Challenger plays next
+                this.currentPlayer = challengerIdx;
+
+                if (this.onEvent) {
+                    this.onEvent('wild4_challenge_result', {
+                        success: true,
+                        guiltyPlayer: playerIdx,
+                        challenger: challengerIdx,
+                        penaltyCount: 4
+                    });
+                }
+            } else {
+                // Failed! Player who played +4 was innocent (had no matching activeColor)
+                // Challenger must draw 6 cards (4 + 2 penalty) and lose their turn!
+                this.giveCardsToPlayer(challengerIdx, 6);
+                // Next turn skips challenger
+                this.currentPlayer = this.getNextPlayerIndex(2);
+
+                if (this.onEvent) {
+                    this.onEvent('wild4_challenge_result', {
+                        success: false,
+                        guiltyPlayer: null,
+                        challenger: challengerIdx,
+                        penaltyCount: 6
+                    });
+                }
+            }
+        } else {
+            // Accepted: Challenger draws 4 cards and loses their turn
+            this.giveCardsToPlayer(challengerIdx, 4);
+            this.currentPlayer = this.getNextPlayerIndex(2);
+
+            if (this.onEvent) {
+                this.onEvent('wild4_accepted', {
+                    victim: challengerIdx,
+                    penaltyCount: 4
+                });
+            }
+        }
+
+        this.notifyState();
+        return true;
+    }
+
     // Player draws card from pile
     playerDrawCard(playerIdx) {
         if (this.isGameOver) return null;
         if (playerIdx !== this.currentPlayer) return null;
+        if (this.hasDrawnThisTurn) return null; // Can only draw once per turn in Classic UNO
 
         const drawn = this.drawCardFromDeck();
         this.playersHands[playerIdx].push(drawn);
+        this.hasDrawnThisTurn = true;
+        this.drawnCardId = drawn.id;
 
         // If player had 1 card previously, reset UNO protection
         if (this.playersHands[playerIdx].length > 1) {
             this.saidUno[playerIdx] = false;
         }
 
-        const isPlayable = this.isCardPlayable(drawn);
+        const isPlayable = this.isCardPlayable(drawn, playerIdx);
 
         if (this.onEvent) {
             this.onEvent('card_drawn', {
@@ -352,8 +489,13 @@ class UnoGameLogic {
     passTurn(playerIdx) {
         if (this.isGameOver) return;
         if (playerIdx !== this.currentPlayer) return;
+        // In classic rules, you cannot pass without drawing!
+        if (!this.hasDrawnThisTurn) return;
 
+        this.hasDrawnThisTurn = false;
+        this.drawnCardId = null;
         this.currentPlayer = this.getNextPlayerIndex(1);
+
         if (this.onEvent) {
             this.onEvent('turn_passed', { playerIdx, nextPlayer: this.currentPlayer });
         }
@@ -364,7 +506,10 @@ class UnoGameLogic {
         this.isGameOver = true;
         this.winner = winnerIdx;
 
-        // Calculate points won from all opponents' cards
+        // Calculate points won from all opponents' cards:
+        // Number cards: face value (0-9)
+        // Skip, Reverse, Draw Two: 20 points each
+        // Wild, Wild Draw Four: 50 points each
         let roundPoints = 0;
         this.playersHands.forEach((hand, idx) => {
             if (idx !== winnerIdx) {
@@ -375,12 +520,20 @@ class UnoGameLogic {
         });
         this.scores[winnerIdx] += roundPoints;
 
+        // First player to reach 500 cumulative points wins the match!
+        const isMatchWon = this.scores[winnerIdx] >= this.matchTargetScore;
+        if (isMatchWon) {
+            this.matchWinner = winnerIdx;
+        }
+
         if (this.onEvent) {
             this.onEvent('game_won', {
                 winnerIdx,
                 winnerName: this.playerNames[winnerIdx],
                 roundPoints,
-                totalScore: this.scores[winnerIdx]
+                totalScore: this.scores[winnerIdx],
+                isMatchWon,
+                matchWinnerName: isMatchWon ? this.playerNames[winnerIdx] : null
             });
         }
         this.notifyState();
@@ -388,57 +541,61 @@ class UnoGameLogic {
 
     // Strategic AI Logic for Bot
     getBestBotMove(botIdx) {
-        const hand = this.playersHands[botIdx];
+        const hand = this.playersHands[botIdx] || [];
         const playable = this.getPlayableCards(botIdx);
 
-        // Check if bot should call UNO! (has 2 cards before playing)
-        const shouldCallUno = hand.length === 2;
+        // Uno shout check: if bot has 2 cards and will play 1, bot shouts UNO!
+        const shouldCallUno = (hand.length === 2 && playable.length > 0);
 
         if (playable.length === 0) {
-            return { action: 'draw', shouldCallUno };
+            return { action: 'draw', shouldCallUno: false };
         }
 
-        // Count bot's colors in hand to pick best wild color or prioritize color match
+        // Count colors in hand to pick dominant color for wilds
         const colorCounts = { red: 0, blue: 0, green: 0, yellow: 0 };
         hand.forEach(c => {
-            if (c.color !== 'wild' && colorCounts[c.color] !== undefined) {
-                colorCounts[c.color]++;
+            if (colorCounts[c.color] !== undefined) colorCounts[c.color]++;
+        });
+        let dominantColor = 'red';
+        let maxColorCount = -1;
+        Object.entries(colorCounts).forEach(([col, cnt]) => {
+            if (cnt > maxColorCount) {
+                maxColorCount = cnt;
+                dominantColor = col;
             }
         });
-        const dominantColor = Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b, 'red');
 
-        // Opponent status: if opponent has 1 or 2 cards left, bot gets aggressive with +4, +2, or Skip
-        const opponentIdx = this.getNextPlayerIndex(1);
-        const opponentCardCount = this.playersHands[opponentIdx].length;
-        const isOpponentThreat = opponentCardCount <= 2;
-
+        // Priority 1: Match color/number with standard number card
         let selectedCard = null;
-
-        // If human is threatening to win (<= 2 cards), bot uses attack/defense actions to stop them
-        if (isOpponentThreat) {
-            const attackCard = playable.find(c => c.value === 'wild4' || c.value === 'draw2' || c.value === 'skip');
-            if (attackCard) selectedCard = attackCard;
+        const colorMatches = playable.filter(c => !c.isWild() && !c.isAction() && c.color === this.activeColor);
+        if (colorMatches.length > 0) {
+            selectedCard = colorMatches[0];
         }
 
-        // Priority 1: Play standard matching number cards first (natural Uno flow)
+        // Priority 2: Same number / symbol across colors
         if (!selectedCard) {
-            const normalCards = playable.filter(c => !c.isWild() && !c.isAction());
-            if (normalCards.length > 0) {
-                // Prefer matching active color number card
-                const colorMatch = normalCards.find(c => c.color === this.activeColor);
-                selectedCard = colorMatch || normalCards[0];
+            const top = this.getTopCard();
+            const symbolMatches = playable.filter(c => !c.isWild() && top && c.value === top.value);
+            if (symbolMatches.length > 0) {
+                selectedCard = symbolMatches[0];
             }
         }
 
-        // Priority 2: Action card (Skip, Reverse, +2) if no simple number card fits
+        // Priority 3: Action card (Skip, Reverse, +2)
         if (!selectedCard) {
             const actionCard = playable.find(c => c.isAction());
             if (actionCard) selectedCard = actionCard;
         }
 
-        // Priority 3: Wild cards when no other cards fit
+        // Priority 4: Wild cards when needed
         if (!selectedCard) {
-            selectedCard = playable.find(c => c.isWild()) || playable[0];
+            // Prefer standard Wild before Wild+4 to avoid challenge risk
+            const simpleWild = playable.find(c => c.value === 'wild');
+            if (simpleWild) {
+                selectedCard = simpleWild;
+            } else {
+                selectedCard = playable.find(c => c.value === 'wild4') || playable[0];
+            }
         }
 
         const chosenColor = selectedCard.isWild() ? dominantColor : null;
@@ -468,12 +625,22 @@ class UnoGameLogic {
             isGameOver: this.isGameOver,
             winner: this.winner,
             scores: this.scores,
-            saidUno: this.saidUno
+            saidUno: this.saidUno,
+            hasDrawnThisTurn: this.hasDrawnThisTurn,
+            drawnCardId: this.drawnCardId,
+            pendingChallenge: this.pendingChallenge,
+            matchWinner: this.matchWinner
         };
     }
 }
 
-window.UnoCard = UnoCard;
-window.UnoGameLogic = UnoGameLogic;
-window.UNO_COLORS = UNO_COLORS;
-window.UNO_COLOR_HEX = UNO_COLOR_HEX;
+// Module export for Node.js test runner and browser window object
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { UnoCard, UnoGameLogic, UNO_COLORS, UNO_COLOR_HEX };
+}
+if (typeof window !== 'undefined') {
+    window.UnoCard = UnoCard;
+    window.UnoGameLogic = UnoGameLogic;
+    window.UNO_COLORS = UNO_COLORS;
+    window.UNO_COLOR_HEX = UNO_COLOR_HEX;
+}

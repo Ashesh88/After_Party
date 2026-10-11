@@ -104,19 +104,19 @@
             <h3 class="wild-title">Choose Active Color</h3>
             <p class="wild-desc">Select the color for the next player to follow</p>
             <div class="color-options-grid">
-                <button type="button" class="btn-color-choice choice-red" data-color="red" onclick="window.unoGame?.executeWildCardPlay('red')" ontouchend="window.unoGame?.executeWildCardPlay('red')">
+                <button type="button" class="btn-color-choice choice-red" data-color="red" onclick="window.unoGame?.executeWildCardPlay('red')">
                     <span class="color-dot"></span>
                     <span>RED</span>
                 </button>
-                <button type="button" class="btn-color-choice choice-blue" data-color="blue" onclick="window.unoGame?.executeWildCardPlay('blue')" ontouchend="window.unoGame?.executeWildCardPlay('blue')">
+                <button type="button" class="btn-color-choice choice-blue" data-color="blue" onclick="window.unoGame?.executeWildCardPlay('blue')">
                     <span class="color-dot"></span>
                     <span>BLUE</span>
                 </button>
-                <button type="button" class="btn-color-choice choice-green" data-color="green" onclick="window.unoGame?.executeWildCardPlay('green')" ontouchend="window.unoGame?.executeWildCardPlay('green')">
+                <button type="button" class="btn-color-choice choice-green" data-color="green" onclick="window.unoGame?.executeWildCardPlay('green')">
                     <span class="color-dot"></span>
                     <span>GREEN</span>
                 </button>
-                <button type="button" class="btn-color-choice choice-yellow" data-color="yellow" onclick="window.unoGame?.executeWildCardPlay('yellow')" ontouchend="window.unoGame?.executeWildCardPlay('yellow')">
+                <button type="button" class="btn-color-choice choice-yellow" data-color="yellow" onclick="window.unoGame?.executeWildCardPlay('yellow')">
                     <span class="color-dot"></span>
                     <span>YELLOW</span>
                 </button>
@@ -127,14 +127,32 @@
         </div>
     </div>
 
+    <!-- Wild Draw Four Challenge Modal -->
+    <div class="modal-overlay" id="modal-wild4-challenge">
+        <div class="wild-picker-card interactive">
+            <h3 class="wild-title">WILD +4 CHALLENGE</h3>
+            <p class="wild-desc" id="wild4-challenge-desc">Opponent played Wild +4. If they had a matching color card in hand, they draw 4 cards! If they were innocent, you draw 6 cards.</p>
+            <div class="challenge-actions-grid">
+                <button type="button" class="btn-challenge-action btn-challenge-yes" id="btn-challenge-yes" onclick="window.unoGame?.handleWild4ChallengeDecision(true)">
+                    <i class="fa-solid fa-gavel"></i>
+                    <span>CHALLENGE</span>
+                </button>
+                <button type="button" class="btn-challenge-action btn-challenge-no" id="btn-challenge-no" onclick="window.unoGame?.handleWild4ChallengeDecision(false)">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>ACCEPT (+4)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Victory Celebration Modal -->
     <div class="modal-overlay" id="modal-victory">
         <div class="victory-card interactive">
             <div class="victory-icon"><i class="fa-solid fa-trophy" style="color: #f59e0b;"></i></div>
-            <h2 class="victory-title" id="victory-title">Victory!</h2>
-            <p class="victory-desc" id="victory-desc">Congratulations on winning the Uno match!</p>
-            <button class="btn-victory-replay" id="btn-play-again">
-                <i class="fa-solid fa-play"></i> Play Again
+            <h2 class="victory-title" id="victory-title">Round Won!</h2>
+            <p class="victory-desc" id="victory-desc">Scored +0 points this round! Total: 0 / 500 pts</p>
+            <button type="button" class="btn-victory-replay" id="btn-play-again" onclick="window.unoGame?.handleNextRoundClick()">
+                <i class="fa-solid fa-play"></i> Next Round
             </button>
         </div>
     </div>

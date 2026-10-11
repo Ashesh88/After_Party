@@ -369,7 +369,7 @@ html, body {
 }
 
 /* =========================================================
-   MODALS (WILD COLOR PICKER & VICTORY)
+   MODALS (WILD COLOR PICKER, CHALLENGE & VICTORY)
    ========================================================= */
 .modal-overlay {
     position: fixed;
@@ -378,38 +378,98 @@ html, body {
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    display: flex;
+    display: none !important;
     align-items: center;
     justify-content: center;
     padding: 16px;
     opacity: 0;
-    pointer-events: none;
+    pointer-events: none !important;
     transition: opacity 0.3s ease;
 }
 
 .modal-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+#modal-wild-picker {
+    z-index: 500 !important;
+}
+
+#modal-wild4-challenge {
+    z-index: 550 !important;
+}
+
+#modal-victory {
+    z-index: 600 !important;
 }
 
 .wild-picker-card, .victory-card {
     width: 100%;
     max-width: 380px;
-    background: rgba(18, 14, 30, 0.85);
+    background: rgba(18, 14, 30, 0.92);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 26px;
     padding: 24px;
     text-align: center;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
     transform: translateY(16px);
     transition: transform 0.3s ease;
+    pointer-events: auto !important;
 }
 
 .modal-overlay.active .wild-picker-card,
 .modal-overlay.active .victory-card {
     transform: translateY(0);
+}
+
+.challenge-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.btn-challenge-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+    border: none;
+}
+
+.btn-challenge-yes {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);
+}
+
+.btn-challenge-yes:hover {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    transform: translateY(-1px);
+}
+
+.btn-challenge-no {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #cbd5e1;
+}
+
+.btn-challenge-no:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
 }
 
 .wild-title {

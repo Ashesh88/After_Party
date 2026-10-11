@@ -1,5 +1,6 @@
 // 3D UNO Party - Three.js Interactive Gameplay Engine
 // Handles 3D table rendering, raycasting, card fanning, animation tweens, and game state binding
+// Strict Classic UNO rules with high-visibility non-overlapping card layout
 
 class Uno3DGame {
     constructor() {
@@ -26,6 +27,7 @@ class Uno3DGame {
         // 3D Mesh Groups
         this.tableGroup = new THREE.Group();
         this.drawPileMeshes = [];
+        this.drawHitCollider = null;
         this.discardMeshes = [];
         this.playerCardMeshes = [];
         this.opponentCardMeshes = [];
@@ -39,11 +41,11 @@ class Uno3DGame {
         this.selectedWildCardId = null;
         this.tiltStep = 0;
 
-        // Camera presets (Constrained to player side)
+        // Camera presets (Constrained to player side with high-angle hand framing)
         this.cameraModes = {
-            orbit: { pos: new THREE.Vector3(0, 9.0, 7.6), target: new THREE.Vector3(0, -0.4, 0.2) },
-            hand: { pos: new THREE.Vector3(0, 7.2, 5.8), target: new THREE.Vector3(0, -0.5, 0.4) },
-            top: { pos: new THREE.Vector3(0, 12.0, 1.2), target: new THREE.Vector3(0, 0, 0) }
+            orbit: { pos: new THREE.Vector3(0, 9.6, 7.8), target: new THREE.Vector3(0, -0.3, 0.4) },
+            hand: { pos: new THREE.Vector3(0, 7.4, 5.6), target: new THREE.Vector3(0, -0.2, 0.6) },
+            top: { pos: new THREE.Vector3(0, 13.5, 0.6), target: new THREE.Vector3(0, 0, 0) }
         };
         this.currentViewMode = 'orbit';
 
@@ -61,11 +63,11 @@ class Uno3DGame {
         this.initEvents();
         this.setupWindowMessaging();
 
-        // Start round
+        // Start fresh game round
         this.rules.startNewGame();
         this.syncCards3D();
 
-        // If game started with bot turn (e.g. Reverse/Skip start)
+        // If game started with bot turn (fail-safe)
         if (this.rules.currentPlayer === 1 && this.mode === 'ai') {
             setTimeout(() => this.checkBotTurn(), 800);
         }
@@ -80,7 +82,7 @@ class Uno3DGame {
         this.scene.fog = new THREE.FogExp2(0x0c0807, 0.022);
 
         this.camera = new THREE.PerspectiveCamera(
-            window.innerWidth < 650 ? 54 : 45,
+            window.innerWidth < 650 ? 52 : 44,
             window.innerWidth / window.innerHeight,
             0.1,
             100
@@ -118,7 +120,7 @@ class Uno3DGame {
         this.controls.minAzimuthAngle = -Math.PI / 4.5; // Max 40 deg left
         this.controls.maxAzimuthAngle = Math.PI / 4.5;  // Max 40 deg right
         this.controls.minPolarAngle = Math.PI / 5;      // 36 deg from top
-        this.controls.maxPolarAngle = Math.PI / 2.3;    // 78 deg from top (never flips under table)
+        this.controls.maxPolarAngle = Math.PI / 2.3;    // 78 deg from top
         this.controls.minDistance = 5.2;
         this.controls.maxDistance = 14.0;
         this.controls.target.copy(preset.target);
@@ -140,12 +142,12 @@ class Uno3DGame {
         tableMesh.receiveShadow = true;
         this.tableGroup.add(tableMesh);
 
-        // 2. Polished Deep Sheesham Wood Rim
-        const rimGeo = new THREE.TorusGeometry(6.7, 0.20, 16, 64);
+        // 2. Solid Wood Polished Beveled Rim
+        const rimGeo = new THREE.TorusGeometry(6.65, 0.22, 16, 64);
         const rimMat = new THREE.MeshStandardMaterial({
-            color: 0x221008, // Dark Sheesham Wood
-            roughness: 0.35,
-            metalness: 0.2
+            color: 0x221008, // Dark burnished mahogany
+            roughness: 0.5,
+            metalness: 0.15
         });
         const rimMesh = new THREE.Mesh(rimGeo, rimMat);
         rimMesh.rotation.x = Math.PI / 2;
@@ -197,6 +199,10 @@ class Uno3DGame {
             btnDraw: document.getElementById('btn-draw-card'),
             btnPass: document.getElementById('btn-pass-turn'),
             wildModal: document.getElementById('modal-wild-picker'),
+            challengeModal: document.getElementById('modal-wild4-challenge'),
+            wild4ChallengeDesc: document.getElementById('wild4-challenge-desc'),
+            btnChallengeYes: document.getElementById('btn-challenge-yes'),
+            btnChallengeNo: document.getElementById('btn-challenge-no'),
             victoryModal: document.getElementById('modal-victory'),
             victoryTitle: document.getElementById('victory-title'),
             victoryDesc: document.getElementById('victory-desc'),
@@ -224,7 +230,7 @@ class Uno3DGame {
         this.dom.btnUno?.addEventListener('click', () => this.handlePlayerUnoShout());
         this.dom.btnCatch?.addEventListener('click', () => this.handlePlayerCatchUno());
 
-        // Wild color choice buttons (supporting mouse click, pointerdown, and touch)
+        // Wild color choice buttons
         const colorChoiceButtons = document.querySelectorAll('.btn-color-choice');
         colorChoiceButtons.forEach(btn => {
             const handlePick = (e) => {
@@ -240,9 +246,7 @@ class Uno3DGame {
             };
 
             btn.addEventListener('click', handlePick);
-            btn.addEventListener('pointerdown', (e) => {
-                e.stopPropagation();
-            });
+            btn.addEventListener('pointerdown', (e) => e.stopPropagation());
             btn.addEventListener('touchend', (e) => {
                 e.stopPropagation();
                 handlePick(e);
@@ -251,15 +255,23 @@ class Uno3DGame {
 
         // Wild modal cancel button
         document.getElementById('btn-wild-cancel')?.addEventListener('click', (e) => {
-            e.stopPropagation();
+            if (e) e.stopPropagation();
             this.cancelWildCardSelection();
         });
 
-        // Replay button
+        // Challenge modal buttons
+        this.dom.btnChallengeYes?.addEventListener('click', (e) => {
+            if (e) e.stopPropagation();
+            this.handleWild4ChallengeDecision(true);
+        });
+        this.dom.btnChallengeNo?.addEventListener('click', (e) => {
+            if (e) e.stopPropagation();
+            this.handleWild4ChallengeDecision(false);
+        });
+
+        // Replay / Next Round button
         this.dom.btnPlayAgain?.addEventListener('click', () => {
-            this.dom.victoryModal.classList.remove('active');
-            this.rules.startNewGame();
-            this.syncCards3D();
+            this.handleNextRoundClick();
         });
 
         // Canvas pointer interactions
@@ -311,19 +323,18 @@ class Uno3DGame {
     }
 
     // Dynamic tilt angle: toggles gently between center, left-angle, right-angle
-    // NEVER orbits 180 degrees behind opponent
     rotateViewAngle() {
         this.tiltStep = ((this.tiltStep || 0) + 1) % 3;
-        const angles = [0, -0.32, 0.32]; // 0, -18 deg, +18 deg
+        const angles = [0, -0.30, 0.30];
         const targetAngle = angles[this.tiltStep];
 
-        const radius = 9.4;
+        const radius = 9.5;
         const targetPos = new THREE.Vector3(
             Math.sin(targetAngle) * radius,
             8.6,
             Math.cos(targetAngle) * radius
         );
-        this.tweenCamera(targetPos, this.controls.target, 450);
+        this.tweenCamera(targetPos, new THREE.Vector3(0, -0.3, 0.4), 600);
     }
 
     tweenCamera(targetPos, targetLookAt, duration = 500) {
@@ -331,26 +342,28 @@ class Uno3DGame {
         const startTarget = this.controls.target.clone();
         const startTime = performance.now();
 
-        const anim = (now) => {
+        const updateAnim = (now) => {
             const elapsed = now - startTime;
-            const progress = Math.min(elapsed / duration, 1.0);
-            const ease = 0.5 - Math.cos(progress * Math.PI) / 2;
+            const t = Math.min(elapsed / duration, 1);
+            // Smooth ease-out cubic
+            const ease = 1 - Math.pow(1 - t, 3);
 
             this.camera.position.lerpVectors(startPos, targetPos, ease);
             this.controls.target.lerpVectors(startTarget, targetLookAt, ease);
+            this.controls.update();
 
-            if (progress < 1.0) {
-                requestAnimationFrame(anim);
+            if (t < 1) {
+                requestAnimationFrame(updateAnim);
             }
         };
-        requestAnimationFrame(anim);
+        requestAnimationFrame(updateAnim);
     }
 
     onResize() {
         const width = window.innerWidth;
         const height = window.innerHeight;
         this.camera.aspect = width / height;
-        this.camera.fov = width < 650 ? 54 : 45;
+        this.camera.fov = width < 650 ? 52 : 44;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
     }
@@ -360,12 +373,11 @@ class Uno3DGame {
         this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-        if (this.isProcessingMove) return;
-
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.playerCardMeshes, false);
 
-        if (intersects.length > 0) {
+        // Check hover over player hand
+        const intersects = this.raycaster.intersectObjects(this.playerCardMeshes, false);
+        if (intersects.length > 0 && this.rules.currentPlayer === 0) {
             const hitMesh = intersects[0].object;
             if (this.hoveredCardMesh !== hitMesh) {
                 this.resetCardHover();
@@ -376,7 +388,11 @@ class Uno3DGame {
             }
         } else {
             this.resetCardHover();
-            const drawIntersects = this.raycaster.intersectObjects(this.drawPileMeshes, false);
+            const drawIntersects = this.raycaster.intersectObjects([
+                ...this.drawPileMeshes,
+                this.drawHitCollider
+            ].filter(Boolean), false);
+
             if (drawIntersects.length > 0 && this.rules.currentPlayer === 0) {
                 document.body.style.cursor = 'pointer';
             } else {
@@ -405,9 +421,17 @@ class Uno3DGame {
 
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // 1. Check player hand clicks
+        // 1. Check player hand clicks (Prioritize playable cards when overlapping)
         const cardIntersects = this.raycaster.intersectObjects(this.playerCardMeshes, false);
         if (cardIntersects.length > 0) {
+            cardIntersects.sort((a, b) => {
+                const aPlayable = !!a.object.userData.isPlayable;
+                const bPlayable = !!b.object.userData.isPlayable;
+                if (aPlayable && !bPlayable) return -1;
+                if (!aPlayable && bPlayable) return 1;
+                return a.distance - b.distance;
+            });
+
             const mesh = cardIntersects[0].object;
             const card = mesh.userData.card;
             if (card) {
@@ -416,8 +440,12 @@ class Uno3DGame {
             return;
         }
 
-        // 2. Check draw pile click
-        const drawIntersects = this.raycaster.intersectObjects(this.drawPileMeshes, false);
+        // 2. Check draw pile click (meshes or center collider)
+        const drawIntersects = this.raycaster.intersectObjects([
+            ...this.drawPileMeshes,
+            this.drawHitCollider
+        ].filter(Boolean), false);
+
         if (drawIntersects.length > 0 && this.rules.currentPlayer === 0) {
             this.handlePlayerDraw();
             return;
@@ -425,7 +453,7 @@ class Uno3DGame {
     }
 
     // -------------------------------------------------------------
-    // CARD RECONCILIATION & 3D LAYOUT
+    // CARD RECONCILIATION & 3D LAYOUT (HIGH VISIBILITY)
     // -------------------------------------------------------------
     syncCards3D() {
         // Clear previous meshes
@@ -433,6 +461,10 @@ class Uno3DGame {
         this.opponentCardMeshes.forEach(m => this.scene.remove(m));
         this.drawPileMeshes.forEach(m => this.scene.remove(m));
         this.discardMeshes.forEach(m => this.scene.remove(m));
+        if (this.drawHitCollider) {
+            this.scene.remove(this.drawHitCollider);
+            this.drawHitCollider = null;
+        }
 
         this.playerCardMeshes = [];
         this.opponentCardMeshes = [];
@@ -451,6 +483,13 @@ class Uno3DGame {
             this.drawPileMeshes.push(mesh);
         }
 
+        // Table center draw collider for effortless mobile touch
+        const drawColliderGeo = new THREE.CylinderGeometry(2.2, 2.2, 1.2, 24);
+        const drawColliderMat = new THREE.MeshBasicMaterial({ visible: false });
+        this.drawHitCollider = new THREE.Mesh(drawColliderGeo, drawColliderMat);
+        this.drawHitCollider.position.set(-1.25, 0.25, 0);
+        this.scene.add(this.drawHitCollider);
+
         // 2. Discard Pile (right stack: x = 1.25, z = 0)
         const topCard = this.rules.getTopCard();
         if (topCard) {
@@ -466,43 +505,63 @@ class Uno3DGame {
             }
         }
 
-        // 3. Player Hand (Bottom Arc)
+        // 3. Player Hand (Wide, High-Visibility Arc)
+        // All cards are completely visible with ample spacing and 2-tier staging for larger hands
         const p1Cards = this.rules.playersHands[0] || [];
         const count = p1Cards.length;
-        const maxFanAngle = Math.min(count * 0.065, 0.55);
-        const cardSpacing = Math.min(3.8 / Math.max(count, 5), 0.72);
 
         p1Cards.forEach((card, i) => {
             const mesh = this.textureFactory.createCardMesh(card, false);
-            const centerOffset = i - (count - 1) / 2;
-            const x = centerOffset * cardSpacing;
-            let y = 0.5 - Math.abs(centerOffset) * 0.04;
-            const z = 3.65 - Math.abs(centerOffset) * 0.07;
-            const rotZ = -centerOffset * (maxFanAngle / Math.max(count, 1));
+            const isPlayable = this.rules.isCardPlayable(card, 0) && (this.rules.currentPlayer === 0);
 
-            // Elevate playable cards slightly (+0.18 units) so player instantly knows valid cards
-            const isPlayable = this.rules.isCardPlayable(card) && (this.rules.currentPlayer === 0);
+            let x, y, z, rotZ;
+
+            if (count <= 7) {
+                // Wide single arc: generous 0.95 - 1.15 spacing so symbols & values are 100% visible
+                const spacing = Math.max(0.92, Math.min(6.8 / Math.max(count, 1), 1.18));
+                const centerOffset = i - (count - 1) / 2;
+                x = centerOffset * spacing;
+                y = 0.55 - Math.abs(centerOffset) * 0.03;
+                z = 3.65 - Math.abs(centerOffset) * 0.06;
+                rotZ = -centerOffset * 0.035;
+            } else {
+                // Multi-card staggered tiers: Back row (even cards) & Front row (odd cards)
+                const isBackRow = (i % 2 === 0);
+                const rowCount = isBackRow ? Math.ceil(count / 2) : Math.floor(count / 2);
+                const rowIdx = Math.floor(i / 2);
+                const centerOffset = rowIdx - (rowCount - 1) / 2;
+                const spacing = Math.max(0.85, Math.min(7.2 / Math.max(rowCount, 1), 1.25));
+
+                x = centerOffset * spacing + (isBackRow ? -0.2 : 0.2);
+                y = isBackRow ? 0.75 : 0.35;
+                z = isBackRow ? 3.35 : 3.85;
+                rotZ = -centerOffset * 0.03;
+            }
+
+            // Elevate and bring forward playable cards (+0.28 units)
             if (isPlayable) {
-                y += 0.18;
+                y += 0.28;
+                z -= 0.12;
             }
 
             mesh.position.set(x, y, z);
-            mesh.rotation.set(-0.38, 0, rotZ);
+            mesh.rotation.set(-0.36, 0, rotZ);
             mesh.userData.baseY = y;
             mesh.userData.baseZ = z;
             mesh.userData.isPlayable = isPlayable;
+            mesh.userData.card = card;
 
             this.scene.add(mesh);
             this.playerCardMeshes.push(mesh);
         });
 
-        // 4. Opponent Hand (Always faces with back texture on both sides! Secrets guaranteed 100%)
+        // 4. Opponent Hand (Always faces with back texture on both sides for 100% security)
         const p2Cards = this.rules.playersHands[1] || [];
         const oppCount = p2Cards.length;
         const oppSpacing = Math.min(3.4 / Math.max(oppCount, 5), 0.65);
 
         p2Cards.forEach((card, i) => {
-            const mesh = this.textureFactory.createCardMesh(card, true); // isOpponent = true
+            const mesh = this.textureFactory.createCardMesh(card, true);
             const centerOffset = i - (oppCount - 1) / 2;
             const x = centerOffset * oppSpacing;
             const y = 0.5 - Math.abs(centerOffset) * 0.03;
@@ -531,7 +590,15 @@ class Uno3DGame {
             return;
         }
 
-        if (!this.rules.isCardPlayable(card)) {
+        // Classic UNO rule: If player has drawn a card this turn, only that drawn card can be played
+        if (this.rules.hasDrawnThisTurn && card.id !== this.rules.drawnCardId) {
+            this.audio.playPenalty();
+            this.wiggleCardRefusal(card.id);
+            this.updateBanner('Classic UNO rule: You can only play the card you just drew, or tap PASS.');
+            return;
+        }
+
+        if (!this.rules.isCardPlayable(card, 0)) {
             this.audio.playPenalty();
             this.wiggleCardRefusal(card.id);
             const top = this.rules.getTopCard();
@@ -544,7 +611,9 @@ class Uno3DGame {
         // Wild Card requires color choice dialog
         if (card.isWild()) {
             this.selectedWildCardId = card.id;
-            this.dom.wildModal?.classList.add('active');
+            if (this.dom.wildModal) {
+                this.dom.wildModal.classList.add('active');
+            }
             return;
         }
 
@@ -588,7 +657,7 @@ class Uno3DGame {
         }
         this.selectedWildCardId = null;
         this.isProcessingMove = false;
-        this.updateBanner('Color choice cancelled. Select a card or tap DRAW.');
+        this.updateBanner('Color choice cancelled. Select a card or tap Draw.');
     }
 
     executeCardPlay(playerIdx, cardId, chosenColor) {
@@ -598,7 +667,11 @@ class Uno3DGame {
         const result = this.rules.playCard(playerIdx, cardId, chosenColor);
         if (!result.success) {
             this.isProcessingMove = false;
-            this.updateBanner('Cannot play card: ' + result.reason);
+            if (result.reason === 'can_only_play_drawn_card') {
+                this.updateBanner('Classic UNO rule: You can only play the drawn card, or tap PASS.');
+            } else {
+                this.updateBanner('Cannot play card: ' + result.reason);
+            }
             return;
         }
 
@@ -614,18 +687,52 @@ class Uno3DGame {
             }, '*');
         }
 
+        // If Player 0 played Wild+4, Bot decides challenge
+        if (result.effect === 'wild4' && result.pendingChallenge) {
+            this.updateBanner(`You played WILD +4! Active color is ${chosenColor.toUpperCase()}. Uno Bot is deciding challenge...`);
+            setTimeout(() => {
+                const botShouldChallenge = (this.rules.playersHands[0].length >= 3 && Math.random() < 0.45);
+                this.rules.resolveWild4Challenge(1, botShouldChallenge);
+                this.syncCards3D();
+                this.isProcessingMove = false;
+
+                if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
+                    this.checkBotTurn();
+                }
+            }, 1000);
+            return;
+        }
+
         // Check if next turn is Bot
         setTimeout(() => {
             this.isProcessingMove = false;
-            if (this.rules.currentPlayer === 1 && this.mode === 'ai') {
+            if (this.rules.currentPlayer === 1 && this.mode === 'ai' && !this.rules.isGameOver) {
                 this.checkBotTurn();
             }
         }, 550);
     }
 
+    handleWild4ChallengeDecision(didChallenge) {
+        if (this.dom.challengeModal) {
+            this.dom.challengeModal.classList.remove('active');
+        }
+
+        this.rules.resolveWild4Challenge(0, didChallenge);
+        this.syncCards3D();
+        this.isProcessingMove = false;
+
+        if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
+            setTimeout(() => this.checkBotTurn(), 850);
+        }
+    }
+
     handlePlayerDraw() {
         if (this.rules.currentPlayer !== 0) {
             this.updateBanner('Wait for your turn! Uno Bot is thinking.');
+            return;
+        }
+        if (this.rules.hasDrawnThisTurn) {
+            this.updateBanner('You already drew 1 card. Play the drawn card or tap PASS.');
             return;
         }
 
@@ -644,24 +751,31 @@ class Uno3DGame {
         }
 
         if (drawRes && drawRes.isPlayable) {
-            this.updateBanner('You drew a playable card! Click it to play, or tap PASS.');
-            this.dom.btnPass.style.display = 'inline-flex';
+            this.updateBanner(`You drew ${drawRes.card.getLabel()}! Click it to play immediately, or tap PASS.`);
+            if (this.dom.btnPass) this.dom.btnPass.style.display = 'inline-flex';
             this.isProcessingMove = false;
         } else {
-            this.updateBanner('Card drawn cannot be played. Turn passes to Uno Bot.');
+            const cardName = drawRes && drawRes.card ? drawRes.card.getLabel() : 'Card';
+            this.updateBanner(`Card drawn (${cardName}) cannot be played. Passing turn to Uno Bot...`);
+            if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
             setTimeout(() => {
                 this.rules.passTurn(0);
-                this.dom.btnPass.style.display = 'none';
+                this.syncCards3D();
                 this.isProcessingMove = false;
                 this.checkBotTurn();
-            }, 750);
+            }, 850);
         }
     }
 
     handlePlayerPass() {
         if (this.rules.currentPlayer !== 0) return;
-        this.dom.btnPass.style.display = 'none';
+        if (!this.rules.hasDrawnThisTurn) {
+            this.updateBanner('Classic UNO rule: You must draw 1 card before passing.');
+            return;
+        }
+        if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
         this.rules.passTurn(0);
+        this.syncCards3D();
         this.checkBotTurn();
     }
 
@@ -697,6 +811,18 @@ class Uno3DGame {
                 }, '*');
             }
         }
+    }
+
+    handleNextRoundClick() {
+        if (this.dom.victoryModal) {
+            this.dom.victoryModal.classList.remove('active');
+        }
+        if (this.rules.matchWinner !== null) {
+            this.rules.startNewGame();
+        } else {
+            this.rules.startNewRound();
+        }
+        this.syncCards3D();
     }
 
     // Refusal wiggle animation when illegal card is tapped
@@ -764,17 +890,28 @@ class Uno3DGame {
                 const label = playedCard ? playedCard.getLabel() : '';
                 const color = (this.rules.activeColor || '').toUpperCase();
 
+                // If Bot played Wild+4, show challenge modal to Human
+                if (playResult.effect === 'wild4' && playResult.pendingChallenge) {
+                    if (this.dom.challengeModal) {
+                        this.dom.challengeModal.classList.add('active');
+                    }
+                    if (this.dom.wild4ChallengeDesc) {
+                        this.dom.wild4ChallengeDesc.innerText = `Uno Bot played WILD +4! Active color chosen: ${color}. Do you want to challenge? If Bot held matching color, Bot draws 4 cards! If innocent, you draw 6 cards.`;
+                    }
+                    this.updateBanner(`Uno Bot played WILD +4! Choose CHALLENGE or ACCEPT.`);
+                    this.isProcessingMove = false;
+                    return;
+                }
+
                 if (playResult.effect === 'skip' || playResult.effect === 'reverse_2p_skip') {
                     this.updateBanner(`Uno Bot played SKIP! You lose your turn. Uno Bot plays again.`);
                 } else if (playResult.effect === 'draw2') {
                     this.updateBanner(`Uno Bot played +2! You drew 2 penalty cards.`);
-                } else if (playResult.effect === 'wild4') {
-                    this.updateBanner(`Uno Bot played WILD +4! Color is ${color}. You drew 4 cards.`);
                 } else {
                     this.updateBanner(`Uno Bot played ${color} ${label}. Your turn!`);
                 }
 
-                // If bot played Skip, Reverse (in 2p), Draw 2, or Wild 4, next player is Bot again!
+                // If bot played Skip, Reverse (in 2p), or Draw 2, next player is Bot again
                 if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
                     setTimeout(() => this.checkBotTurn(), 1100);
                 } else {
@@ -787,7 +924,7 @@ class Uno3DGame {
                 this.syncCards3D();
 
                 if (drawRes && drawRes.isPlayable) {
-                    // Bot plays drawn card
+                    // Bot plays drawn card immediately
                     setTimeout(() => {
                         const botBest = this.rules.getBestBotMove(1);
                         this.rules.playCard(1, drawRes.card.id, botBest.chosenColor || 'blue');
@@ -817,28 +954,43 @@ class Uno3DGame {
         if (type === 'card_played') {
             if (data.effect === 'skip') {
                 this.audio.playSkip();
-                this.updateBanner(`${this.rules.playerNames[data.playerIdx]} played SKIP! Next turn skipped.`);
+                this.updateBanner(`${this.rules.playerNames[data.playerIdx]} played SKIP! Turn skipped.`);
             } else if (data.effect === 'reverse_2p_skip' || data.effect === 'reverse') {
                 this.audio.playReverse();
                 this.updateBanner(`${this.rules.playerNames[data.playerIdx]} played REVERSE!`);
             } else if (data.effect === 'draw2') {
                 this.audio.playDrawAttack(2);
                 this.updateBanner(`${this.rules.playerNames[data.playerIdx]} played +2! Opponent draws 2.`);
-            } else if (data.effect === 'wild4') {
-                this.audio.playDrawAttack(4);
-                this.updateBanner(`${this.rules.playerNames[data.playerIdx]} played WILD +4! Color changed to ${data.activeColor.toUpperCase()}.`);
             } else if (data.effect === 'wild') {
                 this.audio.playWildChime();
                 this.updateBanner(`${this.rules.playerNames[data.playerIdx]} chose color ${data.activeColor.toUpperCase()}.`);
             }
+        } else if (type === 'wild4_challenge_result') {
+            if (data.success) {
+                this.audio.playPenalty();
+                this.updateBanner(`Challenge Succeeded! ${this.rules.playerNames[data.guiltyPlayer]} was caught with matching color and drew ${data.penaltyCount} cards!`);
+            } else {
+                this.audio.playPenalty();
+                this.updateBanner(`Challenge Failed! Opponent was innocent. ${this.rules.playerNames[data.challenger]} drew ${data.penaltyCount} penalty cards!`);
+            }
+        } else if (type === 'wild4_accepted') {
+            this.audio.playDrawAttack(4);
+            this.updateBanner(`${this.rules.playerNames[data.victim]} accepted Wild +4 and drew 4 cards.`);
         } else if (type === 'uno_called') {
             this.updateBanner(`${data.playerName} shouts UNO! (1 card remaining)`);
         } else if (type === 'uno_caught') {
             this.updateBanner(`${data.catcherName} CAUGHT ${data.targetName} without saying UNO! (+2 penalty)`);
         } else if (type === 'game_won') {
             this.audio.playVictory();
-            this.dom.victoryTitle.innerText = `${data.winnerName} Wins!`;
-            this.dom.victoryDesc.innerText = `Scored +${data.roundPoints} points this round! Total Score: ${data.totalScore}`;
+            if (data.isMatchWon) {
+                this.dom.victoryTitle.innerText = `${data.matchWinnerName} Won the Match!`;
+                this.dom.victoryDesc.innerText = `Reached 500+ points! Total Score: ${data.totalScore} pts!`;
+                this.dom.btnPlayAgain.innerHTML = `<i class="fa-solid fa-rotate-right"></i> New Match`;
+            } else {
+                this.dom.victoryTitle.innerText = `${data.winnerName} Won the Round!`;
+                this.dom.victoryDesc.innerText = `Scored +${data.roundPoints} points this round! Total: ${data.totalScore} / 500 pts`;
+                this.dom.btnPlayAgain.innerHTML = `<i class="fa-solid fa-play"></i> Next Round`;
+            }
             this.dom.victoryModal.classList.add('active');
         }
     }
@@ -852,10 +1004,26 @@ class Uno3DGame {
             const top = state.topCard;
             const topVal = top ? top.getLabel() : '';
             const topCol = (state.activeColor || '').toUpperCase();
-            this.updateBanner(`Your Turn: Play any ${topCol} card, or match ${topVal}, or tap DRAW.`);
+
+            if (state.hasDrawnThisTurn) {
+                if (this.dom.btnPass) this.dom.btnPass.style.display = 'inline-flex';
+                this.updateBanner(`You drew a card. Play the drawn card, or tap PASS.`);
+            } else {
+                if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
+                const playableCards = this.rules.getPlayableCards(0);
+                if (playableCards.length === 0) {
+                    this.updateBanner(`No matching card! Match ${topCol} or ${topVal}. Tap Draw Pile to draw.`);
+                    if (this.dom.btnDraw) this.dom.btnDraw.classList.add('pulsing');
+                } else {
+                    if (this.dom.btnDraw) this.dom.btnDraw.classList.remove('pulsing');
+                    this.updateBanner(`Your Turn: Play any ${topCol} card, or match ${topVal}, or tap Draw.`);
+                }
+            }
         } else {
             this.dom.cardP2.classList.add('active-turn');
             this.dom.cardP1.classList.remove('active-turn');
+            if (this.dom.btnPass) this.dom.btnPass.style.display = 'none';
+            if (this.dom.btnDraw) this.dom.btnDraw.classList.remove('pulsing');
         }
 
         // Card Counts

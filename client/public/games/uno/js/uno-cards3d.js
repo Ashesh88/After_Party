@@ -341,7 +341,7 @@ class UnoCardTextureFactory {
     // Create complete 3D Mesh for a Card (Matte finish, zero reflective glare)
     // isOpponent=true guarantees opponent cards ALWAYS display card backs from all angles
     createCardMesh(card, isOpponent = false) {
-        const geom = new THREE.BoxGeometry(1.4, 2.1, 0.02);
+        const geom = new THREE.BoxGeometry(1.28, 1.92, 0.02);
 
         const edgeMat = new THREE.MeshStandardMaterial({
             color: 0xe2e8f0,
