@@ -10,6 +10,7 @@ const activeLocations = new Map(); // roomId -> Map(userId -> locationPayload)
 const ludoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 const poolRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 const carromRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
+const unoRooms = new Map(); // sessionCode -> { hostId, players: [{ userId, playerName, role, socketId }] }
 
 const setupSocket = (io) => {
   io.use((socket, next) => {
@@ -945,6 +946,90 @@ const setupSocket = (io) => {
         if (room.players.length === 0) carromRooms.delete(sessionCode);
       }
       socket.to(`carrom:${sessionCode}`).emit('carrom:opponent_left', {
+        senderId: userId,
+        players: room ? room.players : [],
+      });
+    });
+
+    // ----------------- UNO MULTIPLAYER -----------------
+    socket.on('uno:join', ({ sessionCode, role, playerName }) => {
+      if (!sessionCode) return;
+      socket.join(`uno:${sessionCode}`);
+
+      let room = unoRooms.get(sessionCode);
+      if (!room) {
+        room = { hostId: userId, players: [] };
+        unoRooms.set(sessionCode, room);
+      }
+
+      const existingIdx = room.players.findIndex(p => p.userId?.toString() === userId?.toString());
+      const playerInfo = {
+        userId,
+        playerName: playerName || socket.user?.displayName || 'Player',
+        role: role || (room.players.length === 0 ? 'p1' : 'p2'),
+        socketId: socket.id,
+      };
+
+      if (existingIdx >= 0) {
+        room.players[existingIdx] = playerInfo;
+      } else {
+        room.players.push(playerInfo);
+      }
+
+      socket.emit('uno:joined_ack', {
+        sessionCode,
+        assignedRole: playerInfo.role,
+        players: room.players,
+      });
+
+      socket.to(`uno:${sessionCode}`).emit('uno:opponent_joined', {
+        playerName: playerInfo.playerName,
+        role: playerInfo.role,
+        players: room.players,
+      });
+    });
+
+    socket.on('uno:action', ({ sessionCode, actionType, payload }) => {
+      if (!sessionCode) return;
+      socket.to(`uno:${sessionCode}`).emit('uno:action', {
+        actionType,
+        payload,
+        senderId: userId,
+      });
+    });
+
+    socket.on('uno:sync_state', ({ sessionCode, state }) => {
+      if (!sessionCode) return;
+      socket.to(`uno:${sessionCode}`).emit('uno:sync_state', {
+        state,
+        senderId: userId,
+      });
+    });
+
+    socket.on('uno:rematch', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.to(`uno:${sessionCode}`).emit('uno:rematch', { senderId: userId });
+    });
+
+    socket.on('uno:chat', ({ sessionCode, message, senderName }) => {
+      if (!sessionCode) return;
+      socket.to(`uno:${sessionCode}`).emit('uno:chat', {
+        message,
+        senderName,
+        senderId: userId,
+        timestamp: Date.now(),
+      });
+    });
+
+    socket.on('uno:leave', ({ sessionCode }) => {
+      if (!sessionCode) return;
+      socket.leave(`uno:${sessionCode}`);
+      const room = unoRooms.get(sessionCode);
+      if (room) {
+        room.players = room.players.filter(p => p.userId?.toString() !== userId?.toString());
+        if (room.players.length === 0) unoRooms.delete(sessionCode);
+      }
+      socket.to(`uno:${sessionCode}`).emit('uno:opponent_left', {
         senderId: userId,
         players: room ? room.players : [],
       });

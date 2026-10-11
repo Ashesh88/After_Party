@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D UNO Party</title>
+    <!-- Font Awesome Icons (Zero emojis) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 3D WebGL Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-layer">
+        <!-- Sleek Frosted Glass Top Dock Panel -->
+        <div class="top-dock-panel interactive">
+            <!-- Row 1: Camera View Modes & Action Controls -->
+            <div class="top-controls-row">
+                <div class="view-toggle-mini">
+                    <button class="toggle-btn view-btn" id="btn-view-top" title="Top View">
+                        <i class="fa-solid fa-table-cells-large"></i> Top
+                    </button>
+                    <button class="toggle-btn view-btn" id="btn-view-hand" title="Hand Close-up View">
+                        <i class="fa-solid fa-hand"></i> Hand
+                    </button>
+                    <button class="toggle-btn active view-btn" id="btn-view-orbit" title="Realistic 3D Arena View">
+                        <i class="fa-solid fa-cube"></i> 3D
+                    </button>
+                    <button class="toggle-btn view-btn" id="btn-rotate-board" title="Rotate Board 45 deg">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                    <button class="toggle-btn chat-toggle-btn" id="btn-chat-toggle" title="Match Chat">
+                        <i class="fa-solid fa-comment-dots"></i> Chat
+                    </button>
+                </div>
+            </div>
+
+            <!-- Row 2: Live Match Status Pill -->
+            <div class="status-banner-row">
+                <span class="status-pill" id="status-banner">Match live: Select a matching card or draw from pile.</span>
+            </div>
+
+            <!-- Row 3: Player HUD Cards & Active Color Badge -->
+            <div class="players-row">
+                <!-- Player 1 Card -->
+                <div class="player-card active-turn" id="card-p1">
+                    <div class="player-info">
+                        <span class="player-name" id="name-p1">You</span>
+                        <span class="player-cards-badge" id="count-p1">7 cards</span>
+                    </div>
+                    <span class="player-score" id="score-p1">0 pts</span>
+                </div>
+
+                <!-- Center Active Color Orb -->
+                <div class="active-color-wrapper">
+                    <span class="active-color-label">COLOR</span>
+                    <div class="active-color-pill color-red" id="active-color-badge">
+                        <span id="active-color-text">RED</span>
+                    </div>
+                </div>
+
+                <!-- Player 2 Card -->
+                <div class="player-card" id="card-p2">
+                    <div class="player-info">
+                        <span class="player-name" id="name-p2">Uno Bot</span>
+                        <span class="player-cards-badge" id="count-p2">7 cards</span>
+                    </div>
+                    <span class="player-score" id="score-p2">0 pts</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sleek Bottom Action HUD -->
+        <footer class="bottom-hud interactive">
+            <div class="hud-action-bar">
+                <button class="btn-action-glass" id="btn-draw-card" title="Draw 1 card from deck">
+                    <i class="fa-solid fa-clone"></i>
+                    <span>DRAW</span>
+                </button>
+
+                <button class="btn-action-glass" id="btn-pass-turn" style="display: none;" title="Pass Turn">
+                    <i class="fa-solid fa-forward"></i>
+                    <span>PASS</span>
+                </button>
+
+                <button class="btn-uno-main" id="btn-uno-shout" title="Shout UNO when 1 or 2 cards left">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <span>UNO!</span>
+                </button>
+
+                <button class="btn-catch-glass" id="btn-catch-uno" style="display: none;" title="Catch opponent without UNO (+2 Penalty)">
+                    <i class="fa-solid fa-handcuffs"></i>
+                    <span>CATCH!</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Wild Card Color Chooser Modal -->
+    <div class="modal-overlay" id="modal-wild-picker">
+        <div class="wild-picker-card interactive">
+            <h3 class="wild-title">Choose Active Color</h3>
+            <p class="wild-desc">Select the color for the next player to follow</p>
+            <div class="color-options-grid">
+                <button class="btn-color-choice choice-red" data-color="red">
+                    <span class="color-dot"></span>
+                    <span>RED</span>
+                </button>
+                <button class="btn-color-choice choice-blue" data-color="blue">
+                    <span class="color-dot"></span>
+                    <span>BLUE</span>
+                </button>
+                <button class="btn-color-choice choice-green" data-color="green">
+                    <span class="color-dot"></span>
+                    <span>GREEN</span>
+                </button>
+                <button class="btn-color-choice choice-yellow" data-color="yellow">
+                    <span class="color-dot"></span>
+                    <span>YELLOW</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Celebration Modal -->
+    <div class="modal-overlay" id="modal-victory">
+        <div class="victory-card interactive">
+            <div class="victory-icon"><i class="fa-solid fa-trophy" style="color: #f59e0b;"></i></div>
+            <h2 class="victory-title" id="victory-title">Victory!</h2>
+            <p class="victory-desc" id="victory-desc">Congratulations on winning the Uno match!</p>
+            <button class="btn-victory-replay" id="btn-play-again">
+                <i class="fa-solid fa-play"></i> Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Bundled Libraries -->
+    <script src="js/lib/three.min.js"></script>
+    <script src="js/lib/OrbitControls.js"></script>
+    <script src="audio.js"></script>
+
+    <!-- 3D Uno Modules -->
+    <script src="js/uno-rules.js"></script>
+    <script src="js/uno-cards3d.js"></script>
+    <script src="js/uno-game.js"></script>
+</body>
+</html>
