@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { 
   Send, Check, CheckCheck, Phone, Video, Mic, Square, Play, Pause, 
   Heart, ArrowLeft, Search, Image as ImageIcon, Smile, MoreVertical,
-  Users, Trash2, Sparkles, MessageSquare, Radio, Circle
+  Users, Trash2, Sparkles, MessageSquare, Radio, Circle, Layers
 } from 'lucide-react';
 
 interface ActiveChat {
@@ -136,10 +136,12 @@ function ChatContent() {
       }
 
       // Check if URL query specified an initial friend or room
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
       if (initialFriendId) {
         const targetFriend = friends.find((f) => f._id === initialFriendId);
         if (targetFriend) {
-          selectDirectChat(targetFriend);
+          selectDirectChat(targetFriend, true);
           return;
         }
       }
@@ -147,21 +149,17 @@ function ChatContent() {
       if (initialRoomId) {
         const targetRoom = roomConvs.find((r) => r.id === initialRoomId);
         if (targetRoom) {
-          selectRoomChat(targetRoom);
+          selectRoomChat(targetRoom, true);
           return;
         }
       }
 
-      // If no active chat selected yet, default to first available room or conversation
-      if (!activeChat) {
-        if (roomConvs.length > 0) {
-          selectRoomChat(roomConvs[0]);
-        } else if (allConvs.length > 0) {
-          if (allConvs[0].type === 'direct' && allConvs[0].user) {
-            selectDirectChat(allConvs[0].user as any);
-          } else {
-            selectRoomChat(allConvs[0]);
-          }
+      // On desktop, auto-select the first conversation if none is active; on mobile, keep list visible
+      if (!activeChat && !isMobile) {
+        if (directConvs.length > 0 && directConvs[0].user) {
+          selectDirectChat(directConvs[0].user as any, false);
+        } else if (roomConvs.length > 0) {
+          selectRoomChat(roomConvs[0], false);
         }
       }
     } catch (err) {
@@ -176,7 +174,10 @@ function ChatContent() {
   }, [socket, initialFriendId, initialRoomId]);
 
   // Select a Direct 1-on-1 Chat
-  const selectDirectChat = (friendUser: Friend | { _id: string; displayName: string; avatar?: string; lastSeen?: any }) => {
+  const selectDirectChat = (
+    friendUser: Friend | { _id: string; displayName: string; avatar?: string; lastSeen?: any },
+    openOnMobile = true
+  ) => {
     const friendId = friendUser._id;
     const isOnline = onlineStatusMap[friendId]?.online || false;
     const lastSeen = onlineStatusMap[friendId]?.lastSeen || (friendUser as any).lastSeen;
@@ -190,7 +191,7 @@ function ChatContent() {
       lastSeen,
       friend: friendUser,
     });
-    setMobileChatOpen(true);
+    if (openOnMobile) setMobileChatOpen(true);
     setPartnerTyping(false);
 
     // Reset unread count in local state
@@ -199,16 +200,20 @@ function ChatContent() {
     );
   };
 
-  // Select a Room Chat
-  const selectRoomChat = (roomItem: ConversationItem | { id: string; name?: string; inviteCode?: string }) => {
+  // Select a Space Chat
+  const selectRoomChat = (
+    roomItem: ConversationItem | { id: string; name?: string; inviteCode?: string },
+    openOnMobile = true
+  ) => {
+    const title = roomItem.name || (roomItem.inviteCode ? `Space • ${roomItem.inviteCode}` : 'Shared Space');
     setActiveChat({
       type: 'room',
       id: roomItem.id,
-      title: roomItem.name || `Room ${roomItem.inviteCode || ''}`,
-      subtitle: roomItem.inviteCode ? `Code: ${roomItem.inviteCode}` : 'Group Space',
+      title,
+      subtitle: roomItem.inviteCode ? `Space Code: ${roomItem.inviteCode}` : 'Shared Space',
       room: roomItem,
     });
-    setMobileChatOpen(true);
+    if (openOnMobile) setMobileChatOpen(true);
     setPartnerTyping(false);
 
     // Ensure socket is joined to room channel
@@ -672,10 +677,10 @@ function ChatContent() {
   }, [activeChat, onlineStatusMap]);
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] max-w-7xl mx-auto rounded-3xl overflow-hidden glass-panel border border-white/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.85)] bg-[#0b0e14]">
+    <div className="flex h-[calc(100dvh-5.5rem)] md:h-[calc(100vh-6rem)] max-w-7xl mx-auto rounded-none sm:rounded-3xl overflow-hidden glass-panel border border-white/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.85)] bg-[#0b0e14]">
       
       {/* ======================================================== */}
-      {/* LEFT PANE: WHATSAPP CONVERSATIONS LIST                    */}
+      {/* LEFT PANE: CONVERSATIONS LIST                            */}
       {/* ======================================================== */}
       <div
         className={`w-full md:w-[360px] lg:w-[400px] shrink-0 border-r border-white/[0.08] flex flex-col bg-[#111722]/95 backdrop-blur-xl ${
@@ -683,19 +688,20 @@ function ChatContent() {
         }`}
       >
         {/* Header */}
-        <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
               <MessageSquare size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
-                <span>Chats</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                  WhatsApp Style
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                <span>Messages</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/25 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live
                 </span>
               </h2>
-              <p className="text-[11px] text-slate-400">Direct messages & Room spaces</p>
+              <p className="text-[11px] text-slate-400">Direct connections & shared spaces</p>
             </div>
           </div>
         </div>
@@ -734,17 +740,18 @@ function ChatContent() {
                 : 'text-slate-400 hover:text-white bg-white/[0.03]'
             }`}
           >
-            <span>Direct (DMs)</span>
+            <span>Direct</span>
           </button>
           <button
             onClick={() => setFilterTab('room')}
             className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
               filterTab === 'room'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                 : 'text-slate-400 hover:text-white bg-white/[0.03]'
             }`}
           >
-            <span>Rooms</span>
+            <Layers size={12} className={filterTab === 'room' ? 'text-purple-400' : 'text-slate-400'} />
+            <span>Spaces</span>
           </button>
         </div>
 
@@ -766,7 +773,7 @@ function ChatContent() {
               const isSelected = activeChat?.id === item.id;
               const online = isDirect && onlineStatusMap[item.id]?.online;
 
-              const title = isDirect ? item.user?.displayName || 'Friend' : item.name || 'Room';
+              const title = isDirect ? item.user?.displayName || 'Friend' : item.name || (item.inviteCode ? `Space • ${item.inviteCode}` : 'Shared Space');
               const avatar = isDirect ? item.user?.avatar : undefined;
 
               return (
@@ -774,9 +781,9 @@ function ChatContent() {
                   key={item.id}
                   onClick={() => {
                     if (isDirect && item.user) {
-                      selectDirectChat(item.user as any);
+                      selectDirectChat(item.user as any, true);
                     } else {
-                      selectRoomChat(item);
+                      selectRoomChat(item, true);
                     }
                   }}
                   className={`p-3.5 flex items-center gap-3 transition-colors cursor-pointer select-none ${
@@ -796,8 +803,8 @@ function ChatContent() {
                         )}
                       </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500/25 to-teal-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shadow-inner">
-                        <Users size={22} />
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600/30 via-indigo-600/25 to-pink-500/20 border border-purple-500/35 flex items-center justify-center text-purple-300 shadow-inner">
+                        <Layers size={20} className="text-purple-300" />
                       </div>
                     )}
 
@@ -815,10 +822,10 @@ function ChatContent() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
-                        <span>{title}</span>
+                        <span className="truncate">{title}</span>
                         {!isDirect && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 font-mono">
-                            Room
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/25 font-bold shrink-0">
+                            Space
                           </span>
                         )}
                       </h4>
@@ -844,7 +851,7 @@ function ChatContent() {
                               : item.lastMessage.content
                             : isDirect
                             ? 'Start direct chat...'
-                            : 'No messages yet'}
+                            : `${item.members?.length || 2} members in space`}
                         </span>
                       </p>
 
@@ -864,7 +871,7 @@ function ChatContent() {
       </div>
 
       {/* ======================================================== */}
-      {/* RIGHT PANE: ACTIVE WHATSAPP CHAT WINDOW                  */}
+      {/* RIGHT PANE: ACTIVE CHAT WINDOW                           */}
       {/* ======================================================== */}
       <div
         className={`flex-1 flex flex-col bg-[#0d111a] relative ${
@@ -873,21 +880,22 @@ function ChatContent() {
       >
         {activeChat ? (
           <>
-            {/* WhatsApp Chat Header */}
-            <div className="p-3.5 sm:px-5 border-b border-white/[0.08] flex items-center justify-between bg-[#111722]/90 backdrop-blur-md z-20">
-              <div className="flex items-center gap-3 min-w-0">
+            {/* Chat Header */}
+            <div className="p-3 sm:px-5 border-b border-white/[0.08] flex items-center justify-between bg-[#111722]/90 backdrop-blur-md z-20">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 {/* Back button on mobile */}
                 <button
                   onClick={() => setMobileChatOpen(false)}
-                  className="md:hidden w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300"
+                  className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-slate-200 text-xs font-semibold shrink-0 cursor-pointer active:scale-95"
                 >
-                  <ArrowLeft size={18} />
+                  <ArrowLeft size={16} />
+                  <span>Chats</span>
                 </button>
 
                 {/* Avatar */}
                 <div className="relative shrink-0">
                   {activeChat.type === 'direct' ? (
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500/30 to-pink-500/20 border border-pink-500/30 flex items-center justify-center font-bold text-pink-200 overflow-hidden">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500/30 to-pink-500/20 border border-pink-500/30 flex items-center justify-center font-bold text-pink-200 overflow-hidden shadow-inner">
                       {activeChat.avatar ? (
                         <img src={activeChat.avatar} alt={activeChat.title} className="w-full h-full object-cover" />
                       ) : (
@@ -895,8 +903,8 @@ function ChatContent() {
                       )}
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300">
-                      <Users size={18} />
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600/30 via-indigo-600/25 to-pink-500/20 border border-purple-500/35 flex items-center justify-center text-purple-300 shadow-inner">
+                      <Layers size={18} className="text-purple-300" />
                     </div>
                   )}
 
@@ -912,10 +920,14 @@ function ChatContent() {
                 {/* Title & Status */}
                 <div className="min-w-0">
                   <h3 className="text-sm sm:text-base font-extrabold text-white truncate flex items-center gap-2">
-                    <span>{activeChat.title}</span>
-                    {activeChat.type === 'direct' && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 hidden sm:inline">
-                        1-on-1 Direct
+                    <span className="truncate">{activeChat.title}</span>
+                    {activeChat.type === 'direct' ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 hidden sm:inline shrink-0">
+                        Direct
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 hidden sm:inline shrink-0">
+                        Space
                       </span>
                     )}
                   </h3>
@@ -929,7 +941,7 @@ function ChatContent() {
                         <span className="text-slate-400 font-medium">offline</span>
                       )
                     ) : (
-                      <span className="text-slate-400">{activeChat.subtitle || 'Active Space Room'}</span>
+                      <span className="text-slate-400">{activeChat.subtitle || 'Shared Space'}</span>
                     )}
                   </p>
                 </div>
@@ -1219,13 +1231,13 @@ function ChatContent() {
           </>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
-            <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-2xl">
-              <MessageSquare size={36} />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-purple-500/15 via-emerald-500/10 to-teal-500/15 border border-white/10 flex items-center justify-center text-emerald-400 shadow-2xl">
+              <MessageSquare size={32} />
             </div>
             <div>
-              <h3 className="text-xl font-black text-white">After Party WhatsApp Chat</h3>
+              <h3 className="text-lg sm:text-xl font-black text-white">Your Messages</h3>
               <p className="text-xs text-slate-400 max-w-sm mt-1 leading-relaxed">
-                Select any friend connection for a private 1-on-1 direct chat, or select your active room to chat with your space members.
+                Select a connection to start a direct 1-on-1 chat, or choose a shared space to talk together.
               </p>
             </div>
           </div>
@@ -1243,7 +1255,7 @@ export default function ChatPage() {
         <div className="flex h-[calc(100vh-5rem)] max-w-7xl mx-auto rounded-3xl glass-panel border border-white/[0.08] items-center justify-center text-slate-400 bg-[#0b0e14]">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold text-slate-400">Loading WhatsApp Chats...</span>
+            <span className="text-xs font-semibold text-slate-400">Loading messages...</span>
           </div>
         </div>
       }
