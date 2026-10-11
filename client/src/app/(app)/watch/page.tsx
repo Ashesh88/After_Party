@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { 
   Heart, Sparkles, MessageSquareHeart, Phone, PhoneOff, MonitorUp, 
   Film, Popcorn, Flame, Laugh, Send, X, Link as LinkIcon, Search, Loader2, Play,
-  ExternalLink, RefreshCw, ShieldAlert
+  ExternalLink, RefreshCw, ShieldAlert, Rewind, FastForward, Pause
 } from 'lucide-react';
 import { soundService } from '../../../lib/soundService';
 import api from '../../../lib/api';
@@ -43,6 +43,10 @@ export default function WatchPage() {
   const [useProxy, setUseProxy] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const isRemoteActionRef = useRef<boolean>(false);
+  const lastRecordedTimeRef = useRef<number>(0);
 
   const socket = useSocketStore(state => state.socket);
   const user = useAuthStore(state => state.user);
@@ -202,13 +206,118 @@ export default function WatchPage() {
       toast('Partner closed the video', { icon: '🎬' });
     });
 
+    socket.on('watch:state', (data: { action: string; currentTime?: number }) => {
+      isRemoteActionRef.current = true;
+      if (typeof data?.currentTime === 'number') {
+        const targetTime = data.currentTime;
+        if (ytPlayerRef.current) {
+          try {
+            const current = ytPlayerRef.current.getCurrentTime() || 0;
+            if (Math.abs(current - targetTime) > 1.2) {
+              ytPlayerRef.current.seekTo(targetTime, true);
+            }
+            if (data.action === 'play') ytPlayerRef.current.playVideo();
+            if (data.action === 'pause') ytPlayerRef.current.pauseVideo();
+          } catch {}
+        }
+        if (videoRef.current) {
+          try {
+            const current = videoRef.current.currentTime || 0;
+            if (Math.abs(current - targetTime) > 1.2) {
+              videoRef.current.currentTime = targetTime;
+            }
+            if (data.action === 'play') videoRef.current.play().catch(() => {});
+            if (data.action === 'pause') videoRef.current.pause();
+          } catch {}
+        }
+      }
+      setTimeout(() => {
+        isRemoteActionRef.current = false;
+      }, 1200);
+    });
+
     return () => {
       socket.off('watch:load');
       socket.off('watch:close');
+      socket.off('watch:state');
       socket.off('watch:reaction');
       socket.off('chat:message');
     };
   }, [socket, user]);
+
+  // Periodic time sync & native player seek jump detector
+  useEffect(() => {
+    if (!mediaState || !socket) return;
+    const interval = setInterval(() => {
+      let current = 0;
+      let isPlaying = false;
+      if (mediaState.type === 'youtube' && ytPlayerRef.current) {
+        try {
+          current = ytPlayerRef.current.getCurrentTime() || 0;
+          isPlaying = ytPlayerRef.current.getPlayerState() === 1;
+        } catch {}
+      } else if (mediaState.type === 'direct' && videoRef.current) {
+        current = videoRef.current.currentTime || 0;
+        isPlaying = !videoRef.current.paused;
+      }
+
+      if (!isRemoteActionRef.current && lastRecordedTimeRef.current > 0) {
+        const expectedDiff = isPlaying ? 2.5 : 1;
+        if (Math.abs(current - (lastRecordedTimeRef.current + (isPlaying ? 1 : 0))) > expectedDiff) {
+          // Native seek jump detected! Broadcast to partner
+          socket.emit('watch:state', { action: 'seek', currentTime: current });
+        }
+      }
+      lastRecordedTimeRef.current = current;
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [mediaState, socket]);
+
+  const handleSeekDelta = (deltaSeconds: number) => {
+    let newTime = 0;
+    if (mediaState?.type === 'youtube' && ytPlayerRef.current) {
+      try {
+        const current = ytPlayerRef.current.getCurrentTime() || 0;
+        newTime = Math.max(0, current + deltaSeconds);
+        ytPlayerRef.current.seekTo(newTime, true);
+      } catch {}
+    } else if (mediaState?.type === 'direct' && videoRef.current) {
+      const current = videoRef.current.currentTime || 0;
+      newTime = Math.max(0, current + deltaSeconds);
+      videoRef.current.currentTime = newTime;
+    }
+    socket?.emit('watch:state', { action: 'seek', currentTime: newTime });
+    toast.success(`${deltaSeconds > 0 ? `+${deltaSeconds}s` : `${deltaSeconds}s`} synced with partner`);
+  };
+
+  const handleTogglePlayPause = () => {
+    let action = 'play';
+    let currentTime = 0;
+    if (mediaState?.type === 'youtube' && ytPlayerRef.current) {
+      try {
+        const state = ytPlayerRef.current.getPlayerState();
+        currentTime = ytPlayerRef.current.getCurrentTime() || 0;
+        if (state === 1) {
+          ytPlayerRef.current.pauseVideo();
+          action = 'pause';
+        } else {
+          ytPlayerRef.current.playVideo();
+          action = 'play';
+        }
+      } catch {}
+    } else if (mediaState?.type === 'direct' && videoRef.current) {
+      currentTime = videoRef.current.currentTime || 0;
+      if (!videoRef.current.paused) {
+        videoRef.current.pause();
+        action = 'pause';
+      } else {
+        videoRef.current.play().catch(() => {});
+        action = 'play';
+      }
+    }
+    socket?.emit('watch:state', { action, currentTime });
+  };
 
   const handleCloseVideo = () => {
     setMediaState(null);
@@ -437,22 +546,72 @@ export default function WatchPage() {
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black">
               {mediaState.type === 'youtube' && (
-                <iframe
-                  src={`https://www.youtube.com/embed/${mediaState.src}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}
-                  title="Couple Theater - YouTube"
-                  className="w-full h-full border-0 rounded-2xl sm:rounded-[32px]"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
+                <YouTube
+                  videoId={mediaState.src}
+                  className="w-full h-full"
+                  iframeClassName="w-full h-full border-0 rounded-2xl sm:rounded-[32px]"
+                  opts={{
+                    width: '100%',
+                    height: '100%',
+                    playerVars: {
+                      autoplay: 1,
+                      modestbranding: 1,
+                      rel: 0,
+                      controls: 1,
+                      origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+                    },
+                  }}
+                  onReady={(event: any) => {
+                    ytPlayerRef.current = event.target;
+                  }}
+                  onPlay={(event: any) => {
+                    if (isRemoteActionRef.current) return;
+                    try {
+                      const time = event.target.getCurrentTime();
+                      socket?.emit('watch:state', { action: 'play', currentTime: time });
+                    } catch {}
+                  }}
+                  onPause={(event: any) => {
+                    if (isRemoteActionRef.current) return;
+                    try {
+                      const time = event.target.getCurrentTime();
+                      socket?.emit('watch:state', { action: 'pause', currentTime: time });
+                    } catch {}
+                  }}
+                  onStateChange={(event: any) => {
+                    if (isRemoteActionRef.current) return;
+                    try {
+                      const time = event.target.getCurrentTime();
+                      if (event.data === 1) {
+                        socket?.emit('watch:state', { action: 'play', currentTime: time });
+                      } else if (event.data === 2) {
+                        socket?.emit('watch:state', { action: 'pause', currentTime: time });
+                      }
+                    } catch {}
+                  }}
                 />
               )}
 
               {mediaState.type === 'direct' && (
                 <video
+                  ref={videoRef}
                   src={mediaState.src}
                   controls
                   autoPlay
                   playsInline
                   className="w-full h-full object-contain rounded-2xl sm:rounded-[32px] bg-black"
+                  onPlay={() => {
+                    if (isRemoteActionRef.current) return;
+                    socket?.emit('watch:state', { action: 'play', currentTime: videoRef.current?.currentTime || 0 });
+                  }}
+                  onPause={() => {
+                    if (isRemoteActionRef.current) return;
+                    socket?.emit('watch:state', { action: 'pause', currentTime: videoRef.current?.currentTime || 0 });
+                  }}
+                  onSeeked={() => {
+                    if (isRemoteActionRef.current) return;
+                    socket?.emit('watch:state', { action: 'seek', currentTime: videoRef.current?.currentTime || 0 });
+                  }}
                 >
                   Your browser does not support HTML5 video streaming.
                 </video>
@@ -519,6 +678,54 @@ export default function WatchPage() {
                 </div>
               </div>
             )}
+
+            {/* Real-time Synced Controls Bar */}
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 py-1.5 px-3 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md shadow-md flex-wrap w-full max-w-lg">
+              <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
+                Live Synced
+              </span>
+
+              <button
+                type="button"
+                onClick={() => handleSeekDelta(-10)}
+                title="Rewind 10s for both"
+                className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-bold text-white flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/5"
+              >
+                <Rewind size={13} className="text-pink-400" />
+                <span>-10s</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTogglePlayPause}
+                title="Play/Pause for both"
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:brightness-110 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <Play size={12} className="fill-white" />
+                <span>Play / Pause</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSeekDelta(10)}
+                title="Fast forward 10s for both"
+                className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-bold text-white flex items-center gap-1 transition-all active:scale-95 cursor-pointer border border-white/5"
+              >
+                <span>+10s</span>
+                <FastForward size={13} className="text-pink-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSeekDelta(30)}
+                title="Fast forward 30s for both"
+                className="px-3 py-1.5 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs font-extrabold text-pink-300 flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-sm"
+              >
+                <span>+30s</span>
+                <FastForward size={13} className="text-pink-400" />
+              </button>
+            </div>
 
             {/* Quick Switch / Close Bar */}
             <div className="flex items-center gap-2 sm:gap-3 py-1 flex-wrap justify-center">
