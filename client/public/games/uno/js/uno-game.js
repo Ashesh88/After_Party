@@ -617,6 +617,12 @@ class Uno3DGame {
     // PLAYER ACTIONS
     // -------------------------------------------------------------
     handlePlayerPlayCard(card) {
+        // If a challenge is pending against player 0, tapping a card accepts the +4 penalty
+        if (this.rules.pendingChallenge && this.rules.pendingChallenge.challengerIdx === 0) {
+            this.handleWild4ChallengeDecision(false);
+            return;
+        }
+
         if (this.rules.currentPlayer !== 0) {
             this.updateBanner('Wait for your turn! Uno Bot is playing.');
             return;
@@ -712,19 +718,21 @@ class Uno3DGame {
             }, '*');
         }
 
-        // If Player 0 played Wild+4, Bot decides challenge
+        // If Player 0 played Wild+4, Bot decides challenge promptly
         if (result.effect === 'wild4' && result.pendingChallenge) {
             this.updateBanner(`You played WILD +4! Active color is ${chosenColor.toUpperCase()}. Uno Bot is deciding challenge...`);
             setTimeout(() => {
-                const botShouldChallenge = (this.rules.playersHands[0].length >= 3 && Math.random() < 0.45);
+                const botShouldChallenge = (this.rules.playersHands[0].length >= 3 && Math.random() < 0.40);
                 this.rules.resolveWild4Challenge(1, botShouldChallenge);
                 this.syncCards3D();
                 this.isProcessingMove = false;
 
                 if (this.rules.currentPlayer === 1 && !this.rules.isGameOver) {
                     this.checkBotTurn();
+                } else if (this.rules.currentPlayer === 0 && !this.rules.isGameOver) {
+                    this.updateBanner(`Uno Bot accepted +4! Your turn to play matching ${chosenColor.toUpperCase()}.`);
                 }
-            }, 1000);
+            }, 500);
             return;
         }
 
@@ -752,6 +760,12 @@ class Uno3DGame {
     }
 
     handlePlayerDraw() {
+        // If a challenge is pending against player 0, tapping draw accepts the +4 penalty
+        if (this.rules.pendingChallenge && this.rules.pendingChallenge.challengerIdx === 0) {
+            this.handleWild4ChallengeDecision(false);
+            return;
+        }
+
         if (this.rules.currentPlayer !== 0) {
             this.updateBanner('Wait for your turn! Uno Bot is thinking.');
             return;

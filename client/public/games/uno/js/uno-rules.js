@@ -278,7 +278,14 @@ class UnoGameLogic {
     playCard(playerIdx, cardId, chosenColor = null) {
         if (this.isGameOver) return { success: false, reason: 'game_over' };
         if (playerIdx !== this.currentPlayer) return { success: false, reason: 'not_your_turn' };
-        if (this.pendingChallenge) return { success: false, reason: 'pending_challenge' };
+
+        // Auto-resolve any pending challenge as accepted so the game NEVER hangs or gets stuck
+        if (this.pendingChallenge) {
+            this.resolveWild4Challenge(this.pendingChallenge.challengerIdx, false);
+            if (playerIdx !== this.currentPlayer) {
+                return { success: false, reason: 'turn_skipped_by_draw4' };
+            }
+        }
 
         const hand = this.playersHands[playerIdx];
         const cardIndex = hand.findIndex(c => c.id === cardId);

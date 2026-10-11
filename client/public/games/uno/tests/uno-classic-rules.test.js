@@ -227,6 +227,23 @@ console.log('--- STARTING UNO CLASSIC RULES TESTS ---');
     gameC.resolveWild4Challenge(1, false);
     assert(gameC.playersHands[1].length === p1Init + 4, 'Victim draws 4 cards when challenge accepted');
     assert(gameC.currentPlayer === 0, 'Victim loses turn on accepted Wild+4');
+
+    // Scenario D: Auto-resolution when card is played so game never deadlocks on pending challenge
+    const gameD = new UnoGameLogic({ playersCount: 2 });
+    gameD.startNewGame();
+    gameD.currentPlayer = 0;
+    gameD.activeColor = 'red';
+    gameD.discardPile = [new UnoCard('c_top', 'red', '9')];
+    const w4Card = new UnoCard('c_w4d', 'wild', 'wild4');
+    const redCard = new UnoCard('c_r1', 'red', '1');
+    gameD.playersHands[0] = [w4Card, redCard];
+    gameD.playCard(0, w4Card.id, 'red');
+    assert(gameD.pendingChallenge !== null, 'Challenge is initially pending');
+
+    // Playing next card auto-resolves pending challenge
+    const autoPlayRes = gameD.playCard(0, redCard.id);
+    assert(autoPlayRes.success === true, 'Next card plays cleanly without pending_challenge error');
+    assert(gameD.pendingChallenge === null, 'pendingChallenge is cleared after auto-resolution');
 }
 
 // 8. UNO Rule & Penalty Catch
