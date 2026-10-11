@@ -379,6 +379,13 @@ const setupSocket = (io) => {
       }
     });
 
+    socket.on('watch:close', () => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('watch:close');
+      }
+    });
+
     socket.on('watch:sync', (data) => {
       const currentChannel = getActiveRoomChannel();
       if (currentChannel) {

@@ -196,12 +196,26 @@ export default function WatchPage() {
       }, 50);
     });
 
+    socket.on('watch:close', () => {
+      setMediaState(null);
+      setUrl('');
+      toast('Partner closed the video', { icon: '🎬' });
+    });
+
     return () => {
       socket.off('watch:load');
+      socket.off('watch:close');
       socket.off('watch:reaction');
       socket.off('chat:message');
     };
   }, [socket, user]);
+
+  const handleCloseVideo = () => {
+    setMediaState(null);
+    setUrl('');
+    socket?.emit('watch:close');
+    toast.success('Video closed for both');
+  };
 
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -528,10 +542,7 @@ export default function WatchPage() {
               )}
 
               <button
-                onClick={() => {
-                  setMediaState(null);
-                  setUrl('');
-                }}
+                onClick={handleCloseVideo}
                 className="px-3.5 sm:px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-xs font-semibold text-slate-300 hover:text-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
               >
                 <X size={14} />
