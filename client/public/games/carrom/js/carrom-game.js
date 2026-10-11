@@ -77,28 +77,29 @@ class CarromGame {
         this.controls.minDistance = 25;
         this.controls.maxDistance = 180;
         this.controls.enabled = false;
+        // Free Left Click for gameplay (aiming and striker movement). Right-click orbits.
+        this.controls.mouseButtons = {
+            LEFT: null,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xfff7ed, 0.7);
+        // Glare-Free Warm Diffuse Studio Lighting (Eliminates harsh shiny specular washout)
+        const ambientLight = new THREE.AmbientLight(0xfff7ea, 1.05);
         this.scene.add(ambientLight);
 
-        // Overhead Spotlight mimicking carrom club table lamp
-        const spotLight = new THREE.SpotLight(0xfffbf2, 1.8, 160, Math.PI / 3.2, 0.4, 1.0);
-        spotLight.position.set(0, 65, 0);
-        spotLight.castShadow = true;
-        spotLight.shadow.mapSize.width = 2048;
-        spotLight.shadow.mapSize.height = 2048;
-        spotLight.shadow.bias = -0.0005;
-        this.scene.add(spotLight);
+        // Soft main directional light
+        const mainLight = new THREE.DirectionalLight(0xfffaf0, 0.65);
+        mainLight.position.set(25, 60, 35);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.bias = -0.0005;
+        this.scene.add(mainLight);
 
-        // Soft warm directional rim light
-        const dirLight = new THREE.DirectionalLight(0xfef08a, 0.5);
-        dirLight.position.set(30, 45, 30);
-        this.scene.add(dirLight);
-
-        // Subtle side fill light
-        const fillLight = new THREE.DirectionalLight(0xe0e7ff, 0.35);
-        fillLight.position.set(-30, 35, -30);
+        // Soft fill light from opposite side
+        const fillLight = new THREE.DirectionalLight(0xf5ede0, 0.45);
+        fillLight.position.set(-25, 50, -35);
         this.scene.add(fillLight);
 
         // Build 3D Board and Pieces
@@ -290,6 +291,10 @@ class CarromGame {
     }
 
     positionStrikerForTurn() {
+        this.physics.stopAll(); // Force stop all piece jitter for clean turn transition
+        this.isDraggingStriker = false;
+        this.isAiming = false;
+
         // Player 1 baseline is at z = 26.0 (bottom)
         // Player 2 / Bot baseline is at z = -26.0 (top)
         const baselineZ = this.currentTurn === 'p1' ? 26.0 : -26.0;
@@ -316,7 +321,6 @@ class CarromGame {
     }
 
     handleStrikerSlide(val) {
-        if (this.physics.isTableBusy()) return;
         const isMyTurn = (this.mode === 'ai' && this.currentTurn === 'p1') ||
                          (this.mode === 'online' && this.currentTurn === this.myRole) ||
                          (this.mode === 'pass');
@@ -332,6 +336,7 @@ class CarromGame {
             this.piecesManager.striker.z = baselineZ;
             if (this.piecesManager.striker.mesh) {
                 this.piecesManager.striker.mesh.position.x = this.strikerX;
+                this.piecesManager.striker.mesh.position.z = baselineZ;
             }
         }
 
@@ -736,7 +741,33 @@ class CarromGame {
             }
         });
 
-        // Canvas Direct Touch/Pointer Aiming
+        // Desktop Keyboard Controls (Left/Right arrows or A/D to slide striker; Q/E to aim fine-tune; Space to strike)
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const isMyTurn = (this.mode === 'ai' && this.currentTurn === 'p1') ||
+                             (this.mode === 'online' && this.currentTurn === this.myRole) ||
+                             (this.mode === 'pass');
+
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                if (isMyTurn && !this.physics.isTableBusy()) {
+                    this.updateStrikerPositionFromCoord(this.strikerX - 1.2);
+                }
+            } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                if (isMyTurn && !this.physics.isTableBusy()) {
+                    this.updateStrikerPositionFromCoord(this.strikerX + 1.2);
+                }
+            } else if (e.code === 'KeyQ') {
+                this.aimAngle -= 0.05;
+            } else if (e.code === 'KeyE') {
+                this.aimAngle += 0.05;
+            } else if (e.code === 'Space') {
+                e.preventDefault();
+                if (isMyTurn) this.takeShot();
+            }
+        });
+
+        // Canvas Direct Touch/Pointer Aiming & Striker Dragging
         this.container.addEventListener('pointerdown', (e) => this.onPointerDown(e));
         window.addEventListener('pointermove', (e) => this.onPointerMove(e));
         window.addEventListener('pointerup', (e) => this.onPointerUp(e));
@@ -783,48 +814,99 @@ class CarromGame {
     }
 
     onPointerDown(e) {
-        if (this.currentView === 'orbit' || this.physics.isTableBusy()) return;
+        // Only respond to primary left click or touch
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-        // Check if pointer is on UI elements
+        // Ignore clicks on UI elements
         if (e.target.closest('.interactive')) return;
 
-        this.isAiming = true;
-        this.updateAimAngleFromPointer(e);
+        if (this.physics.isTableBusy()) return;
+
+        const isMyTurn = (this.mode === 'ai' && this.currentTurn === 'p1') ||
+                         (this.mode === 'online' && this.currentTurn === this.myRole) ||
+                         (this.mode === 'pass');
+        if (!isMyTurn) return;
+
+        const pt = this.getBoardPlaneIntersection(e);
+        if (!pt) return;
+
+        const baselineZ = this.currentTurn === 'p1' ? 26.0 : -26.0;
+
+        // If pointer clicked on or near the baseline (z within 8.5 units of baseline)
+        if (Math.abs(pt.z - baselineZ) < 8.5) {
+            this.isDraggingStriker = true;
+            this.updateStrikerPositionFromCoord(pt.x);
+        } else {
+            // Anywhere else on board: aiming
+            this.isAiming = true;
+            this.updateAimAngleFromCoord(pt.x, pt.z);
+        }
     }
 
     onPointerMove(e) {
-        if (!this.isAiming) return;
-        this.updateAimAngleFromPointer(e);
+        if (!this.isDraggingStriker && !this.isAiming) return;
+
+        const pt = this.getBoardPlaneIntersection(e);
+        if (!pt) return;
+
+        if (this.isDraggingStriker) {
+            this.updateStrikerPositionFromCoord(pt.x);
+        } else if (this.isAiming) {
+            this.updateAimAngleFromCoord(pt.x, pt.z);
+        }
     }
 
-    onPointerUp() {
+    onPointerUp(e) {
+        this.isDraggingStriker = false;
         this.isAiming = false;
     }
 
-    updateAimAngleFromPointer(e) {
-        if (!this.piecesManager.striker) return;
-
-        // Raycast from camera to board plane (y = 0)
+    getBoardPlaneIntersection(e) {
         const mouse = new THREE.Vector2(
             (e.clientX / window.innerWidth) * 2 - 1,
             -(e.clientY / window.innerHeight) * 2 + 1
         );
-
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, this.camera);
-
         const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         const intersectPoint = new THREE.Vector3();
-        raycaster.ray.intersectPlane(plane, intersectPoint);
-
-        if (intersectPoint) {
-            const striker = this.piecesManager.striker;
-            const dx = intersectPoint.x - striker.x;
-            const dz = intersectPoint.z - striker.z;
-
-            // Invert dz because forward is -z
-            this.aimAngle = Math.atan2(dx, -dz);
+        if (raycaster.ray.intersectPlane(plane, intersectPoint)) {
+            return intersectPoint;
         }
+        return null;
+    }
+
+    updateStrikerPositionFromCoord(rawX) {
+        const maxRange = 18.5;
+        this.strikerX = Math.max(-maxRange, Math.min(maxRange, rawX));
+
+        const baselineZ = this.currentTurn === 'p1' ? 26.0 : -26.0;
+        if (this.piecesManager.striker) {
+            this.piecesManager.striker.x = this.strikerX;
+            this.piecesManager.striker.z = baselineZ;
+            if (this.piecesManager.striker.mesh) {
+                this.piecesManager.striker.mesh.position.x = this.strikerX;
+                this.piecesManager.striker.mesh.position.z = baselineZ;
+            }
+        }
+
+        // Sync slider
+        const slider = document.getElementById('slider-baseline');
+        if (slider) {
+            slider.value = (this.strikerX / maxRange) * 100;
+        }
+
+        if (this.currentView === 'aim') {
+            this.setCameraView('aim');
+        }
+    }
+
+    updateAimAngleFromCoord(targetX, targetZ) {
+        if (!this.piecesManager.striker) return;
+        const striker = this.piecesManager.striker;
+        const dx = targetX - striker.x;
+        const dz = targetZ - striker.z;
+        this.aimAngle = Math.atan2(dx, -dz);
     }
 
     handleParentMessage(e) {

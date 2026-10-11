@@ -32,7 +32,7 @@ class CarromBoard3D {
     }
 
     // Generate high resolution 2048x2048 procedural canvas texture for the carrom board face
-    // Matches the authentic warm birch plywood finish from reference photo
+    // Matches the authentic matte maple/birch board from the uploaded reference photo (media_1791714094275.jpg)
     generateBoardTexture() {
         const canvas = document.createElement('canvas');
         canvas.width = 2048;
@@ -41,37 +41,37 @@ class CarromBoard3D {
         const size = 2048;
         const half = size / 2;
 
-        // 1. Natural Birch Plywood Texture with warm honey tones (not plain white)
-        const grad = ctx.createRadialGradient(half, half, 120, half, half, size * 0.72);
-        grad.addColorStop(0, '#eac697'); // Warm honey birch center
-        grad.addColorStop(0.55, '#dfb784'); // Medium birch tone
-        grad.addColorStop(1, '#cd9e6b'); // Warm amber-golden edge
+        // 1. Natural Warm Blonde Maple/Birch Plywood (Matte, non-glare warm tones)
+        const grad = ctx.createRadialGradient(half, half, 150, half, half, size * 0.72);
+        grad.addColorStop(0, '#f0d9b5'); // Soft blonde maple center
+        grad.addColorStop(0.55, '#e4c495'); // Warm golden birch tone
+        grad.addColorStop(1, '#cca068'); // Warm amber border wood tone
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, size, size);
 
-        // Natural fine wood grain fibers
-        ctx.fillStyle = 'rgba(120, 75, 30, 0.035)';
-        for (let i = 0; i < size; i += 6) {
+        // Natural fine wood grain fibers (soft diffuse matte texture)
+        ctx.fillStyle = 'rgba(110, 65, 20, 0.03)';
+        for (let i = 0; i < size; i += 5) {
             ctx.beginPath();
-            ctx.ellipse(half + (Math.sin(i * 0.015) * 45), i, size * 0.85, 3 + Math.random() * 2, 0, 0, Math.PI * 2);
+            ctx.ellipse(half + (Math.sin(i * 0.012) * 40), i, size * 0.88, 2.5 + Math.random() * 2, 0, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Additional vertical wood pores
-        ctx.strokeStyle = 'rgba(100, 60, 20, 0.025)';
-        ctx.lineWidth = 1.2;
-        for (let x = 60; x < size - 60; x += 14) {
-            if (Math.random() > 0.4) {
+        // Additional subtle vertical wood pores
+        ctx.strokeStyle = 'rgba(90, 50, 15, 0.02)';
+        ctx.lineWidth = 1.0;
+        for (let x = 70; x < size - 70; x += 12) {
+            if (Math.random() > 0.45) {
                 ctx.beginPath();
-                ctx.moveTo(x + (Math.random() - 0.5) * 6, 80);
-                ctx.lineTo(x + (Math.random() - 0.5) * 10, size - 80);
+                ctx.moveTo(x + (Math.random() - 0.5) * 5, 80);
+                ctx.lineTo(x + (Math.random() - 0.5) * 8, size - 80);
                 ctx.stroke();
             }
         }
 
-        // 2. Outer Border Inset Frame Line with rounded corners
+        // 2. Outer Border Inset Line with rounded corners
         const inset = 95;
-        ctx.strokeStyle = '#422212';
+        ctx.strokeStyle = '#2b1408';
         ctx.lineWidth = 6;
         ctx.beginPath();
         const rInset = 35;
@@ -87,51 +87,90 @@ class CarromBoard3D {
         ctx.quadraticCurveTo(x1, y1, x1 + rInset, y1);
         ctx.stroke();
 
-        // 3. Center Circles (Carrom Sunburst & Queen Spot)
-        // Outer decorative circle
-        ctx.strokeStyle = '#4e2715'; // Dark chocolate wood-stain
-        ctx.lineWidth = 7;
+        // 3. Center Compass Star Rosette (Exact match to uploaded reference photo)
+        // Outer concentric double rings
+        ctx.strokeStyle = '#2b1408';
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.arc(half, half, 195, 0, Math.PI * 2);
+        ctx.arc(half, half, 260, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Inner decorative circle
-        ctx.strokeStyle = 'rgba(78, 39, 21, 0.65)';
+        ctx.strokeStyle = '#2b1408';
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(half, half, 185, 0, Math.PI * 2);
+        ctx.arc(half, half, 245, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Authentic concentric inner ring
-        ctx.strokeStyle = '#5a2e19';
-        ctx.lineWidth = 4;
+        // 8-Pointed Star Points (Alternating Vibrant Red & Dark Wood, radiating outwards)
+        for (let i = 0; i < 8; i++) {
+            const angle = (i * Math.PI * 2) / 8;
+            const nextAngle = ((i + 1) * Math.PI * 2) / 8;
+            const midAngle = angle + (Math.PI / 8);
+
+            const tipR = 240;
+            const baseR = 105;
+            const tipX = half + Math.cos(midAngle) * tipR;
+            const tipY = half + Math.sin(midAngle) * tipR;
+
+            const b1X = half + Math.cos(angle) * baseR;
+            const b1Y = half + Math.sin(angle) * baseR;
+            const b2X = half + Math.cos(nextAngle) * baseR;
+            const b2Y = half + Math.sin(nextAngle) * baseR;
+
+            // Half triangle 1 (Crimson Red)
+            ctx.fillStyle = i % 2 === 0 ? '#bd1e28' : '#2b1408';
+            ctx.beginPath();
+            ctx.moveTo(half, half);
+            ctx.lineTo(b1X, b1Y);
+            ctx.lineTo(tipX, tipY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Half triangle 2 (Dark Wood or Crimson)
+            ctx.fillStyle = i % 2 === 0 ? '#8e151c' : '#1e0d05';
+            ctx.beginPath();
+            ctx.moveTo(half, half);
+            ctx.lineTo(tipX, tipY);
+            ctx.lineTo(b2X, b2Y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Fine stroke outline
+            ctx.strokeStyle = '#2b1408';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+        }
+
+        // Inner circle enclosing center pieces cluster
+        ctx.strokeStyle = '#2b1408';
+        ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.arc(half, half, 115, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Center Queen Spot (Rich crimson wood stain with fine rings)
-        ctx.fillStyle = '#b91c1c';
+        // Center Queen Spot
+        ctx.fillStyle = '#bd1e28';
         ctx.beginPath();
-        ctx.arc(half, half, 58, 0, Math.PI * 2);
+        ctx.arc(half, half, 50, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = '#422212';
-        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#2b1408';
+        ctx.lineWidth = 4;
         ctx.stroke();
 
-        // Concentric Queen groove
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3.5;
+        // Fine gold inner circle
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(half, half, 44, 0, Math.PI * 2);
+        ctx.arc(half, half, 38, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.fillStyle = '#fef08a';
         ctx.beginPath();
-        ctx.arc(half, half, 14, 0, Math.PI * 2);
+        ctx.arc(half, half, 12, 0, Math.PI * 2);
         ctx.fill();
 
-        // 4. Baseline Striker Placement Capsules (Top, Bottom, Left, Right)
+        // 4. Baseline Striker Placement Capsules with Large Red Circles
         const drawBaseline = (rotation) => {
             ctx.save();
             ctx.translate(half, half);
@@ -141,17 +180,15 @@ class CarromBoard3D {
             const lineHalfW = 460;
             const circleR = 48;
 
-            // Baseline rounded capsule outline (like real carrom board)
-            ctx.strokeStyle = '#422212';
+            // Parallel baseline rails
+            ctx.strokeStyle = '#2b1408';
             ctx.lineWidth = 5;
 
-            // Top rail of baseline
             ctx.beginPath();
             ctx.moveTo(-lineHalfW, lineY - 26);
             ctx.lineTo(lineHalfW, lineY - 26);
             ctx.stroke();
 
-            // Bottom rail of baseline
             ctx.beginPath();
             ctx.moveTo(-lineHalfW, lineY + 26);
             ctx.lineTo(lineHalfW, lineY + 26);
@@ -166,25 +203,25 @@ class CarromBoard3D {
             ctx.arc(lineHalfW, lineY, 26, -Math.PI * 0.5, Math.PI * 0.5);
             ctx.stroke();
 
-            // Amber/Caramel target circles at both ends
+            // Large Solid Red End Circles (Matches reference photo)
             [-lineHalfW, lineHalfW].forEach(cx => {
-                ctx.fillStyle = '#d97724'; // Rich amber wood tone
+                ctx.fillStyle = '#bd1e28'; // Rich vibrant carrom red
                 ctx.beginPath();
                 ctx.arc(cx, lineY, circleR, 0, Math.PI * 2);
                 ctx.fill();
 
-                ctx.strokeStyle = '#422212';
+                ctx.strokeStyle = '#2b1408';
                 ctx.lineWidth = 5;
                 ctx.stroke();
 
                 // Inner fine ring
-                ctx.strokeStyle = '#fef08a';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.arc(cx, lineY, circleR - 10, 0, Math.PI * 2);
                 ctx.stroke();
 
-                ctx.fillStyle = '#422212';
+                ctx.fillStyle = '#2b1408';
                 ctx.beginPath();
                 ctx.arc(cx, lineY, 8, 0, Math.PI * 2);
                 ctx.fill();
@@ -195,21 +232,21 @@ class CarromBoard3D {
 
         [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].forEach(angle => drawBaseline(angle));
 
-        // 5. Diagonal Pocket Direction Arrows
+        // 5. Diagonal Pocket Direction Arrows with Guard Circles
         const drawArrow = (angle) => {
             ctx.save();
             ctx.translate(half, half);
             ctx.rotate(angle);
 
-            ctx.strokeStyle = '#5a2e19';
+            ctx.strokeStyle = '#2b1408';
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.moveTo(320, 320);
+            ctx.moveTo(340, 340);
             ctx.lineTo(740, 740);
             ctx.stroke();
 
             // Arrow head pointing to pocket
-            ctx.fillStyle = '#5a2e19';
+            ctx.fillStyle = '#2b1408';
             ctx.beginPath();
             ctx.moveTo(740, 740);
             ctx.lineTo(685, 736);
@@ -217,10 +254,10 @@ class CarromBoard3D {
             ctx.closePath();
             ctx.fill();
 
-            // Circular decorative guard at arrow base
+            // Guard arc loop near arrow origin (matches reference photo)
             ctx.beginPath();
-            ctx.arc(320, 320, 16, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.arc(360, 360, 38, 0.2 * Math.PI, 1.8 * Math.PI);
+            ctx.stroke();
 
             ctx.restore();
         };
@@ -228,33 +265,22 @@ class CarromBoard3D {
         [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4].forEach(angle => drawArrow(angle));
 
         // 6. Corner Pocket Hole Cutouts:
-        // EXACT mathematical alignment with 3D pocket positions to eliminate double-circle bug!
-        // Scale = size / playWidth = 2048 / 70 = 29.25714 px/unit
         const pxPerUnit = size / this.playWidth;
-        const pocketPixelR = this.pocketRadius * pxPerUnit; // ~105.3px
+        const pocketPixelR = this.pocketRadius * pxPerUnit;
 
         this.pocketPositions.forEach(pos => {
             const cx = half + pos.x * pxPerUnit;
             const cy = half + pos.z * pxPerUnit;
 
-            // Recessed dark pocket well background
-            ctx.fillStyle = '#0a0604';
+            // Recessed dark pocket well
+            ctx.fillStyle = '#060403';
             ctx.beginPath();
             ctx.arc(cx, cy, pocketPixelR, 0, Math.PI * 2);
             ctx.fill();
 
-            // Inner drop shadow
-            const shadowGrad = ctx.createRadialGradient(cx, cy, pocketPixelR * 0.7, cx, cy, pocketPixelR);
-            shadowGrad.addColorStop(0, 'rgba(10, 6, 4, 1.0)');
-            shadowGrad.addColorStop(1, 'rgba(40, 20, 10, 0.9)');
-            ctx.fillStyle = shadowGrad;
-            ctx.beginPath();
-            ctx.arc(cx, cy, pocketPixelR, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Clean dark wood bevel rim (perfectly flush)
-            ctx.strokeStyle = '#2a140a';
-            ctx.lineWidth = 6;
+            // Polished brass inner collar ring (matches reference photo corner)
+            ctx.strokeStyle = '#c89d42';
+            ctx.lineWidth = 8;
             ctx.stroke();
         });
 
@@ -268,15 +294,17 @@ class CarromBoard3D {
         const boardGeo = new THREE.BoxGeometry(this.playWidth, 1.2, this.playHeight);
         const texture = this.generateBoardTexture();
 
+        // MATTE satin wood finish: high roughness (0.82), ZERO metalness = NO SHINE / NO HARSH GLARE!
         const topMat = new THREE.MeshStandardMaterial({
             map: texture,
-            roughness: 0.38,
-            metalness: 0.05
+            roughness: 0.82,
+            metalness: 0.0
         });
 
         const woodEdgeMat = new THREE.MeshStandardMaterial({
             color: 0xcd9e6b,
-            roughness: 0.5
+            roughness: 0.7,
+            metalness: 0.0
         });
 
         const materials = [

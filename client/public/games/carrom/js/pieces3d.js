@@ -121,50 +121,34 @@ class CarromPieces3D {
         const ctx = canvas.getContext('2d');
         const half = 256;
 
-        // Ivory white acrylic surface (matches reference photo)
-        ctx.fillStyle = '#fcfbf8';
+        // Clean white acrylic body (matches uploaded reference photo)
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 512, 512);
 
-        const grad = ctx.createRadialGradient(half, half, 50, half, half, 256);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.85, '#f4efe6');
-        grad.addColorStop(1, '#dfd5c4');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 512, 512);
+        // Concentric crimson/red rings on top (matches media_1791714094275.jpg)
+        ctx.strokeStyle = '#c8232b';
+        ctx.lineWidth = 18;
+        ctx.beginPath();
+        ctx.arc(half, half, 215, 0, Math.PI * 2);
+        ctx.stroke();
 
-        // Outer amber/golden rim
-        ctx.strokeStyle = '#d97706';
         ctx.lineWidth = 14;
         ctx.beginPath();
-        ctx.arc(half, half, 225, 0, Math.PI * 2);
+        ctx.arc(half, half, 160, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 10;
         ctx.beginPath();
-        ctx.arc(half, half, 195, 0, Math.PI * 2);
+        ctx.arc(half, half, 105, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Authentic Endless Knot / Mandala crest in the center (from reference photo)
-        ctx.strokeStyle = '#d97706';
-        ctx.lineWidth = 9;
-        ctx.lineJoin = 'round';
+        // Center red bullseye
+        ctx.fillStyle = '#c8232b';
+        ctx.beginPath();
+        ctx.arc(half, half, 45, 0, Math.PI * 2);
+        ctx.fill();
 
-        // 4 Interlocking rounded loops
-        const loopR = 52;
-        const offset = 48;
-        [
-            [-offset, -offset],
-            [offset, -offset],
-            [-offset, offset],
-            [offset, offset]
-        ].forEach(([lx, ly]) => {
-            ctx.beginPath();
-            ctx.arc(half + lx, half + ly, loopR, 0, Math.PI * 2);
-            ctx.stroke();
-        });
-
-        // Center medallion dot
-        ctx.fillStyle = '#d97706';
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(half, half, 22, 0, Math.PI * 2);
         ctx.fill();
@@ -179,21 +163,23 @@ class CarromPieces3D {
 
         const geo = new THREE.CylinderGeometry(radius, radius, height, 32);
 
-        let sideColor = 0xf2ede0;
-        let roughness = 0.32;
-        let metalness = 0.05;
+        // Matte non-glare wood and acrylic finishes
+        let sideColor = 0xf0e6d6;
+        let roughness = 0.65;
+        let metalness = 0.0;
 
         if (type === 'black') {
-            sideColor = 0x1b1612;
-            roughness = 0.4;
+            sideColor = 0x141210;
+            roughness = 0.65;
+            metalness = 0.0;
         } else if (type === 'queen') {
-            sideColor = 0x9e1a22;
-            roughness = 0.28;
-            metalness = 0.1;
+            sideColor = 0xbd1e28;
+            roughness = 0.60;
+            metalness = 0.0;
         } else if (type === 'striker') {
-            sideColor = 0xf0ebe1;
-            roughness = 0.2;
-            metalness = 0.12;
+            sideColor = 0xffffff;
+            roughness = 0.50;
+            metalness = 0.0;
         }
 
         const sideMat = new THREE.MeshStandardMaterial({
@@ -210,7 +196,7 @@ class CarromPieces3D {
 
         const bottomMat = new THREE.MeshStandardMaterial({
             color: sideColor,
-            roughness: 0.6
+            roughness: 0.8
         });
 
         const materials = [sideMat, topMat, bottomMat];
