@@ -744,6 +744,22 @@ class LuxuryDuelRacer3D {
             this.scene.add(p);
             this.sparkPool.push({ mesh: p, life: 0, vx: 0, vy: 0, vz: 0 });
         }
+
+        // Tire Smoke Particles Pool for Drift
+        this.smokePool = [];
+        const smokeGeo = new THREE.SphereGeometry(0.24, 6, 6);
+        const smokeMat = new THREE.MeshBasicMaterial({
+            color: 0xe2e8f0,
+            transparent: true,
+            opacity: 0.65
+        });
+
+        for (let i = 0; i < 45; i++) {
+            const sm = new THREE.Mesh(smokeGeo, smokeMat.clone());
+            sm.visible = false;
+            this.scene.add(sm);
+            this.smokePool.push({ mesh: sm, life: 0, maxLife: 30, vx: 0, vy: 0, vz: 0 });
+        }
     }
 
     spawnSparks(x, y, z) {
@@ -759,6 +775,22 @@ class LuxuryDuelRacer3D {
         }
     }
 
+    spawnTireSmoke(x, y, z) {
+        for (let i = 0; i < 2; i++) {
+            const sm = this.smokePool.find(p => p.life <= 0);
+            if (!sm) break;
+            sm.life = 28;
+            sm.maxLife = 28;
+            sm.mesh.scale.setScalar(0.7 + Math.random() * 0.5);
+            sm.mesh.position.set(x + (Math.random() - 0.5) * 0.5, y + 0.15, z - 1.2);
+            sm.mesh.material.opacity = 0.6;
+            sm.mesh.visible = true;
+            sm.vx = (Math.random() - 0.5) * 0.15;
+            sm.vy = 0.05 + Math.random() * 0.08;
+            sm.vz = -0.15 - Math.random() * 0.2;
+        }
+    }
+
     updateParticles() {
         this.sparkPool.forEach(p => {
             if (p.life > 0) {
@@ -767,6 +799,18 @@ class LuxuryDuelRacer3D {
                 p.mesh.position.y += p.vy;
                 p.mesh.position.z += p.vz;
                 p.vy -= 0.015; // Gravity
+                if (p.life <= 0) p.mesh.visible = false;
+            }
+        });
+
+        this.smokePool.forEach(p => {
+            if (p.life > 0) {
+                p.life--;
+                p.mesh.position.x += p.vx;
+                p.mesh.position.y += p.vy;
+                p.mesh.position.z += p.vz;
+                p.mesh.scale.multiplyScalar(1.035); // Expand as smoke dissipates
+                p.mesh.material.opacity = (p.life / p.maxLife) * 0.55;
                 if (p.life <= 0) p.mesh.visible = false;
             }
         });
@@ -861,31 +905,52 @@ class LuxuryDuelRacer3D {
             if (e.key === ' ') this.triggerNitro(this.p2, false);
         });
 
-        // Touch Handlers
+        // Reliable Touch & Pointer Handlers (Works on mobile touch, tablets and desktop clicks)
         const bindTouch = (id, onDown, onUp) => {
             const el = document.getElementById(id);
             if (!el) return;
-            const handleDown = (e) => {
-                if (e.cancelable) e.preventDefault();
+
+            let isPressed = false;
+            const press = (e) => {
+                if (e && e.cancelable) e.preventDefault();
+                if (isPressed) return;
+                isPressed = true;
+                el.classList.add('active');
                 onDown();
             };
-            const handleUp = (e) => {
-                if (e.cancelable) e.preventDefault();
+            const release = (e) => {
+                if (e && e.cancelable) e.preventDefault();
+                if (!isPressed) return;
+                isPressed = false;
+                el.classList.remove('active');
                 onUp();
             };
-            el.addEventListener('pointerdown', handleDown, { passive: false });
-            el.addEventListener('pointerup', handleUp, { passive: false });
-            el.addEventListener('pointercancel', handleUp, { passive: false });
-            el.addEventListener('touchstart', handleDown, { passive: false });
-            el.addEventListener('touchend', handleUp, { passive: false });
-            el.addEventListener('touchcancel', handleUp, { passive: false });
+
+            // Pointer Events (Unified standard for touch, stylus, and mouse)
+            el.addEventListener('pointerdown', press, { passive: false });
+            window.addEventListener('pointerup', release);
+            window.addEventListener('pointercancel', release);
+
+            // Touch fallback for older WebKit / mobile browsers
+            el.addEventListener('touchstart', press, { passive: false });
+            el.addEventListener('touchend', release, { passive: false });
+            el.addEventListener('touchcancel', release, { passive: false });
+
+            // Mouse fallback
+            el.addEventListener('mousedown', press);
+            window.addEventListener('mouseup', release);
         };
 
         bindTouch('touch-p1-left', () => { this.input.p1Left = true; }, () => { this.input.p1Left = false; });
         bindTouch('touch-p1-right', () => { this.input.p1Right = true; }, () => { this.input.p1Right = false; });
         bindTouch('touch-p1-gas', () => { this.input.p1Gas = true; }, () => { this.input.p1Gas = false; });
         bindTouch('touch-p1-nitro', () => { this.triggerNitro(this.p1, true); }, () => { this.triggerNitro(this.p1, false); });
-        bindTouch('touch-p1-drift', () => { this.input.p1Drift = true; }, () => { this.input.p1Drift = false; });
+        bindTouch('touch-p1-drift', () => {
+            this.input.p1Drift = true;
+            if (window.racerAudio) window.racerAudio.playDrift();
+        }, () => {
+            this.input.p1Drift = false;
+        });
 
         // Utility Buttons
         const btn2p = document.getElementById('btn-mode-2p');
@@ -1164,28 +1229,36 @@ class LuxuryDuelRacer3D {
             car.nitro = Math.min(100, car.nitro + 0.14);
         }
 
-        // Drift Handling: Holding Drift or hard turning at high speed initiates drift
-        car.isDrifting = (ctrl.drift || this.input.p1Drift) && car.speed > 0.8;
-        const driftFactor = car.isDrifting ? 1.5 : 1.0;
+        // Drift Handling: Pressing Drift button initiates high-angle drift slide & tire smoke
+        const driftInputActive = !!(ctrl.drift || this.input.p1Drift);
+        car.isDrifting = driftInputActive && car.speed > 0.25;
+        const driftFactor = car.isDrifting ? 1.75 : 1.0;
 
-        const effectiveSpeed = Math.max(0.45, Math.min(1.25, car.speed / 0.8));
-        const steerSpeed = 0.165 * effectiveSpeed * driftFactor;
+        const effectiveSpeed = Math.max(0.45, Math.min(1.35, car.speed / 0.7));
+        const steerSpeed = 0.175 * effectiveSpeed * driftFactor;
 
         if (ctrl.left) {
             car.laneX -= steerSpeed;
-            car.steerAngle = Math.max(-0.35, car.steerAngle - (car.isDrifting ? 0.08 : 0.05));
-            if (car.isDrifting && Math.random() < 0.25 && window.racerAudio) {
-                window.racerAudio.playDrift();
-            }
+            car.steerAngle = Math.max(-0.45, car.steerAngle - (car.isDrifting ? 0.09 : 0.05));
         } else if (ctrl.right) {
             car.laneX += steerSpeed;
-            car.steerAngle = Math.min(0.35, car.steerAngle + (car.isDrifting ? 0.08 : 0.05));
-            if (car.isDrifting && Math.random() < 0.25 && window.racerAudio) {
-                window.racerAudio.playDrift();
+            car.steerAngle = Math.min(0.45, car.steerAngle + (car.isDrifting ? 0.09 : 0.05));
+        } else if (car.isDrifting) {
+            // If drifting without steering, initiate subtle fishtail / momentum slide
+            if (Math.abs(car.steerAngle) < 0.08) {
+                car.steerAngle = (car.laneX <= 0 ? 0.16 : -0.16);
             }
         } else {
             // Auto counter-steer assist to center
             car.steerAngle *= 0.72;
+        }
+
+        // Drift SFX & Smoke Generation
+        if (car.isDrifting && car.mesh) {
+            this.spawnTireSmoke(car.mesh.position.x, car.mesh.position.y, car.mesh.position.z);
+            if (Math.random() < 0.35 && window.racerAudio) {
+                window.racerAudio.playDrift();
+            }
         }
 
         // Guard-Rail Sliding (Bounces slightly & spawns sparks instead of dead stop)
@@ -1206,12 +1279,13 @@ class LuxuryDuelRacer3D {
 
         // Visual Steering on Front Wheels
         car.frontWheels.forEach(w => {
-            w.rotation.y = car.steerAngle * 1.2;
+            w.rotation.y = car.steerAngle * 1.35;
         });
 
-        // Dynamic Body Roll & Suspension Pitch
-        car.mesh.rotation.y = car.steerAngle;
-        car.mesh.rotation.z = -car.steerAngle * 0.48; // Lean into turn
+        // Dynamic Body Roll, Drift Slip Angle & Suspension Pitch
+        const slipYaw = car.isDrifting ? car.steerAngle * 1.6 : car.steerAngle;
+        car.mesh.rotation.y = slipYaw;
+        car.mesh.rotation.z = -car.steerAngle * (car.isDrifting ? 0.65 : 0.48); // Aggressive lean while drifting
         car.mesh.rotation.x = ctrl.gas ? -0.025 : (ctrl.brake ? 0.03 : 0); // Squat on accel, dive on brake
 
         // Wheels Rotation
