@@ -64,6 +64,14 @@ export default function PushNotificationBanner() {
       if (testRes.success) {
         toast.success('Test notification dispatched! Check your device notification tray.');
         setTested(true);
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('After Party Alert', {
+              body: 'If you see this, notifications are enabled on your device!',
+              icon: '/icon-192x192.png',
+            });
+          } catch (e) {}
+        }
       } else {
         toast.error(testRes.message);
       }

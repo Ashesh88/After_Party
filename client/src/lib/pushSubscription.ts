@@ -54,10 +54,11 @@ export async function registerPushSubscription(userInitiated = false): Promise<{
       };
     }
 
-    // 1. Ensure service worker is registered
+    // 1. Ensure service worker is registered and updated to latest code
     let registration: ServiceWorkerRegistration;
     try {
       registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await registration.update();
     } catch (swErr: any) {
       return { 
         success: false, 
@@ -68,6 +69,7 @@ export async function registerPushSubscription(userInitiated = false): Promise<{
     // Wait until ready
     try {
       await navigator.serviceWorker.ready;
+      await registration.update();
     } catch (e) {}
 
     // 2. Clear any stale subscription to avoid applicationServerKey mismatch errors

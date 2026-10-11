@@ -13,10 +13,10 @@ self.addEventListener('push', function (event) {
     body: payload.body || 'You have a new notification',
     icon: payload.icon || '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    tag: payload.tag || 'after-party-push',
+    tag: payload.tag || ('push-' + Date.now()),
     data: payload.data || { url: '/' },
     vibrate: [200, 100, 200, 100, 200],
-    requireInteraction: payload.requireInteraction || false
+    requireInteraction: true
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
