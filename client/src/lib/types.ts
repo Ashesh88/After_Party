@@ -90,7 +90,7 @@ export interface Message {
   recipientId?: any;
   senderId: any;
   content: string;
-  type: 'text' | 'image' | 'emoji' | 'audio';
+  type: 'text' | 'image' | 'emoji' | 'audio' | 'whisper';
   imageUrl?: string;
   audioUrl?: string;
   audioDuration?: number;

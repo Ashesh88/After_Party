@@ -195,8 +195,8 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* Distance & Navigation Card */}
-      {formattedDistance && partnerLocation && (
+      {/* Distance & Navigation Card with Meet Halfway */}
+      {formattedDistance && partnerLocation && location && (
         <div className="px-4 max-w-2xl mx-auto w-full mb-3 relative z-20">
           <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 glass-panel border border-pink-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
             <div className="flex items-center gap-3">
@@ -213,13 +213,29 @@ export default function MapPage() {
               </div>
             </div>
 
-            <button
-              onClick={openGoogleMapsDirections}
-              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-1.5 shadow"
-            >
-              <span>Get Directions</span>
-              <ExternalLink size={13} className="text-pink-300" />
-            </button>
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              {/* Meet Halfway Cafe & Spot Finder */}
+              <button
+                onClick={() => {
+                  const midLat = (location.lat + partnerLocation.lat) / 2;
+                  const midLng = (location.lng + partnerLocation.lng) / 2;
+                  const url = `https://www.google.com/maps/search/cute+cafes+restaurants/@${midLat},${midLng},14z`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500/30 to-purple-500/30 hover:from-pink-500/40 hover:to-purple-500/40 text-pink-200 hover:text-white text-xs font-bold border border-pink-500/40 transition-all flex items-center justify-center gap-1.5 shadow active:scale-95 cursor-pointer"
+                title="Find cafes & meetups halfway between both of you"
+              >
+                <span>☕ Meet Halfway</span>
+              </button>
+
+              <button
+                onClick={openGoogleMapsDirections}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-1.5 shadow active:scale-95 cursor-pointer"
+              >
+                <span>Directions</span>
+                <ExternalLink size={13} className="text-pink-300" />
+              </button>
+            </div>
           </div>
         </div>
       )}

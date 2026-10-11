@@ -421,7 +421,15 @@ export default function WatchPage() {
       <main className="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-4 py-2 sm:py-6 flex flex-col items-center justify-center relative z-10">
         {mediaState ? (
           <div className="w-full flex flex-col items-center gap-3">
-            <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black">
+            <div 
+              onDoubleClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+                sendReaction('❤️');
+              }}
+              title="Double tap to send floating heart ❤️"
+              className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black"
+            >
               {mediaState.type === 'youtube' && (
                 <iframe
                   src={`https://www.youtube.com/embed/${mediaState.src}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0`}

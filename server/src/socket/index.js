@@ -157,7 +157,7 @@ const setupSocket = (io) => {
             senderId: userId,
             senderName: message.senderId?.displayName || 'Partner',
             senderAvatar: message.senderId?.avatar || '',
-            content: type === 'audio' ? 'Voice note' : (content.length > 80 ? content.slice(0, 80) + '...' : content),
+            content: type === 'whisper' ? '🤫 Secret whisper...' : (type === 'audio' ? 'Voice note' : (content.length > 80 ? content.slice(0, 80) + '...' : content)),
             type,
             timestamp: message.createdAt,
             roomId: targetRoomId,
@@ -198,13 +198,26 @@ const setupSocket = (io) => {
           senderId: userId,
           senderName: message.senderId?.displayName || 'Friend',
           senderAvatar: message.senderId?.avatar || '',
-          content: message.type === 'audio' ? 'Voice note' : (message.content || 'New message'),
+          content: message.type === 'whisper' ? '🤫 Secret whisper...' : (message.type === 'audio' ? 'Voice note' : (message.content || 'New message')),
           type: message.type,
           timestamp: message.createdAt,
           isDirect: true,
         });
       } catch (err) {
         console.error('chat:direct-message error:', err);
+      }
+    });
+
+    // Arcade Stakes & Bets live sync
+    socket.on('arcade:set-stake', (payload) => {
+      const currentChannel = getActiveRoomChannel();
+      if (currentChannel) {
+        socket.to(currentChannel).emit('arcade:stake-updated', {
+          stake: payload?.stake,
+          setBy: userId,
+          setterName: payload?.setterName || 'Partner',
+          timestamp: Date.now(),
+        });
       }
     });
 

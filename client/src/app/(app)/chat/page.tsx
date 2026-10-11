@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { 
   Send, Check, CheckCheck, Phone, Video, Mic, Play, Pause, 
   Heart, ArrowLeft, Search, Image as ImageIcon, Smile, MoreVertical,
-  Users, Trash2, Sparkles, MessageCircle, Layers
+  Users, Trash2, Sparkles, MessageCircle, Layers, Lock, EyeOff, Clock, X
 } from 'lucide-react';
 
 interface ActiveChat {
@@ -74,6 +74,7 @@ function ChatContent() {
   const [onlineStatusMap, setOnlineStatusMap] = useState<Record<string, { online: boolean; lastSeen?: string | Date }>>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
+  const [isWhisperMode, setIsWhisperMode] = useState(false);
 
   // Voice Note Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -429,11 +430,13 @@ function ChatContent() {
     const content = input.trim();
     if (!content || !socket || !activeChat) return;
 
+    const messageType = isWhisperMode ? 'whisper' : 'text';
+
     if (activeChat.type === 'direct') {
       socket.emit('chat:direct-message', {
         recipientId: activeChat.id,
         content,
-        type: 'text',
+        type: messageType,
       });
       socket.emit('chat:direct-typing', {
         recipientId: activeChat.id,
@@ -443,12 +446,17 @@ function ChatContent() {
       socket.emit('chat:message', {
         roomId: activeChat.id,
         content,
-        type: 'text',
+        type: messageType,
       });
       socket.emit('chat:typing', {
         roomId: activeChat.id,
         isTyping: false,
       });
+    }
+
+    if (isWhisperMode) {
+      setIsWhisperMode(false);
+      toast('Secret whisper sent 🤫', { icon: '🔒' });
     }
 
     setInput('');
@@ -857,7 +865,9 @@ function ChatContent() {
                           )}
                           <span className="truncate">
                             {item.lastMessage
-                              ? item.lastMessage.type === 'audio'
+                              ? item.lastMessage.type === 'whisper'
+                                ? '🤫 Secret whisper'
+                                : item.lastMessage.type === 'audio'
                                 ? '🎤 Voice note'
                                 : item.lastMessage.type === 'image'
                                 ? '📷 Photo'
@@ -915,6 +925,8 @@ function ChatContent() {
               sendHeartbeat={sendHeartbeat}
               handleClearChat={handleClearChat}
               handleStartCall={handleStartCall}
+              isWhisperMode={isWhisperMode}
+              setIsWhisperMode={setIsWhisperMode}
               onBack={() => setMobileChatOpen(false)}
               isMobileView={false}
             />
@@ -967,11 +979,122 @@ function ChatContent() {
             sendHeartbeat={sendHeartbeat}
             handleClearChat={handleClearChat}
             handleStartCall={handleStartCall}
+            isWhisperMode={isWhisperMode}
+            setIsWhisperMode={setIsWhisperMode}
             onBack={() => setMobileChatOpen(false)}
             isMobileView={true}
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// Whisper Message Component (Secret tap-to-reveal with 10s countdown self-destruct)
+function WhisperBubble({ msg, isMe, formatTime }: { msg: any; isMe: boolean; formatTime: (d?: any) => string }) {
+  const [revealed, setRevealed] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(10);
+  const [vanished, setVanished] = useState(false);
+
+  useEffect(() => {
+    let timer: any;
+    if (revealed && !vanished) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setVanished(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [revealed, vanished]);
+
+  if (vanished) {
+    return (
+      <div
+        className={`px-4 py-2.5 rounded-2xl border border-purple-500/20 bg-purple-950/30 text-slate-400 text-xs italic flex items-center gap-2 select-none shadow-md ${
+          isMe ? 'rounded-tr-xs' : 'rounded-tl-xs'
+        }`}
+      >
+        <Sparkles size={14} className="text-purple-400 opacity-60" />
+        <span>💥 This whisper has vanished into thin air...</span>
+      </div>
+    );
+  }
+
+  if (!revealed) {
+    return (
+      <div
+        onClick={() => setRevealed(true)}
+        className={`p-3.5 sm:p-4 rounded-2xl border border-pink-500/40 bg-gradient-to-br from-[#1e1035] via-[#2a133d] to-[#160d26] text-white shadow-[0_4px_20px_rgba(236,72,153,0.25)] cursor-pointer hover:border-pink-400 hover:shadow-[0_4px_25px_rgba(236,72,153,0.4)] transition-all group select-none max-w-[85%] sm:max-w-[70%] ${
+          isMe ? 'rounded-tr-xs' : 'rounded-tl-xs'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-pink-300 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(244,63,142,0.4)] shrink-0">
+            <Lock size={15} />
+          </div>
+          <div>
+            <div className="text-xs font-black tracking-wide text-pink-300 flex items-center gap-1.5">
+              <span>🤫 Secret Whisper</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/25 border border-pink-400/40 font-bold uppercase tracking-wider text-pink-200">
+                Confidential
+              </span>
+            </div>
+            <p className="text-[11px] text-purple-200/80 font-medium mt-0.5 group-hover:text-white transition-colors">
+              Tap to reveal secret • Self-destructs in 10s
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between mt-2.5 pt-1.5 border-t border-white/[0.06] text-[10px] text-purple-300/60 font-mono">
+          <span>{formatTime(msg.createdAt)}</span>
+          <span className="text-pink-400/90 font-bold group-hover:underline">Tap to reveal 🔓</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`p-3.5 sm:p-4 rounded-2xl border border-pink-500/50 bg-gradient-to-br from-[#2b1240] via-[#351545] to-[#1c0f30] text-white shadow-[0_4px_24px_rgba(244,63,142,0.35)] relative overflow-hidden max-w-[85%] sm:max-w-[70%] ${
+        isMe ? 'rounded-tr-xs' : 'rounded-tl-xs'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3 mb-2 pb-1.5 border-b border-pink-500/20">
+        <span className="text-[10px] font-black uppercase tracking-wider text-pink-300 flex items-center gap-1">
+          <EyeOff size={12} />
+          <span>Whisper Revealed</span>
+        </span>
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-[10px] font-mono font-bold text-rose-300 animate-pulse">
+          <Clock size={11} />
+          <span>{timeLeft}s</span>
+        </div>
+      </div>
+
+      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2.5">
+        <div
+          className="h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-1000 ease-linear"
+          style={{ width: `${(timeLeft / 10) * 100}%` }}
+        />
+      </div>
+
+      <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap break-words text-pink-100">
+        {msg.content}
+      </p>
+
+      <div className="flex items-center justify-end gap-1 mt-2 text-[10px] text-white/60">
+        <span>{formatTime(msg.createdAt)}</span>
+        {isMe && (
+          <CheckCheck
+            size={14}
+            className={msg.seen ? 'text-cyan-300' : 'text-white/60'}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -1004,6 +1127,8 @@ function ChatWindow({
   sendHeartbeat,
   handleClearChat,
   handleStartCall,
+  isWhisperMode,
+  setIsWhisperMode,
   onBack,
   isMobileView,
 }: any) {
@@ -1180,65 +1305,69 @@ function ChatWindow({
                   </span>
                 )}
 
-                {/* Message Bubble - Velvet Romantic Aesthetic */}
-                <div
-                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 relative shadow-lg ${
-                    isMe
-                      ? 'bg-gradient-to-r from-pink-600 via-rose-500 to-purple-600 text-white rounded-tr-xs border border-white/20 shadow-[0_4px_16px_rgba(244,63,142,0.3)]'
-                      : 'bg-white/[0.08] backdrop-blur-md text-slate-100 rounded-tl-xs border border-white/[0.1] shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
-                  }`}
-                >
-                  {/* Photo message */}
-                  {msg.type === 'image' && msg.imageUrl && (
-                    <div className="rounded-xl overflow-hidden mb-1.5 max-h-72">
-                      <img src={msg.imageUrl} alt="Shared photo" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-
-                  {/* Voice note message */}
-                  {msg.type === 'audio' && msg.audioUrl && (
-                    <div className="flex items-center gap-3 py-1 min-w-[200px]">
-                      <button
-                        onClick={() => togglePlayAudio(msg._id, msg.audioUrl)}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-md ${
-                          isMe ? 'bg-white text-pink-600' : 'bg-pink-500 text-white'
-                        }`}
-                      >
-                        {playingAudioId === msg._id ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
-                      </button>
-                      <div className="flex-1">
-                        <div className="h-1.5 rounded-full bg-white/25 overflow-hidden relative">
-                          <div
-                            className={`h-full ${isMe ? 'bg-white' : 'bg-pink-400'} ${
-                              playingAudioId === msg._id ? 'animate-pulse w-full' : 'w-1/3'
-                            }`}
-                          />
-                        </div>
-                        <span className="text-[10px] text-white/80 font-mono mt-1 block">
-                          Voice note {msg.audioDuration ? `(${msg.audioDuration}s)` : ''}
-                        </span>
+                {/* Message Bubble - Velvet Romantic Aesthetic / Whisper Bubble */}
+                {msg.type === 'whisper' ? (
+                  <WhisperBubble msg={msg} isMe={isMe} formatTime={formatTime} />
+                ) : (
+                  <div
+                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 relative shadow-lg ${
+                      isMe
+                        ? 'bg-gradient-to-r from-pink-600 via-rose-500 to-purple-600 text-white rounded-tr-xs border border-white/20 shadow-[0_4px_16px_rgba(244,63,142,0.3)]'
+                        : 'bg-white/[0.08] backdrop-blur-md text-slate-100 rounded-tl-xs border border-white/[0.1] shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
+                    }`}
+                  >
+                    {/* Photo message */}
+                    {msg.type === 'image' && msg.imageUrl && (
+                      <div className="rounded-xl overflow-hidden mb-1.5 max-h-72">
+                        <img src={msg.imageUrl} alt="Shared photo" className="w-full h-full object-cover" />
                       </div>
-                    </div>
-                  )}
-
-                  {/* Text message */}
-                  {msg.type !== 'audio' && (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                      {msg.content}
-                    </p>
-                  )}
-
-                  {/* Footer: Time & Status Ticks */}
-                  <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-white/70">
-                    <span>{formatTime(msg.createdAt)}</span>
-                    {isMe && (
-                      <CheckCheck
-                        size={14}
-                        className={msg.seen ? 'text-cyan-300' : 'text-white/60'}
-                      />
                     )}
+
+                    {/* Voice note message */}
+                    {msg.type === 'audio' && msg.audioUrl && (
+                      <div className="flex items-center gap-3 py-1 min-w-[200px]">
+                        <button
+                          onClick={() => togglePlayAudio(msg._id, msg.audioUrl)}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-md ${
+                            isMe ? 'bg-white text-pink-600' : 'bg-pink-500 text-white'
+                          }`}
+                        >
+                          {playingAudioId === msg._id ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+                        </button>
+                        <div className="flex-1">
+                          <div className="h-1.5 rounded-full bg-white/25 overflow-hidden relative">
+                            <div
+                              className={`h-full ${isMe ? 'bg-white' : 'bg-pink-400'} ${
+                                playingAudioId === msg._id ? 'animate-pulse w-full' : 'w-1/3'
+                              }`}
+                            />
+                          </div>
+                          <span className="text-[10px] text-white/80 font-mono mt-1 block">
+                            Voice note {msg.audioDuration ? `(${msg.audioDuration}s)` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Text message */}
+                    {msg.type !== 'audio' && (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        {msg.content}
+                      </p>
+                    )}
+
+                    {/* Footer: Time & Status Ticks */}
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-white/70">
+                      <span>{formatTime(msg.createdAt)}</span>
+                      {isMe && (
+                        <CheckCheck
+                          size={14}
+                          className={msg.seen ? 'text-cyan-300' : 'text-white/60'}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             );
           })
@@ -1305,41 +1434,75 @@ function ChatWindow({
           </div>
         ) : (
           /* Message Input Form */
-          <form onSubmit={handleSend} className="flex items-center gap-2">
-            {/* Emoji Trigger */}
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
-            >
-              <Smile size={19} />
-            </button>
+          <div>
+            {isWhisperMode && (
+              <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-rose-500/20 border border-pink-500/35 flex items-center justify-between text-xs text-pink-200">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <EyeOff size={14} className="text-pink-400 shrink-0" />
+                  <span className="truncate">🤫 Whisper Mode: Self-destructs 10s after reading</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsWhisperMode(false)}
+                  className="text-pink-300/70 hover:text-white cursor-pointer p-0.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ml-2"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <form onSubmit={handleSend} className="flex items-center gap-2">
+              {/* Emoji Trigger */}
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+              >
+                <Smile size={19} />
+              </button>
 
-            {/* Photo Upload Trigger */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
-            >
-              <ImageIcon size={19} />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageFileChange}
-              className="hidden"
-            />
+              {/* Photo Upload Trigger */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+              >
+                <ImageIcon size={19} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFileChange}
+                className="hidden"
+              />
 
-            {/* Text Input Pill */}
-            <input
-              type="text"
-              value={input}
-              onChange={handleTyping}
-              onKeyDown={handleKeyDown}
-              placeholder={`Message ${activeChat.title}...`}
-              className="flex-1 py-3 px-4 rounded-2xl bg-white/[0.08] border border-white/[0.14] text-white text-sm placeholder-slate-400 focus:outline-none focus:border-pink-500/60 focus:bg-white/[0.12] transition-all shadow-inner"
-            />
+              {/* Whisper Mode Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsWhisperMode(!isWhisperMode)}
+                title={isWhisperMode ? "Whisper mode active (click to turn off)" : "Secret whisper message (reveals on tap & auto-vanishes)"}
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95 ${
+                  isWhisperMode
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-[0_0_15px_rgba(244,63,142,0.6)] border border-pink-300/50'
+                    : 'bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 border border-transparent'
+                }`}
+              >
+                {isWhisperMode ? <EyeOff size={19} /> : <Lock size={19} />}
+              </button>
+
+              {/* Text Input Pill */}
+              <input
+                type="text"
+                value={input}
+                onChange={handleTyping}
+                onKeyDown={handleKeyDown}
+                placeholder={isWhisperMode ? "Type secret whisper (vanishes in 10s)... 🤫" : `Message ${activeChat.title}...`}
+                className={`flex-1 py-3 px-4 rounded-2xl bg-white/[0.08] text-white text-sm placeholder-slate-400 focus:outline-none transition-all shadow-inner ${
+                  isWhisperMode
+                    ? 'border border-pink-500/70 focus:border-pink-400 focus:bg-pink-500/10 shadow-[0_0_12px_rgba(244,63,142,0.25)]'
+                    : 'border border-white/[0.14] focus:border-pink-500/60 focus:bg-white/[0.12]'
+                }`}
+              />
 
             {/* Mic / Send Button */}
             {input.trim() ? (
@@ -1359,7 +1522,8 @@ function ChatWindow({
               </button>
             )}
           </form>
-        )}
+        </div>
+      )}
       </div>
     </div>
   );

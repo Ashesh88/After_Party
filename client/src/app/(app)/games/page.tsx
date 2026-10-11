@@ -12,6 +12,7 @@ import BowlingGame from '../../../components/games/BowlingGame';
 import CarromGame from '../../../components/games/CarromGame';
 import UnoGame from '../../../components/games/UnoGame';
 import CoPaintStudio from '../../../components/games/CoPaintStudio';
+import ArcadeStakesBar from '../../../components/games/ArcadeStakesBar';
 import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Disc, Target, Layers, Palette } from 'lucide-react';
 
 const games = [
@@ -162,6 +163,9 @@ export default function GamesPage() {
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">Real-time 3D games and party challenges</p>
       </header>
+
+      {/* Couples Arcade Stakes & Bets Selector */}
+      <ArcadeStakesBar />
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 xl:gap-6 relative z-10">
         {games.map(game => {
