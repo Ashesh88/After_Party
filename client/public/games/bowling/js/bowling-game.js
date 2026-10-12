@@ -10,6 +10,20 @@
         { id: 'p4', defaultName: 'Player 4', colorHex: 0xf43f5e, cssClass: 'p-theme-p4', badgeText: 'P4' }
     ];
 
+    // Physical Constants & Lane Boundaries
+    const LANE_WIDTH = 3.6;
+    const BALL_RADIUS = 0.34;
+    const BALL_Y_LANE = 0.34;
+    const BALL_Y_GUTTER = 0.22;
+    const LANE_MIN_X = -1.46; // -(LANE_WIDTH / 2 - BALL_RADIUS)
+    const LANE_MAX_X = 1.46;  // +(LANE_WIDTH / 2 - BALL_RADIUS)
+    const GUTTER_LEFT_X = -2.12;
+    const GUTTER_RIGHT_X = 2.12;
+    const HARD_LIMIT_X = 2.22;
+    const STEER_SPEED_AIM = 2.5; // units per second during aiming
+    const STEER_FORCE_ROLL = 4.2; // lateral steering acceleration during roll
+    const BASE_ROLL_SPEED = -22.0; // units per second forward velocity
+
     class CosmicBowling3D {
         constructor() {
             this.container = document.getElementById('canvas-container');
@@ -27,10 +41,15 @@
             this.players = [];
 
             // Aim & Power
-            this.aimX = 0; // -1.4 to 1.4
+            this.aimX = 0; // -1.46 to 1.46
             this.aimSpin = 0; // -0.035 to 0.035
             this.powerMultiplier = 0.85;
             this.isRolling = false;
+
+            // Frame-rate Independent Clock & Controls
+            this.clock = new THREE.Clock();
+            this.keys = { left: false, right: false };
+            this.stepperHold = { left: false, right: false };
 
             // Camera & OrbitControls
             this.isOrbitEnabled = false;
@@ -431,7 +450,7 @@
             for (let i = 0; i <= 22; i++) {
                 const z = 1.8 - i * 1.0;
                 curX += velX * 0.12;
-                positions[i * 3] = curX;
+                positions[i * 3] = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, curX));
                 positions[i * 3 + 1] = 0.02;
                 positions[i * 3 + 2] = z;
             }
@@ -542,6 +561,20 @@
             });
         }
 
+        updateControls(dt) {
+            let moveDir = 0;
+            if (this.keys.left || this.stepperHold.left) moveDir -= 1;
+            if (this.keys.right || this.stepperHold.right) moveDir += 1;
+
+            if (moveDir !== 0) {
+                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX + moveDir * STEER_SPEED_AIM * dt));
+                if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
+                this.ball.position.x = this.aimX;
+                this.ballState.pos.x = this.aimX;
+                this.updateTrajectoryGuide();
+            }
+        }
+
         rollBall() {
             if (this.isRolling) return;
             this.isRolling = true;
@@ -549,9 +582,10 @@
             if (this.laneHint) this.laneHint.style.opacity = '0';
             if (this.guideLine) this.guideLine.visible = false;
 
-            // Roll starting from z = 1.8
-            this.ballState.pos.set(this.aimX, 0.34, 1.8);
-            const baseSpeed = -0.74 * this.powerMultiplier;
+            // Roll starting from z = 1.8, grounded at BALL_Y_LANE
+            this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX));
+            this.ballState.pos.set(this.aimX, BALL_Y_LANE, 1.8);
+            const baseSpeed = BASE_ROLL_SPEED * this.powerMultiplier;
             this.ballState.vel.set(0, 0, baseSpeed);
             this.ballState.spin = this.aimSpin;
             this.ballState.inGutter = false;
@@ -561,24 +595,47 @@
             if (window.bowlingAudio) window.bowlingAudio.startRollSound();
         }
 
-        updatePhysics() {
+        updatePhysics(dt) {
             if (!this.isRolling) return;
 
-            // Ball lateral translation with curve spin
-            this.ballState.vel.x += this.ballState.spin;
-            this.ballState.pos.add(this.ballState.vel);
+            const safeDt = Math.min(dt || 0.016, 0.05);
 
-            // Ball rotation
-            this.ball.rotation.x -= 0.22 * this.powerMultiplier;
-            this.ball.rotation.z -= this.ballState.vel.x * 0.45;
+            // Ball lateral steering & curving
+            if (!this.ballState.inGutter) {
+                let steerInput = 0;
+                if (this.keys.left || this.stepperHold.left) steerInput -= 1;
+                if (this.keys.right || this.stepperHold.right) steerInput += 1;
 
-            // Gutter detection (|x| > 1.8)
-            if (Math.abs(this.ballState.pos.x) > 1.8 && !this.ballState.inGutter) {
-                this.ballState.inGutter = true;
+                this.ballState.vel.x += (steerInput * STEER_FORCE_ROLL + this.ballState.spin * 36.0) * safeDt;
+                const lateralDamping = Math.pow(0.85, safeDt * 60);
+                this.ballState.vel.x *= lateralDamping;
+
+                this.ballState.pos.x += this.ballState.vel.x * safeDt;
+                this.ballState.pos.y = BALL_Y_LANE;
+
+                // Gutter drop detection when ball rolls off lane edge (lane half-width is 1.80)
+                if (Math.abs(this.ballState.pos.x) > 1.80) {
+                    this.ballState.inGutter = true;
+                    this.ballState.vel.x = 0;
+                    if (window.bowlingAudio) window.bowlingAudio.playGutter();
+                }
+            } else {
+                // Ball in gutter channel: disabled steering, smooth channel follow towards pins
+                const targetGutterX = this.ballState.pos.x < 0 ? GUTTER_LEFT_X : GUTTER_RIGHT_X;
+                this.ballState.pos.x = THREE.MathUtils.lerp(this.ballState.pos.x, targetGutterX, safeDt * 8);
+                this.ballState.pos.y = THREE.MathUtils.lerp(this.ballState.pos.y, BALL_Y_GUTTER, safeDt * 8);
                 this.ballState.vel.x = 0;
-                this.ballState.pos.y = 0.12;
-                if (window.bowlingAudio) window.bowlingAudio.playGutter();
             }
+
+            // Hard boundary clamping: absolute barrier at outer kickbacks
+            this.ballState.pos.x = Math.max(-HARD_LIMIT_X, Math.min(HARD_LIMIT_X, this.ballState.pos.x));
+
+            // Forward translation
+            this.ballState.pos.z += this.ballState.vel.z * safeDt;
+
+            // Rolling rotation without slip
+            this.ball.rotation.x -= (Math.abs(this.ballState.vel.z) / BALL_RADIUS) * safeDt;
+            this.ball.rotation.z -= (this.ballState.vel.x / BALL_RADIUS) * safeDt;
 
             this.ball.position.copy(this.ballState.pos);
             if (this.ballSpot) {
@@ -594,12 +651,12 @@
                     hitOccurred = true;
                     pin.isKnocked = true;
                     const hitDir = new THREE.Vector3().subVectors(pin.mesh.position, this.ballState.pos).normalize();
-                    const force = 0.28 * this.powerMultiplier;
+                    const force = 18.0 * this.powerMultiplier;
                     pin.vel.copy(hitDir).multiplyScalar(force);
                     pin.angVel.set(
-                        (Math.random() - 0.5) * 0.35,
-                        Math.random() * 0.3,
-                        (Math.random() - 0.5) * 0.35
+                        (Math.random() - 0.5) * 20.0,
+                        Math.random() * 18.0,
+                        (Math.random() - 0.5) * 20.0
                     );
                 }
             });
@@ -614,11 +671,11 @@
                         hitOccurred = true;
                         p2.isKnocked = true;
                         const chainDir = new THREE.Vector3().subVectors(p2.mesh.position, p1.mesh.position).normalize();
-                        p2.vel.copy(chainDir).multiplyScalar(0.2);
+                        p2.vel.copy(chainDir).multiplyScalar(12.0);
                         p2.angVel.set(
-                            (Math.random() - 0.5) * 0.3,
-                            Math.random() * 0.25,
-                            (Math.random() - 0.5) * 0.3
+                            (Math.random() - 0.5) * 18.0,
+                            Math.random() * 16.0,
+                            (Math.random() - 0.5) * 18.0
                         );
                     }
                 });
@@ -632,11 +689,13 @@
 
             // Knocked Pin Tumbling & Physics
             this.pins.forEach(pin => {
-                if (pin.isKnocked && pin.vel.length() > 0.005) {
-                    pin.mesh.position.add(pin.vel);
-                    pin.mesh.rotation.x += pin.angVel.x;
-                    pin.mesh.rotation.z += pin.angVel.z;
-                    pin.vel.multiplyScalar(0.92);
+                if (pin.isKnocked && pin.vel.length() > 0.05) {
+                    pin.mesh.position.addScaledVector(pin.vel, safeDt);
+                    pin.mesh.rotation.x += pin.angVel.x * safeDt;
+                    pin.mesh.rotation.z += pin.angVel.z * safeDt;
+                    const pinFriction = Math.pow(0.88, safeDt * 60);
+                    pin.vel.multiplyScalar(pinFriction);
+                    pin.angVel.multiplyScalar(pinFriction);
                 }
             });
 
@@ -658,13 +717,13 @@
             const isSpare = this.currentRoll === 2 && totalKnocked === 10;
 
             if (isStrike) {
-                this.showCelebration('STRIKE! 🎳🔥', 'Perfect Pocket Hit!');
+                this.showCelebration('STRIKE!', 'Perfect Pocket Hit!');
                 if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
             } else if (isSpare) {
-                this.showCelebration('SPARE! ✨🎯', 'Cleaned the Deck!');
+                this.showCelebration('SPARE!', 'Cleaned the Deck!');
                 if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
             } else if (pinsThisRoll === 0 && this.ballState.inGutter) {
-                this.showCelebration('GUTTER BALL! 💨', 'Zero pins knocked');
+                this.showCelebration('GUTTER BALL!', 'Zero pins knocked');
             }
 
             const activePlayer = this.players[this.activePlayerIndex];
@@ -776,17 +835,23 @@
 
         playAIRoll() {
             if (this.isRolling) return;
-            this.aimX = (Math.random() - 0.5) * 0.9;
+            this.aimX = (Math.random() - 0.5) * 2.2;
+            this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX));
             this.aimSpin = (Math.random() - 0.5) * 0.02;
-            this.sliderPos.value = this.aimX;
+            if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
             this.updateTrajectoryGuide();
             this.rollBall();
         }
 
         resetBallPosition() {
-            this.ballState.pos.set(this.aimX, 0.34, 1.8);
+            this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX));
+            this.ballState.pos.set(this.aimX, BALL_Y_LANE, 1.8);
             this.ballState.vel.set(0, 0, 0);
+            this.ballState.spin = 0;
+            this.ballState.inGutter = false;
             this.ball.position.copy(this.ballState.pos);
+            this.ball.rotation.set(0, 0, 0);
+            if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
             this.updateCameraPosition();
             this.updateTrajectoryGuide();
             if (this.laneHint) this.laneHint.style.opacity = '0.85';
@@ -818,7 +883,7 @@
                     const row = document.createElement('div');
                     row.className = `podium-row ${idx === 0 ? 'winner' : ''}`;
                     row.innerHTML = `
-                        <span>${idx === 0 ? '👑' : `#${idx + 1}`} ${p.name}</span>
+                        <span>${idx === 0 ? 'WINNER' : '#' + (idx + 1)} ${p.name}</span>
                         <span>${p.score} PTS</span>
                     `;
                     this.resultsPodium.appendChild(row);
@@ -836,28 +901,81 @@
         }
 
         initEvents() {
-            // Position Slider & Steppers
+            // Keyboard controls for smooth responsive steering
+            window.addEventListener('keydown', (e) => {
+                if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                    this.keys.left = true;
+                    e.preventDefault();
+                } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                    this.keys.right = true;
+                    e.preventDefault();
+                } else if (e.code === 'Space' || e.code === 'Enter') {
+                    if (!this.isRolling && !this.btnRoll.disabled) {
+                        this.rollBall();
+                        e.preventDefault();
+                    }
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                    this.keys.left = false;
+                } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                    this.keys.right = false;
+                }
+            });
+
+            window.addEventListener('blur', () => {
+                this.keys.left = false;
+                this.keys.right = false;
+                this.stepperHold.left = false;
+                this.stepperHold.right = false;
+            });
+
+            // Position Slider
             this.sliderPos.addEventListener('input', (e) => {
-                this.aimX = parseFloat(e.target.value);
+                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, parseFloat(e.target.value)));
                 if (!this.isRolling) {
                     this.ball.position.x = this.aimX;
+                    this.ballState.pos.x = this.aimX;
                     this.updateTrajectoryGuide();
                 }
             });
 
-            document.getElementById('btn-pos-left').addEventListener('click', () => {
-                if (window.bowlingAudio) window.bowlingAudio.playClick();
-                this.aimX = Math.max(-1.4, this.aimX - 0.15);
-                this.sliderPos.value = this.aimX;
-                this.resetBallPosition();
-            });
+            // Position Steppers with continuous hold support
+            const btnLeft = document.getElementById('btn-pos-left');
+            const btnRight = document.getElementById('btn-pos-right');
 
-            document.getElementById('btn-pos-right').addEventListener('click', () => {
-                if (window.bowlingAudio) window.bowlingAudio.playClick();
-                this.aimX = Math.min(1.4, this.aimX + 0.15);
-                this.sliderPos.value = this.aimX;
-                this.resetBallPosition();
-            });
+            if (btnLeft) {
+                const startLeft = (e) => {
+                    e.preventDefault();
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.stepperHold.left = true;
+                };
+                const stopLeft = () => {
+                    this.stepperHold.left = false;
+                };
+                btnLeft.addEventListener('pointerdown', startLeft);
+                btnLeft.addEventListener('pointerup', stopLeft);
+                btnLeft.addEventListener('pointercancel', stopLeft);
+                btnLeft.addEventListener('pointerleave', stopLeft);
+            }
+
+            if (btnRight) {
+                const startRight = (e) => {
+                    e.preventDefault();
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.stepperHold.right = true;
+                };
+                const stopRight = () => {
+                    this.stepperHold.right = false;
+                };
+                btnRight.addEventListener('pointerdown', startRight);
+                btnRight.addEventListener('pointerup', stopRight);
+                btnRight.addEventListener('pointercancel', stopRight);
+                btnRight.addEventListener('pointerleave', stopRight);
+            }
 
             // Spin Presets
             const presets = [
@@ -966,16 +1084,16 @@
                 const rect = container.getBoundingClientRect();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const normX = (clientX - rect.left) / rect.width;
-                // Map screen width to lane width (-1.4 to 1.4)
-                this.aimX = (normX - 0.5) * 3.0;
-                this.aimX = Math.max(-1.4, Math.min(1.4, this.aimX));
-                this.sliderPos.value = this.aimX;
+                // Map screen width to lane width (-1.46 to 1.46)
+                const computedAim = (normX - 0.5) * (LANE_WIDTH * 0.95);
+                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, computedAim));
+                if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
                 this.ball.position.x = this.aimX;
+                this.ballState.pos.x = this.aimX;
                 this.updateTrajectoryGuide();
             };
 
             container.addEventListener('pointerdown', (e) => {
-                // If touching lower half of the screen and not rolling
                 if (e.clientY > window.innerHeight * 0.4 && !this.isRolling && !this.isOrbitEnabled) {
                     isDragging = true;
                     onPointerMove(e);
@@ -984,6 +1102,7 @@
 
             window.addEventListener('pointermove', onPointerMove);
             window.addEventListener('pointerup', () => { isDragging = false; });
+            window.addEventListener('pointercancel', () => { isDragging = false; });
         }
 
         restartMatch() {
@@ -1003,12 +1122,20 @@
 
         animate() {
             requestAnimationFrame(this.animate);
+            const dt = Math.min(this.clock.getDelta(), 0.05);
+
             if (this.isOrbitEnabled && this.controls) {
                 this.controls.update();
             } else {
                 this.updateCameraPosition();
             }
-            this.updatePhysics();
+
+            if (!this.isRolling) {
+                this.updateControls(dt);
+            } else {
+                this.updatePhysics(dt);
+            }
+
             this.renderer.render(this.scene, this.camera);
         }
     }

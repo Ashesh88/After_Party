@@ -37,7 +37,7 @@ export default function BowlingGame({ onBack }: { onBack: () => void }) {
 
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 mx-2">
           <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 truncate whitespace-nowrap">
-            Cosmic 3D Bowling 🎳
+            Cosmic 3D Bowling
           </span>
           <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
             3D Studio
