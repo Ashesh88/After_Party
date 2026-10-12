@@ -24,6 +24,8 @@ interface CallState {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   peer: Peer.Instance | null;
+  facingMode: 'user' | 'environment';
+  isSwitchingCamera: boolean;
 
   // Actions
   setPartnerInfo: (info: PartnerInfo | null) => void;
@@ -41,6 +43,7 @@ interface CallState {
   toggleMute: () => void;
   toggleVideo: () => void;
   toggleMinimize: () => void;
+  switchCamera: () => Promise<void>;
   setIncomingCall: (caller: { callerId: string; callerName: string; callerAvatar?: string; callType: CallType } | null) => void;
   incrementDuration: () => void;
 }
@@ -68,6 +71,8 @@ export const useCallStore = create<CallState>((set, get) => ({
   localStream: null,
   remoteStream: null,
   peer: null,
+  facingMode: 'user',
+  isSwitchingCamera: false,
 
   setPartnerInfo: (partnerInfo) => set({ partnerInfo }),
 
@@ -119,6 +124,87 @@ export const useCallStore = create<CallState>((set, get) => ({
         track.enabled = isVideoOff; // Invert: if currently off, enable it
       });
       set({ isVideoOff: !isVideoOff });
+    }
+  },
+
+  switchCamera: async () => {
+    const { localStream, peer, isVideoOff, facingMode, isSwitchingCamera, callType } = get();
+    if (!localStream || isSwitchingCamera || callType !== 'video') return;
+
+    const currentVideoTrack = localStream.getVideoTracks()[0];
+    if (!currentVideoTrack) return;
+
+    set({ isSwitchingCamera: true });
+    const nextFacingMode: 'user' | 'environment' = facingMode === 'user' ? 'environment' : 'user';
+
+    try {
+      let newStream: MediaStream;
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: nextFacingMode } },
+          audio: false,
+        });
+      } catch {
+        // Fallback for browsers or devices that only support ideal constraint
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: nextFacingMode },
+          audio: false,
+        });
+      }
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (!newVideoTrack) {
+        set({ isSwitchingCamera: false });
+        return;
+      }
+
+      // Preserve current camera enabled/disabled state
+      newVideoTrack.enabled = !isVideoOff;
+
+      // 1. Swap track in WebRTC peer connection
+      if (peer) {
+        if (typeof (peer as any).replaceTrack === 'function') {
+          try {
+            (peer as any).replaceTrack(currentVideoTrack, newVideoTrack, localStream);
+          } catch (e) {
+            console.warn('peer.replaceTrack warning:', e);
+          }
+        }
+        if ((peer as any)._pc) {
+          try {
+            const senders = (peer as any)._pc.getSenders();
+            const videoSender = senders.find((s: any) => s.track && s.track.kind === 'video');
+            if (videoSender) {
+              await videoSender.replaceTrack(newVideoTrack);
+            }
+          } catch (e) {
+            console.warn('videoSender.replaceTrack warning:', e);
+          }
+        }
+      }
+
+      // 2. Stop old video track to release hardware camera
+      currentVideoTrack.stop();
+
+      // 3. Update local stream
+      localStream.removeTrack(currentVideoTrack);
+      localStream.addTrack(newVideoTrack);
+
+      // 4. Create new MediaStream instance so React video refs rebind automatically
+      const updatedStream = new MediaStream([
+        ...localStream.getAudioTracks(),
+        newVideoTrack,
+      ]);
+
+      set({
+        localStream: updatedStream,
+        facingMode: nextFacingMode,
+        isSwitchingCamera: false,
+      });
+    } catch (err) {
+      console.error('Failed to switch camera:', err);
+      set({ isSwitchingCamera: false });
+      throw err;
     }
   },
 
@@ -376,6 +462,8 @@ export const useCallStore = create<CallState>((set, get) => ({
       incomingCaller: null,
       callDuration: 0,
       isMinimized: false,
+      facingMode: 'user',
+      isSwitchingCamera: false,
     });
   },
 }));

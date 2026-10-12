@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
   Phone, PhoneOff, Mic, MicOff, Video, VideoOff, 
-  Minimize2, Maximize2, User
+  Minimize2, Maximize2, User, SwitchCamera
 } from 'lucide-react';
 
 export default function CallOverlay() {
@@ -24,12 +24,15 @@ export default function CallOverlay() {
     incomingCaller,
     localStream,
     remoteStream,
+    facingMode,
+    isSwitchingCamera,
     acceptCall,
     rejectCall,
     endCall,
     toggleMute,
     toggleVideo,
     toggleMinimize,
+    switchCamera,
     setIncomingCall,
     incrementDuration,
   } = useCallStore();
@@ -40,6 +43,23 @@ export default function CallOverlay() {
   const dragConstraintsRef = useRef<HTMLDivElement>(null);
   const expandedStageRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+
+  const handleSwitchCamera = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (isSwitchingCamera) return;
+
+    try {
+      await switchCamera();
+      const currentMode = useCallStore.getState().facingMode;
+      toast.success(currentMode === 'environment' ? 'Switched to back camera 📸' : 'Switched to front camera 🤳', {
+        id: 'switch-camera-toast',
+      });
+    } catch (err: any) {
+      toast.error('Could not switch camera. Check camera permissions.');
+    }
+  };
 
   // Bind local stream
   useEffect(() => {
@@ -439,7 +459,7 @@ export default function CallOverlay() {
                       autoPlay
                       playsInline
                       muted
-                      className={`w-full h-full object-cover pointer-events-none ${isVideoOff ? 'hidden' : 'block'}`}
+                      className={`w-full h-full object-cover pointer-events-none ${isVideoOff ? 'hidden' : 'block'} ${facingMode === 'user' ? '-scale-x-100' : 'scale-x-100'}`}
                     />
 
                     {isVideoOff && (
@@ -451,7 +471,7 @@ export default function CallOverlay() {
                     )}
 
                     {/* Quick Mini Toggle Overlay on hover/tap */}
-                    <div className="absolute bottom-1.5 right-1.5 left-1.5 flex items-center justify-between z-30 opacity-90 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-1.5 right-1.5 left-1.5 flex items-center justify-between gap-1 z-30 opacity-90 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -466,6 +486,20 @@ export default function CallOverlay() {
                         title={isVideoOff ? 'Turn camera on' : 'Turn camera off'}
                       >
                         {isVideoOff ? <VideoOff size={12} /> : <Video size={12} />}
+                      </button>
+
+                      <button
+                        onClick={handleSwitchCamera}
+                        disabled={isSwitchingCamera || isVideoOff}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className={`p-1.5 rounded-lg border text-xs shadow-md transition-all cursor-pointer ${
+                          isVideoOff
+                            ? 'opacity-40 cursor-not-allowed bg-black/40 text-slate-500 border-white/10'
+                            : 'bg-black/60 text-white border-white/20 hover:bg-black/80'
+                        }`}
+                        title={facingMode === 'user' ? 'Switch to back camera' : 'Switch to front camera'}
+                      >
+                        <SwitchCamera size={12} className={isSwitchingCamera ? 'animate-spin' : ''} />
                       </button>
 
                       <button
@@ -489,7 +523,7 @@ export default function CallOverlay() {
 
                 {/* Floating WhatsApp-Style Bottom Control Dock - Always 100% visible & centered */}
                 <div 
-                  className="absolute bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-[#090913]/90 backdrop-blur-2xl border border-white/15 shadow-[0_15px_45px_rgba(0,0,0,0.85)] pointer-events-auto"
+                  className="absolute bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-3 sm:gap-5 px-5 sm:px-6 py-3 rounded-full bg-[#090913]/90 backdrop-blur-2xl border border-white/15 shadow-[0_15px_45px_rgba(0,0,0,0.85)] pointer-events-auto"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   {/* 1. Mute / Unmute Button */}
@@ -517,6 +551,22 @@ export default function CallOverlay() {
                       title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
                     >
                       {isVideoOff ? <VideoOff size={22} /> : <Video size={22} />}
+                    </button>
+                  )}
+
+                  {/* 3. Switch / Flip Camera Button (Front <-> Back) */}
+                  {callType === 'video' && (
+                    <button
+                      onClick={handleSwitchCamera}
+                      disabled={isSwitchingCamera || isVideoOff}
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+                        isVideoOff
+                          ? 'opacity-40 cursor-not-allowed bg-white/[0.08] text-slate-500 border border-white/10'
+                          : 'bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/15'
+                      }`}
+                      title={facingMode === 'user' ? 'Switch to Back Camera' : 'Switch to Front Camera'}
+                    >
+                      <SwitchCamera size={22} className={isSwitchingCamera ? 'animate-spin text-pink-400' : ''} />
                     </button>
                   )}
 
