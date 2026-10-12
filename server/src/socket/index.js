@@ -911,11 +911,14 @@ const setupSocket = (io) => {
       });
     });
 
-    socket.on('ludo:chat', ({ sessionCode, message, senderName }) => {
+    socket.on('ludo:chat', ({ sessionCode, message, text, senderName, role }) => {
       if (!sessionCode) return;
+      const chatText = message || text;
       socket.to(`ludo:${sessionCode}`).emit('ludo:chat', {
-        message,
+        message: chatText,
+        text: chatText,
         senderName,
+        role,
         senderId: userId,
         timestamp: Date.now(),
       });
