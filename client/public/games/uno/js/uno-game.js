@@ -649,6 +649,8 @@ class Uno3DGame {
         // Wild Card requires color choice dialog
         if (card.isWild()) {
             this.selectedWildCardId = card.id;
+            const choosingPlayer = (typeof this.rules.currentPlayer === 'number') ? this.rules.currentPlayer : 0;
+            this.populateWildColorPickerHand(choosingPlayer);
             if (this.dom.wildModal) {
                 this.dom.wildModal.classList.add('active');
             }
@@ -656,6 +658,78 @@ class Uno3DGame {
         }
 
         this.executeCardPlay(0, card.id, null);
+    }
+
+    populateWildColorPickerHand(playerIdx) {
+        const handContainer = document.getElementById('wild-hand-cards');
+        const countLabel = document.getElementById('wild-hand-count');
+        const countRedEl = document.getElementById('wild-count-red');
+        const countBlueEl = document.getElementById('wild-count-blue');
+        const countGreenEl = document.getElementById('wild-count-green');
+        const countYellowEl = document.getElementById('wild-count-yellow');
+
+        if (!handContainer) return;
+
+        // Strictly fetch ONLY the choosing player's hand (never opponent cards)
+        const hand = this.rules.playersHands[playerIdx] || [];
+        // Exclude the wild card being played right now
+        const remainingCards = hand.filter(c => c && c.id !== this.selectedWildCardId);
+
+        if (countLabel) {
+            countLabel.textContent = `${remainingCards.length} card${remainingCards.length === 1 ? '' : 's'}`;
+        }
+
+        // Color counter
+        const counts = { red: 0, blue: 0, green: 0, yellow: 0, wild: 0 };
+        remainingCards.forEach(c => {
+            if (c.color in counts) {
+                counts[c.color]++;
+            }
+        });
+
+        if (countRedEl) countRedEl.textContent = `${counts.red}`;
+        if (countBlueEl) countBlueEl.textContent = `${counts.blue}`;
+        if (countGreenEl) countGreenEl.textContent = `${counts.green}`;
+        if (countYellowEl) countYellowEl.textContent = `${counts.yellow}`;
+
+        // Clear previous cards
+        handContainer.innerHTML = '';
+
+        if (remainingCards.length === 0) {
+            const emptyEl = document.createElement('div');
+            emptyEl.className = 'wild-hand-empty';
+            emptyEl.textContent = 'No remaining cards! (Last card played)';
+            handContainer.appendChild(emptyEl);
+            return;
+        }
+
+        // Render each card for ONLY the current choosing player
+        remainingCards.forEach(card => {
+            const cardEl = document.createElement('div');
+            const colorClass = `card-${card.color}`;
+            cardEl.className = `mini-uno-card ${colorClass}`;
+            cardEl.title = `${card.color.toUpperCase()} ${card.getLabel()} (Tap to choose this color)`;
+
+            const ovalEl = document.createElement('div');
+            ovalEl.className = 'mini-card-oval';
+
+            const valEl = document.createElement('span');
+            valEl.className = 'mini-card-val';
+            valEl.textContent = card.getLabel();
+
+            ovalEl.appendChild(valEl);
+            cardEl.appendChild(ovalEl);
+
+            // Tapping a colored card in hand preview directly selects that color
+            if (card.color !== 'wild') {
+                cardEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.executeWildCardPlay(card.color);
+                });
+            }
+
+            handContainer.appendChild(cardEl);
+        });
     }
 
     executeWildCardPlay(chosenColor) {

@@ -503,7 +503,147 @@ html, body {
 .wild-desc {
     font-size: 12px;
     color: #94a3b8;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
+}
+
+/* Remaining Hand Preview */
+.wild-hand-section {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.wild-hand-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.wild-hand-title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #cbd5e1;
+}
+
+.wild-hand-count {
+    font-size: 10px;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 2px 8px;
+    border-radius: 9999px;
+}
+
+.wild-hand-cards {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 4px 2px 6px 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.wild-hand-cards::-webkit-scrollbar {
+    height: 4px;
+}
+
+.wild-hand-cards::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+}
+
+/* Mini UNO Card */
+.mini-uno-card {
+    flex-shrink: 0;
+    width: 38px;
+    height: 54px;
+    border-radius: 6px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+    border: 1.5px solid rgba(255, 255, 255, 0.85);
+    user-select: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mini-uno-card:hover {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.8);
+}
+
+.mini-uno-card.card-red {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.mini-uno-card.card-blue {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.mini-uno-card.card-green {
+    background: linear-gradient(135deg, #10b981, #047857);
+}
+
+.mini-uno-card.card-yellow {
+    background: linear-gradient(135deg, #f59e0b, #b45309);
+}
+
+.mini-uno-card.card-wild {
+    background: linear-gradient(135deg, #8b5cf6, #581c87);
+}
+
+.mini-card-oval {
+    width: 27px;
+    height: 38px;
+    background: #ffffff;
+    border-radius: 50%;
+    transform: rotate(25deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.mini-card-val {
+    transform: rotate(-25deg);
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.mini-uno-card.card-red .mini-card-val { color: #dc2626; }
+.mini-uno-card.card-blue .mini-card-val { color: #2563eb; }
+.mini-uno-card.card-green .mini-card-val { color: #059669; }
+.mini-uno-card.card-yellow .mini-card-val { color: #d97706; }
+.mini-uno-card.card-wild .mini-card-val { color: #7c3aed; }
+
+.wild-hand-empty {
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+    padding: 8px 0;
+    text-align: center;
+    width: 100%;
+}
+
+.color-count-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .color-options-grid {

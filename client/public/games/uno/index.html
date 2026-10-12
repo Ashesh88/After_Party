@@ -103,22 +103,38 @@
         <div class="wild-picker-card interactive">
             <h3 class="wild-title">Choose Active Color</h3>
             <p class="wild-desc">Select the color for the next player to follow</p>
+
+            <!-- Remaining Hand Preview (Only for the choosing player) -->
+            <div class="wild-hand-section">
+                <div class="wild-hand-header">
+                    <span class="wild-hand-title">Your Remaining Hand</span>
+                    <span class="wild-hand-count" id="wild-hand-count">0 cards</span>
+                </div>
+                <div class="wild-hand-cards" id="wild-hand-cards">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
             <div class="color-options-grid">
                 <button type="button" class="btn-color-choice choice-red" data-color="red" onclick="window.unoGame?.executeWildCardPlay('red')">
                     <span class="color-dot"></span>
                     <span>RED</span>
+                    <span class="color-count-badge" id="wild-count-red">0</span>
                 </button>
                 <button type="button" class="btn-color-choice choice-blue" data-color="blue" onclick="window.unoGame?.executeWildCardPlay('blue')">
                     <span class="color-dot"></span>
                     <span>BLUE</span>
+                    <span class="color-count-badge" id="wild-count-blue">0</span>
                 </button>
                 <button type="button" class="btn-color-choice choice-green" data-color="green" onclick="window.unoGame?.executeWildCardPlay('green')">
                     <span class="color-dot"></span>
                     <span>GREEN</span>
+                    <span class="color-count-badge" id="wild-count-green">0</span>
                 </button>
                 <button type="button" class="btn-color-choice choice-yellow" data-color="yellow" onclick="window.unoGame?.executeWildCardPlay('yellow')">
                     <span class="color-dot"></span>
                     <span>YELLOW</span>
+                    <span class="color-count-badge" id="wild-count-yellow">0</span>
                 </button>
             </div>
             <button type="button" class="btn-wild-cancel" id="btn-wild-cancel" onclick="window.unoGame?.cancelWildCardSelection()">
