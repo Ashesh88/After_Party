@@ -129,13 +129,12 @@ export default function HeroTabs() {
                 <div className="aspect-video w-full rounded-2xl bg-[#141224] border border-white/10 relative overflow-hidden flex items-center justify-center">
                   <video
                     ref={videoWatchRef}
-                    src="/videos/ludo-preview.mp4"
-                    poster="/videos/ludo-thumb.jpg"
+                    src="/videos/watch-preview.mp4"
                     preload="none"
                     loop
                     muted
                     playsInline
-                    aria-label="Synchronized Watch Party video demo"
+                    aria-label="Synchronized Watch Party movie video demo"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-between p-4 pointer-events-none">
@@ -148,9 +147,16 @@ export default function HeroTabs() {
                         Sample preview
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
-                      <span>Movie Night</span>
-                      <span className="text-rose-300 font-semibold">Synced playback</span>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-200 font-medium">
+                        <span>Movie Night • Sintel</span>
+                        <span className="text-rose-300 font-semibold font-mono">00:42 / 00:52 • Synced</span>
+                      </div>
+                      {/* Scrub bar indicator */}
+                      <div className="w-full h-1.5 rounded-full bg-white/20 overflow-hidden">
+                        <div className="w-4/5 h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -226,23 +232,35 @@ export default function HeroTabs() {
           >
             {activeTab === 'chat' && (
               <>
-                <div className="h-48 sm:h-56 rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 flex flex-col justify-end gap-2.5 font-sans">
-                  <div className="self-start max-w-[80%] px-3.5 py-2.5 rounded-2xl rounded-bl-sm bg-white/[0.08] border border-white/10 text-xs sm:text-sm text-slate-200">
-                    Can&apos;t wait for movie night tonight! Got everything ready.
+                <div className="h-52 sm:h-60 rounded-2xl bg-[#141224] border border-white/[0.08] p-4 flex flex-col justify-between font-sans relative overflow-hidden">
+                  {/* Top lounge header */}
+                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs font-semibold text-white">Private Lounge • 1-on-1</span>
+                    </div>
+                    <span className="text-xs text-rose-300 font-medium px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20">
+                      Live Call Connected
+                    </span>
                   </div>
-                  <div className="self-end max-w-[80%] px-3.5 py-2.5 rounded-2xl rounded-br-sm bg-gradient-to-r from-rose-500 to-pink-600 text-xs sm:text-sm text-white">
-                    Just queued up the video in our lounge! Joining now.
+
+                  {/* Messages */}
+                  <div className="flex flex-col gap-2.5 my-auto">
+                    <div className="self-start max-w-[80%] px-3.5 py-2 rounded-2xl rounded-bl-sm bg-white/[0.08] border border-white/10 text-xs sm:text-sm text-slate-100">
+                      Can&apos;t wait for movie night tonight! Popcorn is ready.
+                    </div>
+                    <div className="self-end max-w-[80%] px-3.5 py-2 rounded-2xl rounded-br-sm bg-gradient-to-r from-rose-500 to-pink-600 text-xs sm:text-sm text-white shadow-sm">
+                      Just queued up the video in our room! Joining now.
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 self-end font-mono">
-                    Sample preview • 10:42 PM
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs text-slate-400">
+                    <span className="flex items-center gap-1.5 text-rose-300">
+                      <MapPin size={13} />
+                      <span>1,240 km apart</span>
+                    </span>
+                    <span className="font-mono text-emerald-400">Delivered & Seen</span>
                   </div>
-                </div>
-                <div className="p-3 rounded-xl bg-white/[0.04] border border-white/5 flex items-center justify-between text-xs text-slate-300 font-medium">
-                  <span className="flex items-center gap-1.5 text-rose-300">
-                    <MapPin size={13} />
-                    <span>Distance: 1,240 km apart</span>
-                  </span>
-                  <span>Sample preview</span>
                 </div>
               </>
             )}
