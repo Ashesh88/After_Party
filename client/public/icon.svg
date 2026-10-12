@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141428" />
+      <stop offset="50%" stop-color="#0f0f1a" />
+      <stop offset="100%" stop-color="#070710" />
+    </linearGradient>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185" />
+      <stop offset="40%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)" />
+  <rect width="508" height="508" x="2" y="2" rx="126" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4" />
+  <g filter="url(#glow)">
+    <path d="M256 414s-146-88.5-146-194c0-54.7 44.3-99 99-99 35.3 0 66.4 18.5 84.1 46.5 17.7-28 48.8-46.5 84.1-46.5 54.7 0 99 44.3 99 99 0 105.5-146 194-146 194z" fill="url(#heartGrad)" />
+  </g>
+</svg>

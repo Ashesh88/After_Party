@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18182e" />
+      <stop offset="45%" stop-color="#0f0f1a" />
+      <stop offset="100%" stop-color="#070710" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185" />
+      <stop offset="50%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <radialGradient id="glowBlob" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#0f0f1a" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)" />
+  <circle cx="600" cy="220" r="420" fill="url(#glowBlob)" />
+
+  <!-- Heart Icon Badge -->
+  <g transform="translate(560, 100)">
+    <rect width="80" height="80" rx="24" fill="#1e1e34" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+    <path d="M40 60s-20-12-20-27c0-7.7 6.3-14 14-14 5 0 9.4 2.6 11.9 6.6 2.5-4 6.9-6.6 11.9-6.6 7.7 0 14 6.3 14 14 0 15-20 27-20 27z" fill="url(#accentGrad)" />
+  </g>
+
+  <!-- Typography -->
+  <text x="600" y="240" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="28" fill="#fda4af" letter-spacing="4">AFTER PARTY</text>
+  <text x="600" y="320" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="52" fill="#ffffff">Close the distance with your favorite person</text>
+  <text x="600" y="380" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="400" font-size="22" fill="#94a3b8">Watch movies, play games, and talk privately in sync — right in your browser.</text>
+
+  <!-- Feature Pills -->
+  <g transform="translate(250, 450)">
+    <rect width="210" height="50" rx="25" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" />
+    <text x="105" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#f1f5f9">🎬 Watch Together</text>
+  </g>
+  <g transform="translate(495, 450)">
+    <rect width="210" height="50" rx="25" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" />
+    <text x="105" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#f1f5f9">🎮 3D Arcade Games</text>
+  </g>
+  <g transform="translate(740, 450)">
+    <rect width="210" height="50" rx="25" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" />
+    <text x="105" y="31" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#f1f5f9">🔒 Private Invite Space</text>
+  </g>
+</svg>

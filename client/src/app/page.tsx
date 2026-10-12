@@ -1,615 +1,962 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Heart, Sparkles, Clapperboard, Gamepad2, MessageCircle, 
-  Phone, Video, ShieldCheck, MapPin, Layers, Users, ArrowRight, 
-  Check, ChevronDown, Lock, Radio, Zap, Flame, Smile, Play, Globe, EyeOff
+import {
+  Heart,
+  Clapperboard,
+  Gamepad2,
+  MessageCircle,
+  Phone,
+  Video,
+  ShieldCheck,
+  MapPin,
+  Sparkles,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Lock,
+  Radio,
+  Play,
+  Users,
+  Menu,
+  X,
+  Minus,
+  Laptop,
+  Smartphone,
+  ExternalLink,
 } from 'lucide-react';
 
-const FEATURES = [
+// Steps for "How it works"
+const HOW_IT_WORKS = [
   {
-    icon: Clapperboard,
-    color: 'from-pink-500 to-rose-500',
-    borderColor: 'border-pink-500/30',
-    title: 'Synchronized Watch Party',
-    description: 'Stream YouTube videos and movies together in sub-millisecond sync with floating emoji reactions and live webcam tiles.',
+    step: '01',
+    title: 'Create your private space',
+    description: 'Set up an invite-only room in one click. No lengthy onboarding or credit card needed.',
+  },
+  {
+    step: '02',
+    title: 'Share your 6-digit room code',
+    description: 'Send your code directly to your partner. Only people with your code can enter.',
+  },
+  {
+    step: '03',
+    title: 'Start hanging out together',
+    description: 'Stream videos in sync, challenge each other in games, or talk privately with zero feeds.',
+  },
+];
+
+// Feature showcase rows
+const FEATURE_SHOWCASE = [
+  {
+    id: 'watch',
     tag: 'Watch Together',
+    title: 'Watch movies in shared sync, wherever you are.',
+    description: 'Paste any YouTube link and press play. When you pause to grab a drink or skip ahead, your partner’s screen stays in sync within a fraction of a second.',
+    bullets: [
+      'Synchronized play, pause, seek, and playback speed',
+      'Floating emoji reactions that appear in real time',
+      'Picture-in-picture webcam view while streaming',
+    ],
+    videoSrc: '/videos/ludo-preview.mp4',
+    posterSrc: '/videos/ludo-thumb.jpg',
+    visualType: 'watch',
+    ctaText: 'Start a Watch Party',
+    ctaLink: '/register',
   },
   {
-    icon: Gamepad2,
-    color: 'from-purple-500 to-indigo-500',
-    borderColor: 'border-purple-500/30',
-    title: 'Full Multiplayer Arcade',
-    description: 'Play live 8-Ball Pool, 4-player Ludo, Master Chess, Uno, Carrom, Quizzes, and spicy Truth or Dare directly in your room.',
-    tag: 'Instant Games',
+    id: 'games',
+    tag: '3D Arcade Games',
+    title: 'Challenge each other in real-time games.',
+    description: 'Play 8-Ball Pool, 3D Ludo, Chess, Uno, and Carrom directly inside your browser. No separate downloads or account registrations required.',
+    bullets: [
+      'Live multiplayer with real-time physics',
+      'Interactive 3D board, dice, and pieces',
+      'In-game audio, quick reactions, and rematch stats',
+    ],
+    videoSrc: '/videos/pool-preview.mp4',
+    posterSrc: '/videos/pool-thumb.jpg',
+    visualType: 'games',
+    ctaText: 'Explore the Game Room',
+    ctaLink: '/register',
   },
   {
-    icon: MessageCircle,
-    color: 'from-pink-500 to-purple-600',
-    borderColor: 'border-pink-500/30',
-    title: 'Private Direct & Spaces Chat',
-    description: 'Private 1-on-1 direct messaging and shared space group chats with voice notes, photo sharing, live typing, and read receipts.',
-    tag: 'Private Chat',
+    id: 'calls',
+    tag: 'Private Chat & Calls',
+    title: 'Talk face-to-face with crystal clear WebRTC calls.',
+    description: 'One-tap voice and video calls built right into your room. No meeting links, Zoom limits, or switching between chat and video apps.',
+    bullets: [
+      'Direct peer-to-peer WebRTC video and audio',
+      'Front and rear camera flip on mobile phones',
+      'Integrated chat with photos, seen ticks, and voice notes',
+    ],
+    videoSrc: '/videos/carrom-preview.mp4',
+    posterSrc: '/videos/carrom-thumb.jpg',
+    visualType: 'calls',
+    ctaText: 'Start Talking Privately',
+    ctaLink: '/register',
   },
   {
-    icon: Phone,
-    color: 'from-emerald-500 to-teal-500',
-    borderColor: 'border-emerald-500/30',
-    title: '1-Tap HD Voice & Video Calls',
-    description: 'Peer-to-peer WebRTC encrypted calls built right into your lounge — no external apps, links, or meeting codes required.',
-    tag: 'Crystal Clear Audio',
-  },
-  {
-    icon: Layers,
-    color: 'from-indigo-500 to-pink-500',
-    borderColor: 'border-indigo-500/30',
-    title: 'Multi-Space Switcher',
-    description: 'Save different dedicated spaces ("Love Nest 💕" with partner vs "Squad Lounge 🎮" with friends) and switch anytime without losing data.',
-    tag: 'Zero Data Loss',
-  },
-  {
-    icon: MapPin,
-    color: 'from-cyan-500 to-blue-500',
-    borderColor: 'border-cyan-500/30',
-    title: 'Live Proximity & Location Radar',
-    description: 'See live distance in km/miles between you and your partner with romantic heart markers and privacy-first location sharing.',
-    tag: 'Distance Tracker',
+    id: 'distance',
+    tag: 'Proximity Radar',
+    title: 'Feel closer with live distance tracking.',
+    description: 'See the distance between you and your partner in kilometers or miles with custom heart markers. Turn location sharing on or off anytime with complete control.',
+    bullets: [
+      'Live distance calculation with heart map markers',
+      'Ephemeral live socket stream — never stored permanently in a database',
+      'Countdown capsule to your next planned reunion date',
+    ],
+    videoSrc: '/videos/chess-preview.mp4',
+    posterSrc: '/videos/chess-thumb.jpg',
+    visualType: 'distance',
+    ctaText: 'Create Your Couple Space',
+    ctaLink: '/register',
   },
 ];
 
-const AUDIENCES = [
+// Comparison data (No emojis - strictly SVG checks and minuses)
+const COMPARISON_ROWS = [
   {
-    emoji: '💕',
-    title: 'Long-Distance & Couples',
-    subtitle: 'Close the physical gap with shared intimate rituals',
-    points: [
-      'Synchronized movie nights with live webcam reactions',
-      'Countdown capsule to your next reunion date',
-      'Interactive mood atmosphere sync (Romantic, playful, cozy)',
-      'Haptic heartbeat pulse across screens with custom tones',
-    ],
-    gradient: 'from-pink-500/20 via-rose-500/15 to-purple-500/20',
-    border: 'border-pink-500/30',
-    accentText: 'text-pink-400',
+    feature: 'Everything in one tab (movies, games, call)',
+    other: 'Requires 4–5 separate apps',
+    afterParty: 'All integrated in one private lounge',
   },
   {
-    emoji: '🎮',
-    title: 'Best Friends & Squads',
-    subtitle: 'The private virtual lounge away from chaotic social media',
-    points: [
-      'Multiplayer 8-Ball Pool, Ludo, Uno, Carrom, and Chess',
-      'Casual walkie-talkie audio lounge with live streaming',
-      'Spicy Truth or Dare and "How well do you know me" quizzes',
-      'Shared group space with dedicated nicknames and goals',
-    ],
-    gradient: 'from-purple-500/20 via-indigo-500/15 to-pink-500/20',
-    border: 'border-purple-500/30',
-    accentText: 'text-purple-400',
+    feature: 'Synchronized video streaming',
+    other: 'Browser extension required / clumsy screen shares',
+    afterParty: 'Built-in real-time sync engine',
   },
   {
-    emoji: '🔒',
-    title: 'Privacy Purists',
-    subtitle: 'Zero feeds, zero algorithms, and zero strangers',
-    points: [
-      'Only invited connections with verified User IDs can enter',
-      'No public follower counts, vanity metrics, or ads',
-      'Switch spaces seamlessly without losing chat notes or goals',
-      'End-to-end peer-to-peer real-time encrypted connection',
-    ],
-    gradient: 'from-cyan-500/20 via-teal-500/15 to-emerald-500/20',
-    border: 'border-cyan-500/30',
-    accentText: 'text-cyan-400',
+    feature: 'Multiplayer games without installing',
+    other: 'Both must download Ludo King / GamePigeon',
+    afterParty: 'Instant 3D games in any web browser',
+  },
+  {
+    feature: 'Feeds, algorithms & public profiles',
+    other: 'Endless doomscrolling and stranger DMs',
+    afterParty: 'Zero public feeds — strictly your invite-only space',
+  },
+  {
+    feature: 'Persistent couple milestones & countdowns',
+    other: 'Scattered across notes and calendar apps',
+    afterParty: 'Shared countdown capsule & relationship goals',
   },
 ];
 
+// FAQs: Accordion format, first open by default
 const FAQS = [
   {
-    q: 'What exactly is After Party?',
-    a: 'After Party is an all-in-one private virtual lounge designed exclusively for couples, best friends, and close circles. Instead of juggling 5 different apps for movie nights, calling, gaming, and messaging, After Party brings synchronized video streaming, live multiplayer games, voice/video calls, and dedicated spaces into one seamless digital sanctuary.',
+    q: 'Do I need to download an app?',
+    a: 'No app download is needed. After Party runs entirely in your mobile or desktop browser (Safari, Chrome, Firefox, Edge). On iOS or Android, you can also tap "Add to Home Screen" to install it as a lightweight Progressive Web App (PWA) with a full-screen experience.',
   },
   {
-    q: 'How does the Watch Party feature sync video?',
-    a: 'Our proprietary real-time socket engine coordinates playback actions (play, pause, seek, speed changes) across both participants with millisecond precision. When one partner pauses to grab snacks or seeks forward, the other screen updates instantly.',
+    q: 'Is it free to use?',
+    a: 'Yes, After Party is completely free to create and use. You can invite your partner, stream videos, play games, and make voice/video calls without any subscription or hidden fees.',
   },
   {
-    q: 'Can I have multiple rooms (e.g. one with partner, one with best friend)?',
-    a: 'Yes! With our Multi-Space Switcher, you can create and name custom spaces (like "Love Nest 💕" and "Squad Lounge 🎮"). You can leave and switch spaces anytime — your countdowns, goals, themes, and chat history remain safely intact without data loss.',
+    q: 'How does playback sync work?',
+    a: 'When you or your partner play, pause, or jump to a timestamp, lightweight signaling events are exchanged over real-time WebSockets. This keeps playback in sync within a fraction of a second so you are always reacting to the exact same moment together.',
   },
   {
-    q: 'Do I have to download an app from Google Play or App Store?',
-    a: 'No download is required. After Party is a progressive web app (PWA) that runs instantly in any mobile or desktop browser (Chrome, Safari, etc.). You can also tap "Add to Home Screen" on your phone to get an app icon and native full-screen experience.',
+    q: 'Who can see my data and room?',
+    a: 'Only people who have your unique room invite code can enter your space. There are no public user directories, searchable profiles, or algorithmic feeds. Audio and video calls connect directly via WebRTC peer-to-peer protocols, and location sharing is streamed ephemerally over live sockets without permanent location logging.',
   },
   {
-    q: 'Is my chat and location data secure and private?',
-    a: '100%. After Party has no public feeds, discoverability, or algorithm. Real-time audio/video calls use WebRTC peer-to-peer encryption, and location data is streamed ephemerally over live sockets and never permanently stored in the database.',
+    q: 'What can we watch together?',
+    a: 'Currently, After Party natively supports YouTube video URLs as well as direct MP4 video streams. You can paste any public or unlisted YouTube link to watch together with synced playback, synchronized volume, and live reactions.',
   },
 ];
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showStickyCta, setShowStickyCta] = useState(false);
+  const [activeHeroTab, setActiveHeroTab] = useState<'watch' | 'games' | 'chat'>('watch');
+
+  // Trigger sticky mobile CTA bar after scrolling past hero (~450px)
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowStickyCta(window.scrollY > 480);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#070710] text-white selection:bg-pink-500/30 relative overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#0f0f1a] text-slate-100 relative overflow-x-hidden selection:bg-rose-500/30 selection:text-rose-200">
       
-      {/* Background Ambient Lighting Blobs */}
-      <div className="fixed top-0 left-1/4 w-[600px] h-[600px] bg-pink-600/12 rounded-full blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-600/12 rounded-full blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-10 left-1/3 w-[600px] h-[600px] bg-rose-600/10 rounded-full blur-[160px] pointer-events-none -z-10" />
+      {/* Subtle, Warm Romantic Ambient Glows (Performance-friendly soft blur) */}
+      <div 
+        aria-hidden="true" 
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-[650px] sm:w-[900px] h-[450px] bg-gradient-to-b from-rose-600/15 via-purple-600/10 to-transparent rounded-full blur-[120px] pointer-events-none -z-10" 
+      />
+      <div 
+        aria-hidden="true" 
+        className="fixed bottom-1/4 right-0 w-[400px] h-[400px] bg-purple-900/10 rounded-full blur-[140px] pointer-events-none -z-10" 
+      />
 
       {/* ======================================================== */}
-      {/* NAVBAR                                                   */}
+      {/* 1. HEADER / NAVBAR                                       */}
       {/* ======================================================== */}
-      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-[#070710]/80 border-b border-white/[0.08]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0f0f1a]/85 border-b border-white/[0.08] transition-colors">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 sm:h-20 flex items-center justify-between">
+          
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 p-0.5 shadow-[0_0_20px_rgba(244,63,142,0.4)] group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-[#0d0d1a] rounded-[14px] flex items-center justify-center">
-                <Heart size={20} className="text-pink-400 fill-pink-400/30 animate-pulse" />
+          <Link href="/" className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-xl p-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-purple-600 p-[1.5px] shadow-[0_0_20px_rgba(244,63,94,0.35)] group-hover:scale-105 transition-transform">
+              <div className="w-full h-full bg-[#121224] rounded-[14px] flex items-center justify-center">
+                <Heart size={18} className="text-rose-400 fill-rose-400/30" />
               </div>
             </div>
-            <div>
-              <span className="text-xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-rose-300 to-purple-300">
-                AFTER PARTY
+            <div className="flex flex-col">
+              <span className="font-display text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-rose-200 transition-colors">
+                After Party
               </span>
-              <span className="hidden sm:inline-block text-[9px] font-mono tracking-widest text-slate-400 block -mt-1 uppercase">
-                Private Lounge
+              <span className="text-[10px] font-medium tracking-wider text-slate-400 -mt-1 hidden sm:block">
+                For Long-Distance Couples
               </span>
             </div>
           </Link>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#features" className="hover:text-pink-300 transition-colors">Features</a>
-            <a href="#audience" className="hover:text-pink-300 transition-colors">Who It's For</a>
-            <a href="#games" className="hover:text-pink-300 transition-colors">Arcade & Watch</a>
-            <a href="#faqs" className="hover:text-pink-300 transition-colors">FAQs</a>
+          {/* Desktop Nav Items */}
+          <nav aria-label="Main Navigation" className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <a href="#how-it-works" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-md px-1 py-0.5">
+              How It Works
+            </a>
+            <a href="#features" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-md px-1 py-0.5">
+              Features
+            </a>
+            <a href="#squads" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-md px-1 py-0.5">
+              Friend Squads
+            </a>
+            <a href="#privacy" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-md px-1 py-0.5">
+              Privacy
+            </a>
+            <a href="#faqs" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-md px-1 py-0.5">
+              FAQ
+            </a>
           </nav>
 
-          {/* Right Action CTA Buttons */}
-          <div className="flex items-center gap-3">
+          {/* Desktop CTAs */}
+          <div className="hidden md:flex items-center gap-3">
             <Link
               href="/login"
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded-xl"
             >
               Sign In
             </Link>
             <Link
               href="/register"
-              className="px-4 sm:px-5 py-2.5 rounded-2xl btn-sexy text-xs sm:text-sm font-bold text-white shadow-[0_0_20px_rgba(244,63,142,0.4)] hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-semibold text-sm shadow-[0_4px_20px_rgba(244,63,94,0.35)] hover:shadow-[0_4px_25px_rgba(244,63,94,0.5)] active:scale-95 transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
             >
-              <span>Get Started</span>
-              <ArrowRight size={14} />
+              <span>Start Free</span>
+              <ArrowRight size={15} />
             </Link>
           </div>
-        </div>
-      </header>
 
-      {/* ======================================================== */}
-      {/* HERO SECTION                                             */}
-      {/* ======================================================== */}
-      <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        {/* Glow badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-pink-500/15 via-purple-500/10 to-transparent border border-pink-500/30 text-pink-300 text-xs font-semibold mb-6 shadow-[0_0_20px_rgba(244,63,142,0.15)]"
-        >
-          <Sparkles size={14} className="text-pink-400 animate-spin [animation-duration:8s]" />
-          <span>The Private Virtual Lounge for You & Your Inner Circle</span>
-        </motion.div>
-
-        {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-[1.08] max-w-5xl mx-auto"
-        >
-          Where Distance Disappears &{' '}
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400 drop-shadow-[0_4px_25px_rgba(244,63,142,0.4)]">
-            Closeness Begins.
-          </span>
-        </motion.h1>
-
-        {/* Subheadline */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-base sm:text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mt-6 leading-relaxed"
-        >
-          Stream movies in sub-millisecond sync, challenge each other in live multiplayer games, share intimate notes, and talk in encrypted spaces — with <strong>zero algorithms, ads, or public noise</strong>.
-        </motion.p>
-
-        {/* Action Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mt-9"
-        >
-          <Link
-            href="/register"
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl btn-sexy text-white font-extrabold text-sm sm:text-base shadow-[0_10px_30px_rgba(244,63,142,0.4)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <span>Start Your Space Free</span>
-            <ArrowRight size={17} />
-          </Link>
-          <Link
-            href="/room/setup"
-            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2"
-          >
-            <Layers size={17} className="text-purple-400" />
-            <span>Join with Room Code</span>
-          </Link>
-        </motion.div>
-
-        {/* Micro Trust Indicators */}
-        <div className="flex items-center justify-center gap-6 sm:gap-10 mt-8 text-xs text-slate-400 font-medium flex-wrap">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck size={15} className="text-emerald-400" />
-            <span>100% Private & Encrypted</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <EyeOff size={15} className="text-pink-400" />
-            <span>Zero Public Feeds or Ads</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Globe size={15} className="text-cyan-400" />
-            <span>Works on Any Mobile or PC</span>
-          </span>
-        </div>
-
-        {/* ======================================================== */}
-        {/* INTERACTIVE MOCKUP SHOWCASE CARD                         */}
-        {/* ======================================================== */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-14 max-w-5xl mx-auto rounded-3xl p-2 sm:p-3 bg-gradient-to-b from-white/[0.12] via-white/[0.04] to-transparent border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.9)]"
-        >
-          <div className="rounded-[22px] bg-[#0c0d18] border border-white/[0.06] overflow-hidden p-4 sm:p-7 text-left space-y-6">
-            
-            {/* Top Mockup Bar */}
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-md">
-                  AP
-                </div>
-                <div>
-                  <h4 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-                    <span>Private Space: Love Nest</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Connected
-                    </span>
-                  </h4>
-                  <p className="text-xs text-slate-400">Synchronized Lounge with Ashesh & Partner</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-bold hidden sm:inline-flex items-center gap-1.5">
-                  <Flame size={14} className="text-pink-400" />
-                  <span>Mood: Romantic Glow</span>
-                </span>
-              </div>
-            </div>
-
-            {/* 3 Split Interactive Cards in Mockup */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* Card 1: Watch Together */}
-              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Clapperboard size={14} />
-                    <span>Watch Together</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-400">Synced 0.0ms</span>
-                </div>
-                <div className="h-28 rounded-xl bg-gradient-to-tr from-purple-950/60 to-pink-950/60 border border-white/5 flex flex-col items-center justify-center text-center p-3 relative overflow-hidden group">
-                  <Play size={28} className="text-pink-400 fill-pink-400/40 mb-1" />
-                  <span className="text-xs font-semibold text-white">Interstellar (2014)</span>
-                  <span className="text-[10px] text-slate-400">1:42:15 / 2:49:00 • 1080p HD</span>
-                </div>
-              </div>
-
-              {/* Card 2: Multiplayer Arcade */}
-              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Gamepad2 size={14} />
-                    <span>Live Game Room</span>
-                  </span>
-                  <span className="text-[10px] text-pink-400 font-bold">Round 3</span>
-                </div>
-                <div className="h-28 rounded-xl bg-gradient-to-tr from-indigo-950/60 to-purple-950/60 border border-white/5 flex flex-col items-center justify-center text-center p-3">
-                  <span className="text-2xl mb-1">🎱</span>
-                  <span className="text-xs font-semibold text-white">8-Ball Pool Shootout</span>
-                  <span className="text-[10px] text-purple-300 font-mono mt-0.5">Ashesh: 2 • Partner: 1</span>
-                </div>
-              </div>
-
-              {/* Card 3: Encrypted Direct Chat */}
-              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <MessageCircle size={14} />
-                    <span>Live Messages</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">10:42 PM</span>
-                </div>
-                <div className="h-28 rounded-xl bg-gradient-to-tr from-pink-950/40 via-purple-950/40 to-slate-900 border border-white/5 p-3 flex flex-col justify-end space-y-1.5">
-                  <div className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-[11px] font-medium self-end flex items-center gap-1">
-                    <span>Miss you so much! 💕</span>
-                    <Check size={12} className="text-cyan-300" />
-                  </div>
-                  <span className="text-[9px] text-slate-400 font-mono self-end">Delivered & Seen</span>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-        </motion.div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* WHO IS AFTER PARTY FOR? (AUDIENCE SECTION)               */}
-      {/* ======================================================== */}
-      <section id="audience" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-pink-400">Designed for True Intimacy</span>
-          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-2">
-            Built for Two & Your Inner Circle.
-          </h2>
-          <p className="text-slate-400 text-sm sm:text-base mt-4">
-            Most social apps are optimized for public feeds, ads, and strangers. After Party is built for the people who actually matter to you.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {AUDIENCES.map((aud, idx) => (
-            <motion.div
-              key={aud.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: idx * 0.15 }}
-              className={`p-7 rounded-3xl bg-gradient-to-b ${aud.gradient} border ${aud.border} shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between`}
+          {/* Mobile Hamburger Button (Minimum 44x44px target) */}
+          <div className="flex md:hidden items-center gap-2">
+            <Link
+              href="/login"
+              className="px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white"
             >
-              <div>
-                <span className="text-4xl mb-4 block">{aud.emoji}</span>
-                <h3 className="text-xl font-bold text-white mb-2">{aud.title}</h3>
-                <p className="text-xs text-slate-300 mb-6 leading-relaxed">{aud.subtitle}</p>
+              Sign In
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/[0.06] border border-white/10 text-slate-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
 
-                <ul className="space-y-3">
-                  {aud.points.map((pt) => (
-                    <li key={pt} className="flex items-start gap-2.5 text-xs text-slate-300">
-                      <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                        <Check size={10} className={aud.accentText} />
-                      </div>
-                      <span>{pt}</span>
-                    </li>
-                  ))}
-                </ul>
+        </div>
+
+        {/* Mobile Navigation Drawer */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden border-t border-white/[0.08] bg-[#121224]/95 backdrop-blur-2xl px-5 py-6 space-y-4 overflow-hidden"
+            >
+              <div className="flex flex-col gap-3 font-medium text-slate-200">
+                <a
+                  href="#how-it-works"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 px-3 rounded-lg hover:bg-white/[0.06] transition-colors"
+                >
+                  How It Works
+                </a>
+                <a
+                  href="#features"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 px-3 rounded-lg hover:bg-white/[0.06] transition-colors"
+                >
+                  Features
+                </a>
+                <a
+                  href="#squads"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 px-3 rounded-lg hover:bg-white/[0.06] transition-colors"
+                >
+                  Friend Squads
+                </a>
+                <a
+                  href="#privacy"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 px-3 rounded-lg hover:bg-white/[0.06] transition-colors"
+                >
+                  Privacy
+                </a>
+                <a
+                  href="#faqs"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 px-3 rounded-lg hover:bg-white/[0.06] transition-colors"
+                >
+                  FAQ
+                </a>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-white/[0.08]">
+              <div className="pt-4 border-t border-white/[0.08] flex flex-col gap-2.5">
                 <Link
                   href="/register"
-                  className={`text-xs font-bold ${aud.accentText} hover:underline flex items-center gap-1`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold text-center text-sm shadow-md"
                 >
-                  <span>Experience this Space</span>
-                  <ArrowRight size={12} />
+                  Start your space, free
+                </Link>
+                <Link
+                  href="/room/setup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-3 rounded-xl bg-white/[0.08] text-white font-semibold text-center text-sm border border-white/10"
+                >
+                  Join with room code
                 </Link>
               </div>
             </motion.div>
-          ))}
-        </div>
-      </section>
+          )}
+        </AnimatePresence>
+      </header>
 
-      {/* ======================================================== */}
-      {/* FEATURES SHOWCASE GRID                                   */}
-      {/* ======================================================== */}
-      <section id="features" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-purple-400">Everything in One Place</span>
-          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-2">
-            No Juggling 5 Different Apps.
-          </h2>
-          <p className="text-slate-400 text-sm sm:text-base mt-4">
-            Everything you need to spend quality time together online — beautifully integrated into a zero-distraction lounge.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((feat, idx) => {
-            const Icon = feat.icon;
-            return (
-              <motion.div
-                key={feat.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className={`p-6 sm:p-7 rounded-3xl glass-panel border ${feat.borderColor} hover:scale-[1.02] transition-transform shadow-[0_15px_40px_rgba(0,0,0,0.6)] group`}
-              >
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${feat.color} flex items-center justify-center text-white mb-5 shadow-lg group-hover:rotate-6 transition-transform`}>
-                  <Icon size={22} />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
-                  {feat.tag}
-                </span>
-                <h3 className="text-lg font-bold text-white mb-2">{feat.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{feat.description}</p>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* COMPARISON TABLE: ORDINARY APPS VS AFTER PARTY           */}
-      {/* ======================================================== */}
-      <section className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-pink-400">Why It's Different</span>
-          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2">
-            Standard Social Apps vs After Party
-          </h2>
-        </div>
-
-        <div className="rounded-3xl glass-panel border border-white/[0.1] overflow-hidden shadow-2xl">
-          <div className="grid grid-cols-3 p-4 sm:p-5 bg-white/[0.04] border-b border-white/[0.08] text-xs font-black uppercase tracking-wider text-slate-300">
-            <div>Feature</div>
-            <div className="text-slate-500 text-center">Instagram / Discord</div>
-            <div className="text-pink-400 text-center font-extrabold">After Party</div>
+      <main>
+        {/* ======================================================== */}
+        {/* 2. HERO SECTION                                          */}
+        {/* ======================================================== */}
+        <section className="pt-12 pb-16 sm:pt-20 sm:pb-28 px-4 sm:px-6 max-w-5xl mx-auto text-center">
+          
+          {/* Subtle Audience Tagline Pill */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-semibold mb-6">
+            <Heart size={13} className="text-rose-400 fill-rose-400/40" />
+            <span>Built exclusively for long-distance couples</span>
           </div>
 
-          <div className="divide-y divide-white/[0.04] text-xs">
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-semibold text-white">Synchronized Video Watch</span>
-              <span className="text-slate-500 text-center">❌ Third-party bots / Screenshare</span>
-              <span className="text-emerald-400 text-center font-bold">✅ Built-in Native Player</span>
-            </div>
+          {/* Headline (Exact max 8 words requirement) */}
+          <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight leading-[1.08] max-w-4xl mx-auto">
+            Close the physical distance between you two.
+          </h1>
 
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-semibold text-white">Live Multiplayer Arcade</span>
-              <span className="text-slate-500 text-center">❌ Must download separate apps</span>
-              <span className="text-emerald-400 text-center font-bold">✅ 8-Ball, Ludo, Chess, Uno in 1 Tap</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-semibold text-white">Saved Spaces (Multi-Room)</span>
-              <span className="text-slate-500 text-center">❌ Messy servers & public lists</span>
-              <span className="text-emerald-400 text-center font-bold">✅ 1-Click Switch Without Data Loss</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-semibold text-white">Algorithms & Strangers</span>
-              <span className="text-rose-400 text-center font-bold">⚠️ Feeds, doomscrolling & ads</span>
-              <span className="text-emerald-400 text-center font-bold">✅ 100% Private Sacred Space</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-semibold text-white">Distance & Proximity Radar</span>
-              <span className="text-slate-500 text-center">❌ Not supported</span>
-              <span className="text-emerald-400 text-center font-bold">✅ Real-time Radar with Hearts</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* FAQS SECTION                                             */}
-      {/* ======================================================== */}
-      <section id="faqs" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center mb-14">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-pink-400">Got Questions?</span>
-          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2">
-            Frequently Asked Questions
-          </h2>
-        </div>
-
-        <div className="space-y-3">
-          {FAQS.map((faq, idx) => {
-            const isOpen = openFaq === idx;
-            return (
-              <div
-                key={faq.q}
-                className="rounded-2xl glass-panel border border-white/[0.08] overflow-hidden transition-colors"
-              >
-                <button
-                  onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full p-5 text-left flex items-center justify-between text-sm sm:text-base font-bold text-white cursor-pointer"
-                >
-                  <span>{faq.q}</span>
-                  <ChevronDown
-                    size={18}
-                    className={`text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-pink-400' : ''}`}
-                  />
-                </button>
-
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-5 pb-5 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/[0.04] pt-3">
-                        {faq.a}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* FINAL CALL TO ACTION                                     */}
-      {/* ======================================================== */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
-        <div className="p-8 sm:p-14 rounded-3xl bg-gradient-to-r from-pink-900/40 via-purple-900/30 to-rose-900/40 border border-pink-500/30 shadow-[0_30px_90px_rgba(244,63,142,0.25)] relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
-
-          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-4">
-            Ready to Build Your Private Space?
-          </h2>
-          <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto mb-8">
-            Create your lounge in 30 seconds. Invite your partner or squad with a single code and start hanging out today.
+          {/* Subheadline (Exact copy requirement) */}
+          <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mt-6 leading-relaxed">
+            Watch movies, play games and talk privately with your partner, in perfect sync, from anywhere.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5">
+          {/* Action CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mt-8 sm:mt-10">
             <Link
               href="/register"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl btn-sexy text-white font-extrabold text-sm sm:text-base shadow-[0_10px_30px_rgba(244,63,142,0.4)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold text-base shadow-[0_8px_30px_rgba(244,63,94,0.35)] hover:shadow-[0_8px_35px_rgba(244,63,94,0.5)] active:scale-95 transition-all flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
             >
-              <span>Create Free Lounge</span>
+              <span>Start your space, free</span>
               <ArrowRight size={17} />
             </Link>
             <Link
-              href="/login"
-              className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] text-white font-bold text-sm sm:text-base transition-all flex items-center justify-center"
+              href="/room/setup"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white font-semibold text-base transition-all flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
             >
-              <span>Sign In to Space</span>
+              <span>Join with room code</span>
             </Link>
           </div>
-        </div>
-      </section>
+
+          {/* Small Honest Assurance Line under CTAs */}
+          <p className="text-xs text-slate-400 mt-3.5">
+            No app download needed. Works in your browser on phone and PC.
+          </p>
+
+          {/* Single Subtle Trust Row */}
+          <div className="flex items-center justify-center gap-6 sm:gap-8 mt-7 text-xs text-slate-400 font-medium flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-rose-400" />
+              <span>Private invite-only rooms</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Radio size={14} className="text-emerald-400" />
+              <span>Stays in sync within a fraction of a second</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Smartphone size={14} className="text-slate-300" />
+              <span>Free to use on any device</span>
+            </span>
+          </div>
+
+          {/* REAL POLISHED DEVICE FRAME WITH ACTUAL APP DEMO */}
+          <div className="mt-12 sm:mt-16 max-w-4xl mx-auto rounded-3xl p-2 sm:p-3 bg-gradient-to-b from-white/15 via-white/[0.04] to-transparent border border-white/15 shadow-[0_25px_80px_rgba(0,0,0,0.85)]">
+            <div className="rounded-[22px] bg-[#121224] border border-white/[0.08] overflow-hidden text-left shadow-2xl">
+              
+              {/* App Window Chrome / Header */}
+              <div className="px-4 py-3 border-b border-white/[0.08] bg-[#17172e]/60 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                  <span className="ml-2 text-xs font-semibold text-slate-300 hidden sm:inline-block">
+                    After Party — You & Alex
+                  </span>
+                </div>
+
+                {/* Tab Switcher in Device Frame */}
+                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/40 border border-white/10 text-xs">
+                  <button
+                    onClick={() => setActiveHeroTab('watch')}
+                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      activeHeroTab === 'watch'
+                        ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Watch Party
+                  </button>
+                  <button
+                    onClick={() => setActiveHeroTab('games')}
+                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      activeHeroTab === 'games'
+                        ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Arcade Games
+                  </button>
+                  <button
+                    onClick={() => setActiveHeroTab('chat')}
+                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      activeHeroTab === 'chat'
+                        ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Private Space
+                  </button>
+                </div>
+              </div>
+
+              {/* Window Body / Interactive Preview */}
+              <div className="p-4 sm:p-6 bg-[#0e0e1c]">
+                {activeHeroTab === 'watch' && (
+                  <div className="space-y-4">
+                    <div className="aspect-video w-full rounded-2xl bg-gradient-to-tr from-[#1a1329] to-[#261536] border border-white/10 relative overflow-hidden flex items-center justify-center group">
+                      <video
+                        src="/videos/ludo-preview.mp4"
+                        poster="/videos/ludo-thumb.jpg"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-emerald-400 text-[11px] font-semibold border border-emerald-500/30 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            Synced • 1080p
+                          </span>
+                          <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-slate-200 text-[11px] font-medium border border-white/10">
+                            Movie Night
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-300">
+                          <span>01:14:28 / 02:08:45</span>
+                          <span className="text-rose-300 font-medium">Both watching together</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-xs">
+                          Y
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">You</p>
+                          <p className="text-[10px] text-slate-400">Webcam active</p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-xs">
+                          A
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">Alex</p>
+                          <p className="text-[10px] text-slate-400">Webcam active</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeHeroTab === 'games' && (
+                  <div className="space-y-4">
+                    <div className="aspect-video w-full rounded-2xl bg-gradient-to-tr from-[#111928] to-[#1f293d] border border-white/10 relative overflow-hidden flex items-center justify-center">
+                      <video
+                        src="/videos/pool-preview.mp4"
+                        poster="/videos/pool-thumb.jpg"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4 pointer-events-none">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-white">8-Ball Pool Shootout</span>
+                          <span className="text-amber-400 font-mono">You: 2 • Alex: 1</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-medium text-slate-300">
+                      <div className="p-2 rounded-xl bg-white/[0.04] border border-white/5">3D Ludo</div>
+                      <div className="p-2 rounded-xl bg-white/[0.04] border border-white/5">Master Chess</div>
+                      <div className="p-2 rounded-xl bg-white/[0.04] border border-white/5">Classic Uno</div>
+                    </div>
+                  </div>
+                )}
+
+                {activeHeroTab === 'chat' && (
+                  <div className="space-y-3">
+                    <div className="h-48 sm:h-56 rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col justify-end gap-2.5 font-sans">
+                      <div className="self-start max-w-[80%] px-3.5 py-2 rounded-2xl rounded-bl-sm bg-white/[0.08] border border-white/10 text-xs text-slate-200">
+                        Can&apos;t wait for movie night tonight! Got the popcorn ready.
+                      </div>
+                      <div className="self-end max-w-[80%] px-3.5 py-2 rounded-2xl rounded-br-sm bg-gradient-to-r from-rose-500 to-pink-600 text-xs text-white">
+                        Just queued up the film in our room! Joining now.
+                      </div>
+                      <div className="text-[10px] text-slate-500 self-end font-mono">
+                        Seen 10:42 PM
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white/[0.04] border border-white/5 flex items-center justify-between text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5 text-rose-300">
+                        <MapPin size={13} />
+                        <span>Distance: 1,240 km apart</span>
+                      </span>
+                      <span>Next reunion: 18 days left</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+
+        </section>
+
+        {/* ======================================================== */}
+        {/* 3. HOW IT WORKS (3 SIMPLE STEPS)                         */}
+        {/* ======================================================== */}
+        <section id="how-it-works" className="py-20 sm:py-28 px-4 sm:px-6 max-w-5xl mx-auto border-t border-white/[0.06]">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-rose-400">Simple 3-Step Setup</span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-tight mt-2">
+              Ready in less than 30 seconds
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base mt-3">
+              No software installations, no complex server setups, no hassle.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {HOW_IT_WORKS.map((item) => (
+              <div
+                key={item.step}
+                className="p-6 sm:p-7 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-rose-500/30 transition-colors flex flex-col justify-between"
+              >
+                <div>
+                  <span className="font-display text-2xl font-black text-rose-400/60 block mb-3">
+                    {item.step}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold text-white mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 4. FEATURE SHOWCASE (ALTERNATING SCREENSHOT + TEXT ROWS) */}
+        {/* ======================================================== */}
+        <section id="features" className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto border-t border-white/[0.06] space-y-24">
+          
+          <div className="text-center max-w-2xl mx-auto mb-6">
+            <span className="text-xs font-bold uppercase tracking-widest text-rose-400">Everything Built In</span>
+            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight mt-2">
+              All your shared activities in one place
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base mt-3">
+              Designed specifically for long-distance couples to replace cluttered app-switching.
+            </p>
+          </div>
+
+          {FEATURE_SHOWCASE.map((feature, index) => {
+            const isReversed = index % 2 === 1;
+            return (
+              <div
+                key={feature.id}
+                className={`flex flex-col ${isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-10 lg:gap-14`}
+              >
+                {/* Text Column */}
+                <div className="w-full lg:w-1/2 space-y-5 text-left">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                    {feature.tag}
+                  </span>
+                  <h3 className="font-display text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-[65ch]">
+                    {feature.description}
+                  </p>
+
+                  <ul className="space-y-2.5 pt-2">
+                    {feature.bullets.map((bullet) => (
+                      <li key={bullet} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-300">
+                        <div className="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Check size={11} />
+                        </div>
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="pt-3">
+                    <Link
+                      href={feature.ctaLink}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 text-white font-semibold text-xs sm:text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                    >
+                      <span>{feature.ctaText}</span>
+                      <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Visual / Media Column */}
+                <div className="w-full lg:w-1/2">
+                  <div className="rounded-2xl p-2 bg-gradient-to-b from-white/10 to-transparent border border-white/10 shadow-2xl">
+                    <div className="rounded-xl overflow-hidden aspect-video bg-[#121224] relative flex items-center justify-center">
+                      <video
+                        src={feature.videoSrc}
+                        poster={feature.posterSrc}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+        </section>
+
+        {/* ======================================================== */}
+        {/* 5. SQUADS SECTION (SHORT, SECONDARY)                     */}
+        {/* ======================================================== */}
+        <section id="squads" className="py-16 sm:py-24 px-4 sm:px-6 max-w-4xl mx-auto border-t border-white/[0.06]">
+          <div className="p-7 sm:p-10 rounded-3xl bg-gradient-to-b from-[#18182f] to-[#121224] border border-white/10 flex flex-col md:flex-row items-center justify-between gap-8 text-left">
+            <div className="space-y-3 max-w-lg">
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                Also Great for Close Circles
+              </span>
+              <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Have a friend squad too? Create dedicated spaces.
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                You can switch anytime between your intimate Couple space and your Friend game room without losing your chat logs, goals, or reunion countdowns.
+              </p>
+            </div>
+
+            <div className="shrink-0 w-full md:w-auto">
+              <Link
+                href="/register"
+                className="w-full md:w-auto px-6 py-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/40 text-purple-200 font-semibold text-sm transition-all flex items-center justify-center gap-2"
+              >
+                <span>Create a Squad Lounge</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 6. COMPARISON TABLE                                      */}
+        {/* ======================================================== */}
+        <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-4xl mx-auto border-t border-white/[0.06]">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-widest text-rose-400">The Problem Solved</span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-tight mt-2">
+              Using 5 separate apps vs After Party
+            </h2>
+            <p className="text-slate-400 text-xs sm:text-sm mt-3">
+              Stop juggling WhatsApp, Netflix Party, Ludo King, FaceTime, and Maps.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden shadow-xl">
+            <div className="grid grid-cols-3 p-4 sm:p-5 bg-white/[0.03] border-b border-white/[0.08] text-xs font-bold text-slate-300">
+              <div>Capability</div>
+              <div className="text-slate-400 text-center">Using 5 Separate Apps</div>
+              <div className="text-rose-400 text-center font-bold">After Party</div>
+            </div>
+
+            <div className="divide-y divide-white/[0.04] text-xs sm:text-sm">
+              {COMPARISON_ROWS.map((row) => (
+                <div key={row.feature} className="grid grid-cols-3 p-4 sm:p-5 items-center gap-2">
+                  <span className="font-medium text-white">{row.feature}</span>
+                  <div className="flex items-center justify-center gap-1.5 text-slate-400 text-center">
+                    <Minus size={14} className="text-rose-400/80 shrink-0" />
+                    <span className="text-xs">{row.other}</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 text-emerald-400 text-center font-medium">
+                    <Check size={14} className="text-emerald-400 shrink-0" />
+                    <span className="text-xs">{row.afterParty}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 7. PRIVACY & TRUST SECTION                               */}
+        {/* ======================================================== */}
+        <section id="privacy" className="py-20 sm:py-28 px-4 sm:px-6 max-w-4xl mx-auto border-t border-white/[0.06]">
+          <div className="p-8 sm:p-12 rounded-3xl bg-[#141426] border border-white/[0.08] text-left space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold">
+              <ShieldCheck size={14} />
+              <span>Honest Privacy Architecture</span>
+            </div>
+
+            <h2 className="font-display text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+              A private digital sanctuary, not an advertising platform.
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 text-xs sm:text-sm text-slate-300">
+              <div className="space-y-2">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <Lock size={15} className="text-rose-400" />
+                  <span>Private Rooms Only</span>
+                </h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Rooms are strictly accessible via invite code. There is no public user directory, search bar, or follower mechanism.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <Phone size={15} className="text-rose-400" />
+                  <span>Peer-to-Peer Calling</span>
+                </h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Audio and video streams route directly between devices via WebRTC peer-to-peer protocols without passing through video recording servers.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <MapPin size={15} className="text-rose-400" />
+                  <span>Ephemeral Location Sharing</span>
+                </h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Location coordinates are transmitted live over socket streams and are never permanently stored in the database. You can stop sharing at any second.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <Sparkles size={15} className="text-rose-400" />
+                  <span>No Ads or Data Brokering</span>
+                </h3>
+                <p className="text-slate-400 leading-relaxed">
+                  We don&apos;t run third-party advertising trackers or sell your personal conversations to brokers.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 8. EARLY ACCESS & SOCIAL PROOF                           */}
+        {/* ======================================================== */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 max-w-4xl mx-auto border-t border-white/[0.06] text-center">
+          <div className="p-8 sm:p-10 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
+            <div className="flex items-center justify-center gap-1 text-rose-400">
+              {[...Array(5)].map((_, i) => (
+                <Heart key={i} size={15} className="fill-rose-400 text-rose-400" />
+              ))}
+            </div>
+            <blockquote className="text-base sm:text-xl font-medium text-slate-200 italic max-w-2xl mx-auto leading-relaxed">
+              &ldquo;Being in different time zones is hard, but hopping into our room to watch YouTube and play a round of 8-ball makes us feel like we are sitting on the same couch.&rdquo;
+            </blockquote>
+            <p className="text-xs font-semibold text-slate-400">
+              — Early Access Couple (London & New York)
+            </p>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 9. ACCESSIBLE FAQ ACCORDION                              */}
+        {/* ======================================================== */}
+        <section id="faqs" className="py-20 sm:py-28 px-4 sm:px-6 max-w-3xl mx-auto border-t border-white/[0.06]">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-widest text-rose-400">Common Questions</span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-tight mt-2">
+              Frequently asked questions
+            </h2>
+          </div>
+
+          <div className="space-y-3 text-left">
+            {FAQS.map((faq, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div
+                  key={faq.q}
+                  className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden transition-colors"
+                >
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-answer-${idx}`}
+                    className="w-full p-5 text-left flex items-center justify-between text-sm sm:text-base font-bold text-white cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown
+                      size={18}
+                      className={`text-slate-400 transition-transform duration-200 shrink-0 ml-4 ${
+                        isOpen ? 'rotate-180 text-rose-400' : ''
+                      }`}
+                    />
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        id={`faq-answer-${idx}`}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-5 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/[0.04] pt-3">
+                          {faq.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 10. FINAL CALL TO ACTION                                 */}
+        {/* ======================================================== */}
+        <section className="py-20 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+          <div className="p-8 sm:p-14 rounded-3xl bg-gradient-to-b from-[#22132d] via-[#1a1226] to-[#120f20] border border-rose-500/30 shadow-[0_20px_70px_rgba(244,63,94,0.2)] relative overflow-hidden">
+            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
+              Start your private couple space today.
+            </h2>
+            <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto mb-8">
+              No apps to download. Create your space for free, send your partner the room code, and start hanging out.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5">
+              <Link
+                href="/register"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold text-base shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+              >
+                <span>Start your space, free</span>
+                <ArrowRight size={17} />
+              </Link>
+              <Link
+                href="/room/setup"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] text-white font-semibold text-base border border-white/10 transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+              >
+                <span>Join with room code</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
 
       {/* ======================================================== */}
-      {/* FOOTER                                                   */}
+      {/* 11. FOOTER                                               */}
       {/* ======================================================== */}
-      <footer className="border-t border-white/[0.08] py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-500">
+      <footer className="border-t border-white/[0.08] py-12 px-4 sm:px-6 max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-500">
         <div className="flex items-center gap-2.5">
-          <Heart size={16} className="text-pink-400 fill-pink-400/20" />
-          <span className="font-bold text-white">AFTER PARTY</span>
-          <span>• Private Virtual Lounge for Connections</span>
+          <Heart size={15} className="text-rose-400 fill-rose-400/20" />
+          <span className="font-bold text-white tracking-wide">AFTER PARTY</span>
+          <span>• Private Virtual Lounge for Long-Distance Couples</span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <nav aria-label="Footer links" className="flex items-center gap-6">
           <Link href="/login" className="hover:text-slate-300 transition-colors">Sign In</Link>
           <Link href="/register" className="hover:text-slate-300 transition-colors">Register</Link>
           <Link href="/room/setup" className="hover:text-slate-300 transition-colors">Join Space</Link>
-        </div>
+        </nav>
 
         <div>
-          © {new Date().getFullYear()} After Party. Built with love for real connection.
+          © {new Date().getFullYear()} After Party. Built for real intimacy.
         </div>
       </footer>
+
+      {/* ======================================================== */}
+      {/* 12. MOBILE STICKY BOTTOM BAR (AFTER HERO SCROLLS OUT)    */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {showStickyCta && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 flex items-center gap-2.5 shadow-[0_-10px_25px_rgba(0,0,0,0.8)]"
+          >
+            <Link
+              href="/register"
+              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold text-center text-xs sm:text-sm shadow-md active:scale-95 transition-transform"
+            >
+              Start your space, free
+            </Link>
+            <Link
+              href="/room/setup"
+              className="py-3 px-3.5 rounded-xl bg-white/[0.08] text-white font-medium text-xs border border-white/10 shrink-0"
+            >
+              Enter Code
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
