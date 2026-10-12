@@ -32,11 +32,9 @@ import {
   FileText,
   RotateCw,
   Sparkles,
-  Sliders,
-  ZoomIn,
-  ZoomOut,
   Maximize2,
-  Compass,
+  Minimize2,
+  Move,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -54,6 +52,8 @@ type CanvasRatio = 'fit' | '1:1' | '3:4' | '16:9';
 
 export interface SceneryAdjust {
   scale: number;
+  scaleX?: number;
+  scaleY?: number;
   offsetX: number;
   offsetY: number;
   opacity: number;
@@ -62,8 +62,12 @@ export interface SceneryAdjust {
 
 export interface FrameAdjust {
   scale: number;
+  scaleX?: number;
+  scaleY?: number;
   offsetX: number;
   offsetY: number;
+  width?: number;
+  height?: number;
 }
 
 export interface Point {
@@ -163,49 +167,49 @@ const PAGE_COLORS = [
   { label: 'Midnight Dark', color: '#111827' },
 ];
 
-// 3. Pen Types from User Reference Image
+// 3. Pen Types from User Reference Image with Visual Preview
 export const PEN_TYPES = [
-  { key: 'smart-pen', label: 'Smart Pen', desc: 'Silky smooth line' },
-  { key: 'tattoo-pen', label: 'Tattoo Pen', desc: 'Needle fine crisp line' },
-  { key: 'graphite', label: 'Graphite Pencil', desc: 'Textured pencil sketch' },
-  { key: 'glitter', label: 'Glitter Pen', desc: 'Sparkling diamond shimmer' },
-  { key: 'whiteboard', label: 'Whiteboard', desc: 'Smooth marker glide' },
-  { key: 'permanent', label: 'Permanent', desc: 'Bold opaque ink' },
-  { key: 'multicolor', label: 'Multicolor', desc: 'Rainbow hue spectrum' },
-  { key: 'fiber-tip', label: 'Fiber-tip', desc: 'Precision uniform line' },
-  { key: 'twin-tip', label: 'Twin-tip', desc: 'Parallel double line' },
-  { key: 'watercolor-pen', label: 'Watercolor Pen', desc: 'Soft bleeding edge' },
-  { key: 'dry-erase', label: 'Dry-Erase', desc: 'Semi-opaque marker' },
-  { key: 'acrylic-paint-pen', label: 'Acrylic Pen', desc: 'Thick creamy acrylic' },
-  { key: 'chalk-marker', label: 'Chalk Marker', desc: 'Textured chalk stroke' },
-  { key: 'soft-tip', label: 'Soft-tip', desc: 'Pressure sensitive curve' },
-  { key: 'fluorescent-pen', label: 'Fluorescent', desc: 'Vibrant neon glow' },
-  { key: 'tilt-pen', label: 'Tilt Pen', desc: 'Dynamic angle stroke' },
-  { key: 'bamboo-pen', label: 'Bamboo Pen', desc: 'Asian calligraphy chisel' },
-  { key: 'digital-pen', label: 'Digital Pen', desc: 'Pixel-perfect digital line' },
-  { key: '3d-pen', label: '3D Pen', desc: 'Embossed shaded tube' },
-  { key: 'pocket-pen', label: 'Pocket Pen', desc: 'Compact handy ballpoint' },
+  { key: 'smart-pen', label: 'Smart Pen', desc: 'Silky smooth line', previewColor: '#3b82f6' },
+  { key: 'tattoo-pen', label: 'Tattoo Pen', desc: 'Needle fine crisp line', previewColor: '#db2777' },
+  { key: 'graphite', label: 'Graphite', desc: 'Textured pencil sketch', previewColor: '#64748b' },
+  { key: 'glitter', label: 'Glitter', desc: 'Sparkling diamond shimmer', previewColor: '#38bdf8' },
+  { key: 'whiteboard', label: 'Whiteboard', desc: 'Smooth dry marker glide', previewColor: '#0284c7' },
+  { key: 'permanent', label: 'Permanent', desc: 'Bold opaque ink', previewColor: '#0f172a' },
+  { key: 'multicolor', label: 'Multicolor', desc: 'Rainbow hue spectrum', previewColor: '#a855f7' },
+  { key: 'fiber-tip', label: 'Fiber-tip', desc: 'Precision uniform line', previewColor: '#0ea5e9' },
+  { key: 'twin-tip', label: 'Twin-tip', desc: 'Parallel double line', previewColor: '#eab308' },
+  { key: 'watercolor-pen', label: 'Watercolor pen', desc: 'Soft bleeding edge', previewColor: '#60a5fa' },
+  { key: 'dry-erase', label: 'Dry-erase', desc: 'Semi-opaque marker', previewColor: '#ef4444' },
+  { key: 'acrylic-paint-pen', label: 'Acrylic paint pen', desc: 'Thick creamy acrylic', previewColor: '#ec4899' },
+  { key: 'chalk-marker', label: 'Chalk marker', desc: 'Textured chalk stroke', previewColor: '#f472b6' },
+  { key: 'soft-tip', label: 'Soft-tip', desc: 'Pressure sensitive curve', previewColor: '#f97316' },
+  { key: 'fluorescent-pen', label: 'Fluorescent pen', desc: 'Vibrant neon glow', previewColor: '#ec4899' },
+  { key: 'tilt-pen', label: 'Tilt pen', desc: 'Dynamic angle stroke', previewColor: '#38bdf8' },
+  { key: 'bamboo-pen', label: 'Bamboo pen', desc: 'Asian calligraphy chisel', previewColor: '#b45309' },
+  { key: 'digital-pen', label: 'Digital pen', desc: 'Pixel-perfect digital line', previewColor: '#1e293b' },
+  { key: '3d-pen', label: '3D pen', desc: 'Embossed shaded tube', previewColor: '#8b5cf6' },
+  { key: 'pocket-pen', label: 'Pocket pen', desc: 'Compact handy ballpoint', previewColor: '#1d4ed8' },
 ];
 
-// 4. Brush Types from User Reference Image
+// 4. Brush Types from User Reference Image with Visual Preview
 export const BRUSH_TYPES = [
-  { key: 'round-tip', label: 'Round Tip', desc: 'Classic artist round' },
+  { key: 'round-tip', label: 'Round Tip', desc: 'Classic artist round tip' },
   { key: 'hog-bristle', label: 'Hog Bristle', desc: 'Multi-hair textured bristle' },
   { key: 'mop-brush', label: 'Mop Brush', desc: 'Large watery soft wash' },
   { key: 'flat-wash', label: 'Flat Wash', desc: 'Broad flat ribbon stroke' },
-  { key: 'filbert', label: 'Filbert', desc: 'Curved flat chisel' },
-  { key: 'round-long-hair', label: 'Round Long Hair', desc: 'Fluid continuous stroke' },
+  { key: 'filbert', label: 'Filbert', desc: 'Curved flat chisel wash' },
+  { key: 'round-long-hair', label: 'Round Long hair', desc: 'Fluid continuous stroke' },
   { key: 'fan-brush', label: 'Fan Brush', desc: 'Radial fan spread' },
   { key: 'cats-tongue', label: "Cat's Tongue", desc: 'Pointed oval wash' },
   { key: 'dagger-stripper', label: 'Dagger Stripper', desc: 'Sharp angled curve' },
   { key: 'liner-rigger', label: 'Liner / Rigger', desc: 'Ultra-thin long lines' },
-  { key: 'angular-chisel', label: 'Angular Chisel', desc: 'Crisp slant edge' },
+  { key: 'angular-chisel', label: 'Angular / Chisel', desc: 'Crisp slant edge' },
   { key: 'oval-mop', label: 'Oval Mop', desc: 'Deep absorbent wash' },
-  { key: 'notch', label: 'Notch Brush', desc: 'Double tip split brush' },
+  { key: 'notch', label: 'Notch', desc: 'Double tip split brush' },
   { key: 'comb-brush', label: 'Comb Brush', desc: 'Parallel rake hairs' },
-  { key: 'hog-bristle-domed', label: 'Bristle Domed', desc: 'Dense domed stippling' },
-  { key: 'pipe-overgrainer', label: 'Pipe Over-grainer', desc: 'Wood grain texture' },
-  { key: 'round-script-light-ox', label: 'Round Script Ox', desc: 'Fine lettering script' },
+  { key: 'hog-bristle-domed', label: 'Hog Bristle round domed', desc: 'Dense domed stippling' },
+  { key: 'pipe-overgrainer', label: 'Pipe over-grainer', desc: 'Wood grain texture' },
+  { key: 'round-script-light-ox', label: 'Round script light ox', desc: 'Fine lettering script' },
 ];
 
 // 5. New Sceneries (5 New User Images)
@@ -301,7 +305,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [isWaitingForFriend, setIsWaitingForFriend] = useState(false);
   const [remoteCursor, setRemoteCursor] = useState<{ x: number; y: number; name: string } | null>(null);
 
-  // Active Tool Navigation (Default color #000000 black)
+  // Active Tool Navigation (Default color is strictly pure black #000000)
   const [activeTab, setActiveTab] = useState<ToolCategory>('pen');
   const [activeBaseTool, setActiveBaseTool] = useState<BaseTool>('pen');
   const [selectedPenType, setSelectedPenType] = useState<string>('smart-pen');
@@ -316,14 +320,30 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [shapeDragStart, setShapeDragStart] = useState<Point | null>(null);
   const [currentShapePreview, setCurrentShapePreview] = useState<ShapeItem | null>(null);
 
-  // Canva-style Interactive Selection & Manipulation
+  // Canva-style Interactive Selection & Manipulation State
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [isDraggingSticker, setIsDraggingSticker] = useState<boolean>(false);
   const [stickerDragOffset, setStickerDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [activeResizeHandle, setActiveResizeHandle] = useState<string | null>(null);
-  const [resizeInitialData, setResizeInitialData] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [resizeInitialData, setResizeInitialData] = useState<{ clientX: number; clientY: number; w: number; h: number; x: number; y: number } | null>(null);
 
-  // Popup Modals for Stickers, Scenery & Frames
+  // Frame Interactive Transform State
+  const [isFrameSelected, setIsFrameSelected] = useState<boolean>(false);
+  const [isDraggingFrame, setIsDraggingFrame] = useState<boolean>(false);
+  const [frameDragOffset, setFrameDragOffset] = useState<Point>({ x: 0, y: 0 });
+  const [activeFrameHandle, setActiveFrameHandle] = useState<string | null>(null);
+  const [frameResizeInitialData, setFrameResizeInitialData] = useState<{ clientX: number; clientY: number; scale: number; scaleX: number; scaleY: number } | null>(null);
+
+  // Scenery Interactive Transform State
+  const [isScenerySelected, setIsScenerySelected] = useState<boolean>(false);
+  const [isDraggingScenery, setIsDraggingScenery] = useState<boolean>(false);
+  const [sceneryDragOffset, setSceneryDragOffset] = useState<Point>({ x: 0, y: 0 });
+  const [activeSceneryHandle, setActiveSceneryHandle] = useState<string | null>(null);
+  const [sceneryResizeInitialData, setSceneryResizeInitialData] = useState<{ clientX: number; clientY: number; scale: number } | null>(null);
+
+  // Popup Box Modals (for Pens, Brushes, Stickers, Scenery, Frames)
+  const [showPenModal, setShowPenModal] = useState<boolean>(false);
+  const [showBrushModal, setShowBrushModal] = useState<boolean>(false);
   const [showStickerModal, setShowStickerModal] = useState<boolean>(false);
   const [showSceneryModal, setShowSceneryModal] = useState<boolean>(false);
   const [showFrameModal, setShowFrameModal] = useState<boolean>(false);
@@ -337,10 +357,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       title: 'Page 1',
       pageColor: '#ffffff',
       sceneryPreset: 'blank',
-      sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
+      sceneryAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'none',
-      frameAdjust: { scale: 1, offsetX: 0, offsetY: 0 },
+      frameAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 },
       canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
@@ -376,6 +396,31 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [customJoinCode, setCustomJoinCode] = useState<string>('');
+
+  // -------------------------------------------------------------
+  // GLOBAL SAFETY POINTER RELEASE (Guarantees objects never get stuck)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      setIsDraggingSticker(false);
+      setIsDraggingFrame(false);
+      setIsDraggingScenery(false);
+      setActiveResizeHandle(null);
+      setActiveFrameHandle(null);
+      setActiveSceneryHandle(null);
+      setResizeInitialData(null);
+      setFrameResizeInitialData(null);
+      setSceneryResizeInitialData(null);
+      isDrawingRef.current = false;
+    };
+
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+    };
+  }, []);
 
   // -------------------------------------------------------------
   // SOCKET & MULTIPLAYER
@@ -699,7 +744,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       drawShapeOnCanvas(ctx, shape);
     });
 
-    // 1.1 Draw Live Shape Preview
+    // 1.1 Live Shape Preview
     if (currentShapePreview) {
       drawShapeOnCanvas(ctx, currentShapePreview, true);
     }
@@ -723,7 +768,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     redrawDrawingLayer();
   }, [redrawDrawingLayer]);
 
-  // Handle Resize
+  // Handle Canvas Resize
   useEffect(() => {
     const updateCanvasDimensions = () => {
       const container = containerRef.current;
@@ -787,7 +832,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.globalCompositeOperation = 'source-over';
     const sub = stroke.subType || (stroke.tool === 'pen' ? 'smart-pen' : 'round-tip');
 
-    // Pen Variants Rendering
     if (stroke.tool === 'pen') {
       if (sub === 'graphite') {
         ctx.lineWidth = Math.max(1, stroke.size * 0.75);
@@ -820,7 +864,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.lineWidth = Math.max(1.5, stroke.size * 0.5);
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = stroke.opacity / 100;
-        // Draw dual offset lines
         const offset = stroke.size * 0.6;
         ctx.beginPath();
         ctx.moveTo(stroke.points[0].x - offset, stroke.points[0].y - offset);
@@ -842,7 +885,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = 1.0;
       } else if (sub === '3d-pen') {
-        // 3D Tube Effect (Shaded shadow + bright core)
         ctx.lineWidth = stroke.size * 1.4;
         ctx.strokeStyle = '#1e293b';
         ctx.globalAlpha = 0.4;
@@ -857,7 +899,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = stroke.opacity / 100;
       } else if (sub === 'multicolor') {
-        // Rainbow Hue shifting
         for (let i = 1; i < stroke.points.length; i++) {
           const hue = (i * 22) % 360;
           ctx.strokeStyle = `hsl(${hue}, 90%, 55%)`;
@@ -871,13 +912,11 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.restore();
         return;
       } else {
-        // Smart, Whiteboard, Permanent, Fiber, Bamboo, Digital, Pocket
         ctx.lineWidth = stroke.size;
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = stroke.opacity / 100;
       }
     } else {
-      // Brush Variants Rendering
       if (sub === 'mop-brush' || sub === 'oval-mop') {
         ctx.lineWidth = stroke.size * 2.6;
         ctx.strokeStyle = stroke.color;
@@ -889,7 +928,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = (stroke.opacity / 100) * 0.55;
       } else if (sub === 'hog-bristle' || sub === 'hog-bristle-domed') {
-        // Multi-strand bristle effect
         ctx.lineWidth = Math.max(1, stroke.size * 0.4);
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = (stroke.opacity / 100) * 0.65;
@@ -922,7 +960,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = stroke.opacity / 100;
       } else {
-        // Round Tip, Filbert, Fan, Cat's Tongue, etc.
         ctx.lineWidth = stroke.size * 1.2;
         ctx.strokeStyle = stroke.color;
         ctx.shadowColor = stroke.color;
@@ -931,7 +968,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       }
     }
 
-    // Smooth quadratic curve stroke
     ctx.beginPath();
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
     for (let i = 1; i < stroke.points.length - 1; i++) {
@@ -1021,7 +1057,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.restore();
   };
 
-  // Image Sticker Renderer
   const drawStickerOnCanvas = (ctx: CanvasRenderingContext2D, sticker: StickerItem) => {
     const src = `/stickers/${sticker.stickerKey}.png`;
     const img = imageCacheRef.current.get(src);
@@ -1043,7 +1078,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         imageCacheRef.current.set(src, newImg);
         redrawDrawingLayer();
       };
-      // Simple fallback while loading
       ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
       ctx.arc(0, 0, w / 4, 0, Math.PI * 2);
@@ -1053,9 +1087,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.restore();
   };
 
-  // -------------------------------------------------------------
-  // CANVAS COORDINATES & POINTER EVENTS
-  // -------------------------------------------------------------
   const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement> | React.PointerEvent<HTMLDivElement>): Point => {
     const canvas = drawCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -1066,19 +1097,19 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     };
   };
 
-  // Canva-style Add Sticker
+  // Add Sticker to Center of Canvas (Static & Selected, not dragging)
   const handleAddSticker = (key: string) => {
-    const canvas = drawCanvasRef.current;
-    const defaultX = canvas ? canvas.width / 4 : 200;
-    const defaultY = canvas ? canvas.height / 4 : 200;
+    const container = containerRef.current;
+    const defaultX = container ? container.clientWidth / 2 : 200;
+    const defaultY = container ? container.clientHeight / 2 : 200;
 
     const newSticker: StickerItem = {
       id: 'stk-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       stickerKey: key,
       x: defaultX,
       y: defaultY,
-      width: 100,
-      height: 100,
+      width: 120,
+      height: 120,
       rotation: 0,
       author: user?.displayName || 'Me',
     };
@@ -1098,6 +1129,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     });
 
     setSelectedStickerId(newSticker.id);
+    setIsDraggingSticker(false);
     setShowStickerModal(false);
 
     if (socket && isOpponentConnected) {
@@ -1108,20 +1140,22 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       });
     }
 
-    toast.success('Sticker placed! Drag or resize on canvas.');
+    toast.success('Sticker placed on canvas');
   };
 
-  // Pointer Down
-  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  // -------------------------------------------------------------
+  // CANVAS POINTER HANDLERS
+  // -------------------------------------------------------------
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     drawCanvasRef.current?.setPointerCapture(e.pointerId);
     const pt = getCanvasCoords(e);
 
-    // 1. Check if clicked on existing sticker to select it
+    // 1. Check if user clicked an existing sticker on canvas
     for (let i = currentPage.stickers.length - 1; i >= 0; i--) {
       const st = currentPage.stickers[i];
-      const w = st.width || 100;
-      const h = st.height || 100;
+      const w = st.width || 120;
+      const h = st.height || 120;
       if (Math.abs(pt.x - st.x) <= w / 2 && Math.abs(pt.y - st.y) <= h / 2) {
         setSelectedStickerId(st.id);
         setIsDraggingSticker(true);
@@ -1130,10 +1164,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       }
     }
 
-    // If clicked empty canvas, deselect active sticker
+    // If clicked empty area, deselect any active sticker, frame or scenery selection
     setSelectedStickerId(null);
+    setIsFrameSelected(false);
+    setIsScenerySelected(false);
 
-    // 2. Shape Mode
+    // 2. Shape Drag Start
     if (activeTab === 'shape') {
       setShapeDragStart(pt);
       setCurrentShapePreview({
@@ -1151,17 +1187,15 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return;
     }
 
-    // 3. Drawing Mode (Pen / Brush / Eraser)
+    // 3. Normal Stroke Drawing
     isDrawingRef.current = true;
     currentPointsRef.current = [pt];
   };
 
-  // Pointer Move
-  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const pt = getCanvasCoords(e);
 
-    // Remote cursor broadcast
     if (socket && isOpponentConnected) {
       socket.emit('paint:cursor', {
         sessionCode,
@@ -1188,7 +1222,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return;
     }
 
-    // Shape Drag Preview
+    // Shape Preview
     if (activeTab === 'shape' && shapeDragStart) {
       setCurrentShapePreview({
         id: 'preview',
@@ -1229,12 +1263,11 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     drawStrokeOnCanvas(ctx, tempStroke);
   };
 
-  // Pointer Up
-  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const handleCanvasPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     drawCanvasRef.current?.releasePointerCapture(e.pointerId);
 
-    // End Sticker Drag
+    // Stop Sticker Dragging & Paste cleanly
     if (isDraggingSticker) {
       setIsDraggingSticker(false);
       const st = currentPage.stickers.find((s) => s.id === selectedStickerId);
@@ -1325,9 +1358,17 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   };
 
   // -------------------------------------------------------------
-  // CANVA-STYLE STICKER TRANSFORMATION ACTIONS
+  // CANVA-STYLE STICKER INTERACTIVE TRANSFORMS
   // -------------------------------------------------------------
   const activeSelectedSticker = currentPage.stickers.find((s) => s.id === selectedStickerId);
+
+  // Wheel Zoom on Sticker directly
+  const handleStickerWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    if (!selectedStickerId) return;
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    handleZoomSticker(delta);
+  };
 
   const handleZoomSticker = (deltaRatio: number) => {
     if (!selectedStickerId) return;
@@ -1337,8 +1378,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       if (page) {
         page.stickers = page.stickers.map((s) => {
           if (s.id === selectedStickerId) {
-            const nextW = Math.max(30, Math.min(450, Math.round((s.width || 100) * (1 + deltaRatio))));
-            const nextH = Math.max(30, Math.min(450, Math.round((s.height || 100) * (1 + deltaRatio))));
+            const nextW = Math.max(30, Math.min(500, Math.round((s.width || 120) * (1 + deltaRatio))));
+            const nextH = Math.max(30, Math.min(500, Math.round((s.height || 120) * (1 + deltaRatio))));
             const updated = { ...s, width: nextW, height: nextH };
             if (socket && isOpponentConnected) {
               socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: updated } });
@@ -1414,62 +1455,168 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     toast.success('Sticker removed');
   };
 
-  // Corner Resize Handler Start
-  const handleResizeHandleDown = (e: React.PointerEvent<HTMLDivElement>, handle: string) => {
+  // Sticker Handle Pointer Down
+  const handleStickerResizeHandleDown = (e: React.PointerEvent<HTMLDivElement>, handle: string) => {
     e.stopPropagation();
     e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     if (!activeSelectedSticker) return;
     setActiveResizeHandle(handle);
     setResizeInitialData({
-      x: e.clientX,
-      y: e.clientY,
-      w: activeSelectedSticker.width || 100,
-      h: activeSelectedSticker.height || 100,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      w: activeSelectedSticker.width || 120,
+      h: activeSelectedSticker.height || 120,
+      x: activeSelectedSticker.x,
+      y: activeSelectedSticker.y,
     });
   };
 
-  // Global Pointer Events for Corner Resize Dragging
-  useEffect(() => {
+  // Sticker Handle Pointer Move
+  const handleStickerResizeHandleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!activeResizeHandle || !resizeInitialData || !selectedStickerId) return;
+    e.stopPropagation();
+    e.preventDefault();
 
-    const handlePointerMoveWindow = (e: PointerEvent) => {
-      const dx = e.clientX - resizeInitialData.x;
-      const dy = e.clientY - resizeInitialData.y;
-      const factor = activeResizeHandle.includes('e') ? dx : -dx;
+    const dx = e.clientX - resizeInitialData.clientX;
+    const dy = e.clientY - resizeInitialData.clientY;
 
-      const newW = Math.max(30, Math.min(450, resizeInitialData.w + factor));
-      const newH = Math.max(30, Math.min(450, resizeInitialData.h + factor));
+    let newW = resizeInitialData.w;
+    let newH = resizeInitialData.h;
 
-      setPages((prev) => {
-        const next = [...prev];
-        const page = next[activePageIndex];
-        if (page) {
-          page.stickers = page.stickers.map((s) => (s.id === selectedStickerId ? { ...s, width: newW, height: newH } : s));
-        }
-        return next;
-      });
-    };
+    if (activeResizeHandle.includes('e')) newW = resizeInitialData.w + dx * 2;
+    if (activeResizeHandle.includes('w')) newW = resizeInitialData.w - dx * 2;
+    if (activeResizeHandle.includes('s')) newH = resizeInitialData.h + dy * 2;
+    if (activeResizeHandle.includes('n')) newH = resizeInitialData.h - dy * 2;
 
-    const handlePointerUpWindow = () => {
-      setActiveResizeHandle(null);
-      setResizeInitialData(null);
-      const st = currentPage.stickers.find((s) => s.id === selectedStickerId);
-      if (st && socket && isOpponentConnected) {
-        socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: st } });
+    // Corner handles scale proportionally
+    if (activeResizeHandle === 'se' || activeResizeHandle === 'nw') {
+      const delta = (dx + dy) / 2;
+      newW = activeResizeHandle === 'se' ? resizeInitialData.w + delta * 2 : resizeInitialData.w - delta * 2;
+      newH = newW;
+    } else if (activeResizeHandle === 'ne' || activeResizeHandle === 'sw') {
+      const delta = (dx - dy) / 2;
+      newW = activeResizeHandle === 'ne' ? resizeInitialData.w + delta * 2 : resizeInitialData.w - delta * 2;
+      newH = newW;
+    }
+
+    newW = Math.max(30, Math.min(500, Math.round(newW)));
+    newH = Math.max(30, Math.min(500, Math.round(newH)));
+
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.stickers = page.stickers.map((s) => (s.id === selectedStickerId ? { ...s, width: newW, height: newH } : s));
       }
-    };
+      return next;
+    });
+  };
 
-    window.addEventListener('pointermove', handlePointerMoveWindow);
-    window.addEventListener('pointerup', handlePointerUpWindow);
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMoveWindow);
-      window.removeEventListener('pointerup', handlePointerUpWindow);
-    };
-  }, [activeResizeHandle, resizeInitialData, selectedStickerId, activePageIndex, currentPage.stickers, socket, isOpponentConnected, sessionCode]);
+  const handleStickerResizeHandleUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    setActiveResizeHandle(null);
+    setResizeInitialData(null);
+    const st = currentPage.stickers.find((s) => s.id === selectedStickerId);
+    if (st && socket && isOpponentConnected) {
+      socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: st } });
+    }
+  };
 
   // -------------------------------------------------------------
-  // SCENERY & FRAME ADJUSTMENTS
+  // CANVA-STYLE PHOTO FRAME INTERACTIVE TRANSFORMS
   // -------------------------------------------------------------
+  const handleFrameWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    const delta = e.deltaY < 0 ? 0.05 : -0.05;
+    handleAdjustFrame({ scale: Math.max(0.4, Math.min(1.8, (currentPage.frameAdjust?.scale ?? 1) + delta)) });
+  };
+
+  const handleFrameResizeHandleDown = (e: React.PointerEvent<HTMLDivElement>, handle: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setActiveFrameHandle(handle);
+    setFrameResizeInitialData({
+      clientX: e.clientX,
+      clientY: e.clientY,
+      scale: currentPage.frameAdjust?.scale ?? 1,
+      scaleX: currentPage.frameAdjust?.scaleX ?? 1,
+      scaleY: currentPage.frameAdjust?.scaleY ?? 1,
+    });
+  };
+
+  const handleFrameResizeHandleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeFrameHandle || !frameResizeInitialData) return;
+    e.stopPropagation();
+    e.preventDefault();
+
+    const dx = e.clientX - frameResizeInitialData.clientX;
+    const dy = e.clientY - frameResizeInitialData.clientY;
+
+    if (activeFrameHandle === 'e' || activeFrameHandle === 'w') {
+      const mult = activeFrameHandle === 'e' ? dx : -dx;
+      const nextScaleX = Math.max(0.4, Math.min(1.8, frameResizeInitialData.scaleX + mult * 0.005));
+      handleAdjustFrame({ scaleX: nextScaleX });
+    } else if (activeFrameHandle === 'n' || activeFrameHandle === 's') {
+      const mult = activeFrameHandle === 's' ? dy : -dy;
+      const nextScaleY = Math.max(0.4, Math.min(1.8, frameResizeInitialData.scaleY + mult * 0.005));
+      handleAdjustFrame({ scaleY: nextScaleY });
+    } else {
+      // Corner scale
+      const mult = (dx + dy) / 2;
+      const nextScale = Math.max(0.4, Math.min(1.8, frameResizeInitialData.scale + mult * 0.004));
+      handleAdjustFrame({ scale: nextScale });
+    }
+  };
+
+  const handleFrameResizeHandleUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    setActiveFrameHandle(null);
+    setFrameResizeInitialData(null);
+  };
+
+  // -------------------------------------------------------------
+  // CANVA-STYLE SCENERY INTERACTIVE TRANSFORMS
+  // -------------------------------------------------------------
+  const handleSceneryWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    const delta = e.deltaY < 0 ? 0.05 : -0.05;
+    handleAdjustScenery({ scale: Math.max(0.4, Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 1) + delta)) });
+  };
+
+  const handleSceneryResizeHandleDown = (e: React.PointerEvent<HTMLDivElement>, handle: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setActiveSceneryHandle(handle);
+    setSceneryResizeInitialData({
+      clientX: e.clientX,
+      clientY: e.clientY,
+      scale: currentPage.sceneryAdjust?.scale ?? 1,
+    });
+  };
+
+  const handleSceneryResizeHandleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeSceneryHandle || !sceneryResizeInitialData) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const dx = e.clientX - sceneryResizeInitialData.clientX;
+    const dy = e.clientY - sceneryResizeInitialData.clientY;
+    const mult = (dx + dy) / 2;
+    const nextScale = Math.max(0.4, Math.min(2.5, sceneryResizeInitialData.scale + mult * 0.005));
+    handleAdjustScenery({ scale: nextScale });
+  };
+
+  const handleSceneryResizeHandleUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    setActiveSceneryHandle(null);
+    setSceneryResizeInitialData(null);
+  };
+
   const handleAdjustScenery = (partial: Partial<SceneryAdjust>) => {
     setPages((prev) => {
       const next = [...prev];
@@ -1503,6 +1650,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       if (page) {
         page.frameAdjust = {
           scale: page.frameAdjust?.scale ?? 1,
+          scaleX: page.frameAdjust?.scaleX ?? 1,
+          scaleY: page.frameAdjust?.scaleY ?? 1,
           offsetX: page.frameAdjust?.offsetX ?? 0,
           offsetY: page.frameAdjust?.offsetY ?? 0,
           ...partial,
@@ -1528,6 +1677,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return next;
     });
     setShowSceneryModal(false);
+    setIsScenerySelected(preset !== 'blank');
 
     if (socket && isOpponentConnected) {
       socket.emit('paint:action', {
@@ -1546,6 +1696,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return next;
     });
     setShowFrameModal(false);
+    setIsFrameSelected(frameKey !== 'none');
 
     if (socket && isOpponentConnected) {
       socket.emit('paint:action', {
@@ -1667,10 +1818,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       title: `Page ${newPageNum}`,
       pageColor: '#ffffff',
       sceneryPreset: 'blank',
-      sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
+      sceneryAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'none',
-      frameAdjust: { scale: 1, offsetX: 0, offsetY: 0 },
+      frameAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 },
       canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
@@ -1728,13 +1879,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. Draw Background (Page tint & scenery)
     ctx.drawImage(bgCanvas, 0, 0);
-
-    // 2. Draw Drawings, Shapes & Stickers
     ctx.drawImage(drawCanvas, 0, 0);
 
-    // 3. Draw Authentic Photo Frame if selected
     if (currentPage.frame && currentPage.frame !== 'none') {
       const frameDef = PHOTO_FRAMES.find((f) => f.key === currentPage.frame);
       if (frameDef && frameDef.src) {
@@ -1744,8 +1891,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           frameImg.onload = () => {
             ctx.save();
             const fAdj = currentPage.frameAdjust || { scale: 1, offsetX: 0, offsetY: 0 };
-            const dw = width * (fAdj.scale ?? 1);
-            const dh = height * (fAdj.scale ?? 1);
+            const scaleX = (fAdj.scaleX ?? 1) * (fAdj.scale ?? 1);
+            const scaleY = (fAdj.scaleY ?? 1) * (fAdj.scale ?? 1);
+            const dw = width * scaleX;
+            const dh = height * scaleY;
             ctx.translate(width / 2 + (fAdj.offsetX ?? 0), height / 2 + (fAdj.offsetY ?? 0));
             ctx.drawImage(frameImg, -dw / 2, -dh / 2, dw, dh);
             ctx.restore();
@@ -1860,7 +2009,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     toast.success(`Joined room ${cleanCode}!`);
   };
 
-  // Filtered Stickers for Popup Grid
   const filteredStickers = STICKER_LIST.filter((st) => {
     const matchesSearch = st.label.toLowerCase().includes(stickerSearch.toLowerCase());
     const matchesCat = stickerCategoryFilter === 'all' || st.category === stickerCategoryFilter;
@@ -1868,10 +2016,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   });
 
   const activeFrameDef = PHOTO_FRAMES.find((f) => f.key === currentPage.frame);
+  const activePenDef = PEN_TYPES.find((p) => p.key === selectedPenType) || PEN_TYPES[0];
+  const activeBrushDef = BRUSH_TYPES.find((b) => b.key === selectedBrushType) || BRUSH_TYPES[0];
 
   return (
     <div className="relative flex flex-col h-[100dvh] w-full bg-slate-950 text-slate-100 overflow-hidden select-none font-sans">
-      {/* 1. Sleek Header Bar */}
+      {/* 1. Header Bar */}
       <header className="flex-none flex items-center justify-between px-3 sm:px-6 py-2 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 z-30">
         <div className="flex items-center gap-2 sm:gap-3">
           <button
@@ -1921,7 +2071,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           </button>
         </div>
 
-        {/* Right Header Action Icons */}
+        {/* Right Action Icons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Quick Eraser Toggle */}
           <button
@@ -1971,7 +2121,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
             <Trash2 className="w-4 h-4" />
           </button>
 
-          {/* Chat with unread badge */}
+          {/* Chat */}
           <button
             onClick={() => {
               setShowChatModal(true);
@@ -1988,7 +2138,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
             )}
           </button>
 
-          {/* Invite Friend */}
+          {/* Invite */}
           <button
             onClick={() => {
               fetchFriends();
@@ -2000,7 +2150,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
             <span className="hidden sm:inline">Invite Friend</span>
           </button>
 
-          {/* Download Image */}
+          {/* Download */}
           <button
             onClick={handleDownloadArtwork}
             className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 active:scale-95"
@@ -2041,9 +2191,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </button>
       </div>
 
-      {/* 2. Main Studio Canvas Work Area with Authentic Photo Frame & Canva Controls */}
+      {/* 2. Main Studio Canvas Work Area with Canva-Style Interactive Handles */}
       <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center p-2 sm:p-4">
-        {/* Aspect Ratio Bounding Container */}
         <div
           className={`relative flex items-center justify-center transition-all duration-300 ${
             currentPage.canvasRatio === '1:1'
@@ -2070,52 +2219,158 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
             {/* Layer 2: Transparent Drawing Canvas (Strokes, Shapes & Stickers) */}
             <canvas
               ref={drawCanvasRef}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
+              onPointerDown={handleCanvasPointerDown}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerUp={handleCanvasPointerUp}
+              onPointerCancel={handleCanvasPointerUp}
               className="absolute inset-0 w-full h-full cursor-crosshair block z-10"
               style={{ touchAction: 'none' }}
             />
 
-            {/* Layer 3: Authentic Photo Frame Image Overlay (Adjustable) */}
+            {/* Layer 3: Authentic Photo Frame with Interactive Handles */}
             {activeFrameDef && activeFrameDef.src && (
               <div
-                className="absolute inset-0 pointer-events-none"
+                className="absolute pointer-events-none select-none"
                 style={{
-                  transform: `translate(${currentPage.frameAdjust?.offsetX || 0}px, ${
-                    currentPage.frameAdjust?.offsetY || 0
-                  }px) scale(${currentPage.frameAdjust?.scale || 1})`,
-                  transformOrigin: 'center center',
+                  left: `calc(50% + ${currentPage.frameAdjust?.offsetX || 0}px)`,
+                  top: `calc(50% + ${currentPage.frameAdjust?.offsetY || 0}px)`,
+                  width: `${(currentPage.frameAdjust?.scaleX ?? 1) * (currentPage.frameAdjust?.scale ?? 1) * 100}%`,
+                  height: `${(currentPage.frameAdjust?.scaleY ?? 1) * (currentPage.frameAdjust?.scale ?? 1) * 100}%`,
+                  transform: 'translate(-50%, -50%)',
                   zIndex: 18,
                 }}
               >
                 <img
                   src={activeFrameDef.src}
                   alt="Photo Frame"
-                  className="w-full h-full object-cover select-none pointer-events-none"
+                  className="w-full h-full object-fill select-none pointer-events-none"
                 />
+
+                {/* Canva-style Frame Interactive Resize Border & Handles (When Frame Tab Active or Frame Selected) */}
+                {(activeTab === 'frame' || isFrameSelected) && (
+                  <div
+                    className="absolute inset-0 border-2 border-purple-400 border-dashed rounded-lg pointer-events-auto"
+                    onWheel={handleFrameWheel}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setIsDraggingFrame(true);
+                      const pt = getCanvasCoords(e);
+                      setFrameDragOffset({ x: pt.x - (currentPage.frameAdjust?.offsetX || 0), y: pt.y - (currentPage.frameAdjust?.offsetY || 0) });
+                    }}
+                    onPointerMove={(e) => {
+                      if (!isDraggingFrame) return;
+                      e.stopPropagation();
+                      const pt = getCanvasCoords(e);
+                      handleAdjustFrame({ offsetX: Math.round(pt.x - frameDragOffset.x), offsetY: Math.round(pt.y - frameDragOffset.y) });
+                    }}
+                    onPointerUp={(e) => {
+                      e.stopPropagation();
+                      setIsDraggingFrame(false);
+                    }}
+                  >
+                    {/* Top Edge Handle */}
+                    <div
+                      className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-3 bg-purple-400 rounded-full border-2 border-slate-900 cursor-ns-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'n')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                    {/* Bottom Edge Handle */}
+                    <div
+                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-3 bg-purple-400 rounded-full border-2 border-slate-900 cursor-ns-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 's')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                    {/* Left Edge Handle */}
+                    <div
+                      className="absolute top-1/2 -left-2 -translate-y-1/2 w-3 h-6 bg-purple-400 rounded-full border-2 border-slate-900 cursor-ew-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'w')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                    {/* Right Edge Handle */}
+                    <div
+                      className="absolute top-1/2 -right-2 -translate-y-1/2 w-3 h-6 bg-purple-400 rounded-full border-2 border-slate-900 cursor-ew-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'e')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+
+                    {/* Corner Handles */}
+                    <div
+                      className="absolute -top-2 -left-2 w-4 h-4 bg-purple-400 rounded-full border-2 border-slate-900 cursor-nwse-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'nw')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                    <div
+                      className="absolute -top-2 -right-2 w-4 h-4 bg-purple-400 rounded-full border-2 border-slate-900 cursor-nesw-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'ne')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                    <div
+                      className="absolute -bottom-2 -left-2 w-4 h-4 bg-purple-400 rounded-full border-2 border-slate-900 cursor-nesw-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'sw')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                    <div
+                      className="absolute -bottom-2 -right-2 w-4 h-4 bg-purple-400 rounded-full border-2 border-slate-900 cursor-nwse-resize"
+                      onPointerDown={(e) => handleFrameResizeHandleDown(e, 'se')}
+                      onPointerMove={handleFrameResizeHandleMove}
+                      onPointerUp={handleFrameResizeHandleUp}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Canva-Style Active Sticker Selection Box with Transform Controls */}
+            {/* Canva-Style Active Sticker Selection Box with Handles */}
             {activeSelectedSticker && (
               <div
                 className="absolute pointer-events-auto border-2 border-amber-400 border-dashed rounded-lg"
                 style={{
                   left: `${activeSelectedSticker.x}px`,
                   top: `${activeSelectedSticker.y}px`,
-                  width: `${activeSelectedSticker.width || 100}px`,
-                  height: `${activeSelectedSticker.height || 100}px`,
+                  width: `${activeSelectedSticker.width || 120}px`,
+                  height: `${activeSelectedSticker.height || 120}px`,
                   transform: `translate(-50%, -50%) rotate(${activeSelectedSticker.rotation || 0}deg)`,
                   zIndex: 25,
                   cursor: isDraggingSticker ? 'grabbing' : 'grab',
                 }}
+                onWheel={handleStickerWheel}
                 onPointerDown={(e) => {
                   e.stopPropagation();
+                  (e.target as HTMLElement).setPointerCapture(e.pointerId);
                   setIsDraggingSticker(true);
                   const pt = getCanvasCoords(e);
                   setStickerDragOffset({ x: pt.x - activeSelectedSticker.x, y: pt.y - activeSelectedSticker.y });
+                }}
+                onPointerMove={(e) => {
+                  if (!isDraggingSticker) return;
+                  e.stopPropagation();
+                  const pt = getCanvasCoords(e);
+                  const newX = Math.round(pt.x - stickerDragOffset.x);
+                  const newY = Math.round(pt.y - stickerDragOffset.y);
+                  setPages((prev) => {
+                    const next = [...prev];
+                    const page = next[activePageIndex];
+                    if (page) {
+                      page.stickers = page.stickers.map((s) => (s.id === selectedStickerId ? { ...s, x: newX, y: newY } : s));
+                    }
+                    return next;
+                  });
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+                  setIsDraggingSticker(false);
+                  const st = currentPage.stickers.find((s) => s.id === selectedStickerId);
+                  if (st && socket && isOpponentConnected) {
+                    socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: st } });
+                  }
                 }}
               >
                 {/* Floating Action Bar */}
@@ -2176,26 +2431,63 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 {/* 4 Corner Resize Handles */}
                 <div
                   className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nwse-resize shadow-md"
-                  onPointerDown={(e) => handleResizeHandleDown(e, 'nw')}
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'nw')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
                 />
                 <div
                   className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nesw-resize shadow-md"
-                  onPointerDown={(e) => handleResizeHandleDown(e, 'ne')}
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'ne')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
                 />
                 <div
                   className="absolute -bottom-2 -left-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nesw-resize shadow-md"
-                  onPointerDown={(e) => handleResizeHandleDown(e, 'sw')}
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'sw')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
                 />
                 <div
                   className="absolute -bottom-2 -right-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nwse-resize shadow-md"
-                  onPointerDown={(e) => handleResizeHandleDown(e, 'se')}
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'se')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
+                />
+
+                {/* 4 Edge Handles */}
+                <div
+                  className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-2 rounded bg-amber-400 border border-slate-900 cursor-ns-resize"
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'n')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
+                />
+                <div
+                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-2 rounded bg-amber-400 border border-slate-900 cursor-ns-resize"
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 's')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
+                />
+                <div
+                  className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-2 h-4 rounded bg-amber-400 border border-slate-900 cursor-ew-resize"
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'w')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
+                />
+                <div
+                  className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-2 h-4 rounded bg-amber-400 border border-slate-900 cursor-ew-resize"
+                  onPointerDown={(e) => handleStickerResizeHandleDown(e, 'e')}
+                  onPointerMove={handleStickerResizeHandleMove}
+                  onPointerUp={handleStickerResizeHandleUp}
                 />
               </div>
             )}
 
-            {/* Floating On-Canvas Scenery Quick Adjustment Badge */}
+            {/* On-Canvas Scenery Quick Adjustment Floating Controls */}
             {currentPage.sceneryPreset && currentPage.sceneryPreset !== 'blank' && (
-              <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto">
+              <div
+                className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/95 border border-amber-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto"
+                onWheel={handleSceneryWheel}
+              >
                 <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider pl-0.5">Scenery:</span>
                 <button
                   type="button"
@@ -2235,13 +2527,16 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* Floating On-Canvas Frame Quick Adjustment Badge */}
+            {/* On-Canvas Frame Quick Adjustment Floating Controls */}
             {currentPage.frame && currentPage.frame !== 'none' && (
-              <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-purple-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto">
+              <div
+                className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-slate-900/95 border border-purple-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto"
+                onWheel={handleFrameWheel}
+              >
                 <span className="text-[10px] font-black text-purple-300 uppercase tracking-wider pl-0.5">Frame:</span>
                 <button
                   type="button"
-                  onClick={() => handleAdjustFrame({ scale: Math.max(0.6, (currentPage.frameAdjust?.scale ?? 1) - 0.05) })}
+                  onClick={() => handleAdjustFrame({ scale: Math.max(0.4, (currentPage.frameAdjust?.scale ?? 1) - 0.05) })}
                   className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
                   title="Zoom Out Frame"
                 >
@@ -2252,7 +2547,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleAdjustFrame({ scale: Math.min(1.5, (currentPage.frameAdjust?.scale ?? 1) + 0.05) })}
+                  onClick={() => handleAdjustFrame({ scale: Math.min(1.8, (currentPage.frameAdjust?.scale ?? 1) + 0.05) })}
                   className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
                   title="Zoom In Frame"
                 >
@@ -2260,9 +2555,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleAdjustFrame({ scale: 1, offsetX: 0, offsetY: 0 })}
-                  className="px-2 py-0.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[10px] font-bold text-rose-300 border border-rose-500/30 ml-1"
-                  title="Reset Frame"
+                  onClick={() => handleAdjustFrame({ scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 })}
+                  className="px-2 py-0.5 rounded-full bg-purple-500/20 hover:bg-purple-500/30 text-[10px] font-bold text-purple-300 border border-purple-500/30 ml-1"
+                  title="Fit Frame to Canvas"
                 >
                   Fit
                 </button>
@@ -2286,7 +2581,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 2-Second Floating Chat Toast */}
+            {/* 2-Second Toast */}
             <AnimatePresence>
               {floatingToast && (
                 <motion.div
@@ -2306,36 +2601,36 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </div>
       </div>
 
-      {/* 3. Floating Bottom Tools Dock (Ordered: Pen -> Brushes -> Colors -> Page -> Scenery -> Shapes -> Stickers -> Frames) */}
+      {/* 3. Floating Bottom Tools Dock (Clean & Popup-Triggered) */}
       <footer className="flex-none bg-slate-900/95 backdrop-blur-md border-t border-slate-800/80 px-2 sm:px-6 py-2 z-30">
         <div className="max-w-5xl mx-auto flex flex-col gap-2">
-          {/* Sub-Panel: Dynamic Controls Based on Active Tab */}
+          {/* Sub-Panel: Selected Tool Actions & Sliders */}
           <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1">
-            {/* 1. PEN TAB: All 20 Reference Pen Types */}
+            {/* 1. PEN: Popup Trigger with Active Pen Visual & Sliders */}
             {activeTab === 'pen' && (
-              <div className="flex items-center gap-3 w-full overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none">
-                  {PEN_TYPES.map((pt) => (
-                    <button
-                      key={pt.key}
-                      onClick={() => {
-                        setSelectedPenType(pt.key);
-                        setActiveBaseTool('pen');
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex-none ${
-                        activeBaseTool === 'pen' && selectedPenType === pt.key
-                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
-                      }`}
-                      title={pt.desc}
-                    >
-                      {pt.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-3 w-full justify-between sm:justify-start">
+                <button
+                  onClick={() => setShowPenModal(true)}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/50 shadow-md flex-none active:scale-95 transition-all"
+                >
+                  <div className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center bg-white p-0.5">
+                    <img
+                      src={`/pens/pen-${activePenDef.key}.png`}
+                      alt={activePenDef.label}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] text-amber-400 font-bold uppercase block leading-none">Pen Style:</span>
+                    <span className="text-xs font-black text-white">{activePenDef.label}</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold ml-1">
+                    Change
+                  </span>
+                </button>
 
                 {/* Size Slider */}
-                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
+                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none border border-slate-700/60">
                   <span className="text-[11px] font-bold text-slate-400">Size</span>
                   <input
                     type="range"
@@ -2349,7 +2644,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </div>
 
                 {/* Opacity Slider */}
-                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
+                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none border border-slate-700/60">
                   <span className="text-[11px] font-bold text-slate-400">Opacity</span>
                   <input
                     type="range"
@@ -2364,31 +2659,31 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 2. BRUSHES TAB: All 17 Reference Brush Types */}
+            {/* 2. BRUSHES: Popup Trigger with Active Brush Visual & Sliders */}
             {activeTab === 'brush' && (
-              <div className="flex items-center gap-3 w-full overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none">
-                  {BRUSH_TYPES.map((bt) => (
-                    <button
-                      key={bt.key}
-                      onClick={() => {
-                        setSelectedBrushType(bt.key);
-                        setActiveBaseTool('brush');
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex-none ${
-                        activeBaseTool === 'brush' && selectedBrushType === bt.key
-                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
-                      }`}
-                      title={bt.desc}
-                    >
-                      {bt.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-3 w-full justify-between sm:justify-start">
+                <button
+                  onClick={() => setShowBrushModal(true)}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/50 shadow-md flex-none active:scale-95 transition-all"
+                >
+                  <div className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center bg-white p-0.5">
+                    <img
+                      src={`/brushes/brush-${activeBrushDef.key}.png`}
+                      alt={activeBrushDef.label}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] text-amber-400 font-bold uppercase block leading-none">Brush Style:</span>
+                    <span className="text-xs font-black text-white">{activeBrushDef.label}</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold ml-1">
+                    Change
+                  </span>
+                </button>
 
                 {/* Size Slider */}
-                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
+                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none border border-slate-700/60">
                   <span className="text-[11px] font-bold text-slate-400">Size</span>
                   <input
                     type="range"
@@ -2402,7 +2697,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </div>
 
                 {/* Opacity Slider */}
-                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
+                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none border border-slate-700/60">
                   <span className="text-[11px] font-bold text-slate-400">Opacity</span>
                   <input
                     type="range"
@@ -2417,7 +2712,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 3. COLORS TAB: Default Black (#000000) & Palettes */}
+            {/* 3. COLORS: Default Black (#000000) & Palettes */}
             {activeTab === 'color' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {BRUSH_PALETTE.map((c) => (
@@ -2433,7 +2728,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                     style={{ backgroundColor: c }}
                   />
                 ))}
-                {/* Custom Hex Color Picker */}
                 <div className="flex items-center gap-1.5 ml-2 bg-slate-800/80 px-2 py-1 rounded-xl flex-none border border-slate-700">
                   <input
                     type="color"
@@ -2449,7 +2743,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 4. PAGES TAB: Base Tints & Canvas Layout (Texture removed) */}
+            {/* 4. PAGES: Base Tint & Ratio */}
             {activeTab === 'page' && (
               <div className="flex items-center gap-3 overflow-x-auto py-1 w-full justify-between sm:justify-start">
                 <div className="flex items-center gap-1.5 flex-none">
@@ -2470,11 +2764,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                     value={currentPage.pageColor}
                     onChange={(e) => handleSelectPageColor(e.target.value)}
                     className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 flex-none ml-1"
-                    title="Custom paper tint"
+                    title="Custom tint"
                   />
                 </div>
 
-                {/* Canvas Layout / Ratio */}
                 <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl flex-none border border-slate-700/60 ml-2">
                   <span className="text-[11px] font-bold text-slate-400 px-1">Ratio:</span>
                   {[
@@ -2499,7 +2792,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 5. SCENERY TAB: Popup Trigger & Adjustment */}
+            {/* 5. SCENERY */}
             {activeTab === 'scenery' && (
               <div className="flex items-center gap-3 overflow-x-auto py-1 w-full">
                 <button
@@ -2507,9 +2800,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-black shadow-md flex-none active:scale-95"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  <span>Browse Sceneries ({SCENERY_PRESETS.length - 1})</span>
+                  <span>Choose Scenery ({SCENERY_PRESETS.length - 1} New)</span>
                 </button>
-
                 {currentPage.sceneryPreset !== 'blank' && (
                   <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-xl flex-none border border-slate-700">
                     <span className="text-xs font-bold text-amber-300">
@@ -2526,7 +2818,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 6. SHAPES TAB: Geometric Shapes & Fill Toggle */}
+            {/* 6. SHAPES */}
             {activeTab === 'shape' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {[
@@ -2566,7 +2858,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 7. STICKERS TAB: Popup Trigger for 46 Stickers */}
+            {/* 7. STICKERS */}
             {activeTab === 'sticker' && (
               <div className="flex items-center gap-3 overflow-x-auto py-1 w-full">
                 <button
@@ -2577,12 +2869,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   <span>Choose Sticker (46 Available in Popup)</span>
                 </button>
                 <span className="text-xs text-slate-400 hidden sm:inline">
-                  Click to open popup box. Place, move and zoom stickers like Canva!
+                  Drag handles to resize or zoom on the sticker directly!
                 </span>
               </div>
             )}
 
-            {/* 8. FRAMES TAB: Popup Trigger for Authentic Frames */}
+            {/* 8. PHOTO FRAMES */}
             {activeTab === 'frame' && (
               <div className="flex items-center gap-3 overflow-x-auto py-1 w-full">
                 <button
@@ -2590,9 +2882,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-black shadow-lg flex-none active:scale-95 transition-all"
                 >
                   <Layers className="w-4 h-4" />
-                  <span>Choose Photo Frame ({PHOTO_FRAMES.length - 1} Available)</span>
+                  <span>Choose Photo Frame ({PHOTO_FRAMES.length - 1} New)</span>
                 </button>
-
                 {currentPage.frame !== 'none' && (
                   <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-xl flex-none border border-slate-700">
                     <span className="text-xs font-bold text-purple-300">
@@ -2612,11 +2903,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
           {/* Primary Tool Categories Switcher */}
           <div className="flex items-center justify-around sm:justify-center gap-1 sm:gap-6 pt-1 border-t border-slate-800/60 overflow-x-auto no-scrollbar">
-            {/* 1. Pen */}
+            {/* 1. Pens */}
             <button
               onClick={() => {
                 setActiveTab('pen');
                 setActiveBaseTool('pen');
+                setShowPenModal(true);
               }}
               className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
                 activeTab === 'pen' && activeBaseTool === 'pen' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
@@ -2631,6 +2923,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               onClick={() => {
                 setActiveTab('brush');
                 setActiveBaseTool('brush');
+                setShowBrushModal(true);
               }}
               className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
                 activeTab === 'brush' && activeBaseTool === 'brush' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
@@ -2664,7 +2957,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
             {/* 5. Scenery */}
             <button
-              onClick={() => setActiveTab('scenery')}
+              onClick={() => {
+                setActiveTab('scenery');
+                setShowSceneryModal(true);
+              }}
               className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
                 activeTab === 'scenery' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -2715,7 +3011,155 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </div>
       </footer>
 
-      {/* 4. POPUP BOX MODAL: ALL 46 STICKERS */}
+      {/* 4. POPUP BOX MODAL: PENS WITH REFERENCE IMAGES & PREVIEWS */}
+      <AnimatePresence>
+        {showPenModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setShowPenModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                    <Pen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-100">
+                      Pen Styles Collection ({PEN_TYPES.length})
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Select a pen style with realistic stroke rendering
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPenModal(false)}
+                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Grid of Pens */}
+              <div className="flex-1 overflow-y-auto py-3 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {PEN_TYPES.map((pt) => (
+                  <button
+                    key={pt.key}
+                    onClick={() => {
+                      setSelectedPenType(pt.key);
+                      setActiveBaseTool('pen');
+                      setActiveTab('pen');
+                      setShowPenModal(false);
+                      toast.success(`Selected ${pt.label}`);
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border transition-all text-center group ${
+                      selectedPenType === pt.key && activeBaseTool === 'pen'
+                        ? 'bg-amber-500/10 border-amber-400 shadow-lg scale-102'
+                        : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600 hover:bg-slate-800/80'
+                    }`}
+                  >
+                    <div className="w-20 h-24 flex items-center justify-center p-1 bg-white rounded-xl shadow-inner overflow-hidden mb-2">
+                      <img
+                        src={`/pens/pen-${pt.key}.png`}
+                        alt={pt.label}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <span className="text-xs font-black text-slate-200 block truncate w-full">{pt.label}</span>
+                    <span className="text-[10px] text-slate-400 block truncate w-full mt-0.5">{pt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 5. POPUP BOX MODAL: BRUSHES WITH REFERENCE IMAGES & PREVIEWS */}
+      <AnimatePresence>
+        {showBrushModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setShowBrushModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                    <Paintbrush className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-100">
+                      Brush Styles Collection ({BRUSH_TYPES.length})
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Select an authentic artist brush style with live textured strokes
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBrushModal(false)}
+                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Grid of Brushes */}
+              <div className="flex-1 overflow-y-auto py-3 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {BRUSH_TYPES.map((bt) => (
+                  <button
+                    key={bt.key}
+                    onClick={() => {
+                      setSelectedBrushType(bt.key);
+                      setActiveBaseTool('brush');
+                      setActiveTab('brush');
+                      setShowBrushModal(false);
+                      toast.success(`Selected ${bt.label}`);
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border transition-all text-center group ${
+                      selectedBrushType === bt.key && activeBaseTool === 'brush'
+                        ? 'bg-amber-500/10 border-amber-400 shadow-lg scale-102'
+                        : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600 hover:bg-slate-800/80'
+                    }`}
+                  >
+                    <div className="w-20 h-28 flex items-center justify-center p-1 bg-white rounded-xl shadow-inner overflow-hidden mb-2">
+                      <img
+                        src={`/brushes/brush-${bt.key}.png`}
+                        alt={bt.label}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <span className="text-xs font-black text-slate-200 block truncate w-full">{bt.label}</span>
+                    <span className="text-[10px] text-slate-400 block truncate w-full mt-0.5">{bt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. POPUP BOX MODAL: ALL 46 STICKERS */}
       <AnimatePresence>
         {showStickerModal && (
           <motion.div
@@ -2732,7 +3176,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
@@ -2740,16 +3183,16 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-base text-slate-100">
-                      Sticker Studio Collection ({STICKER_LIST.length})
+                      Sticker Collection ({STICKER_LIST.length})
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Tap any sticker to place on canvas. Resize and zoom like Canva!
+                      Tap any sticker to place on canvas. Drag handles directly to zoom/resize!
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowStickerModal(false)}
-                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2763,7 +3206,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                     type="text"
                     value={stickerSearch}
                     onChange={(e) => setStickerSearch(e.target.value)}
-                    placeholder="Search stickers (cat, dog, dino, tree...)"
+                    placeholder="Search stickers (cat, dog, dino, tree, bird...)"
                     className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -2812,7 +3255,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         )}
       </AnimatePresence>
 
-      {/* 5. POPUP BOX MODAL: SCENERY SELECTION */}
+      {/* 7. POPUP BOX MODAL: SCENERY SELECTION */}
       <AnimatePresence>
         {showSceneryModal && (
           <motion.div
@@ -2878,7 +3321,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         )}
       </AnimatePresence>
 
-      {/* 6. POPUP BOX MODAL: AUTHENTIC PHOTO FRAMES */}
+      {/* 8. POPUP BOX MODAL: AUTHENTIC PHOTO FRAMES */}
       <AnimatePresence>
         {showFrameModal && (
           <motion.div
@@ -2898,7 +3341,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
                 <div>
                   <h3 className="font-extrabold text-base text-slate-100">Authentic Photo Frames</h3>
-                  <p className="text-xs text-slate-400">Select an authentic border frame for your artwork</p>
+                  <p className="text-xs text-slate-400">Select an authentic border frame. Drag edges to resize each side!</p>
                 </div>
                 <button
                   onClick={() => setShowFrameModal(false)}
@@ -2944,7 +3387,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         )}
       </AnimatePresence>
 
-      {/* 7. Chat Modal Drawer */}
+      {/* 9. Chat Modal Drawer */}
       <AnimatePresence>
         {showChatModal && (
           <motion.div
@@ -3009,7 +3452,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         )}
       </AnimatePresence>
 
-      {/* 8. Invite Friends Modal */}
+      {/* 10. Invite Friends Modal */}
       <AnimatePresence>
         {showInviteModal && (
           <motion.div
