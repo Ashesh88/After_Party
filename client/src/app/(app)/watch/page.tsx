@@ -51,14 +51,7 @@ export default function WatchPage() {
   const socket = useSocketStore(state => state.socket);
   const user = useAuthStore(state => state.user);
   const [partner, setPartner] = useState<{ _id?: string; displayName: string; avatar?: string } | null>(null);
-  const { 
-    callStatus, 
-    startCall: startGlobalCall, 
-    endCall: endGlobalCall,
-    isScreenSharing,
-    startScreenShare,
-    stopScreenShare 
-  } = useCallStore();
+  const { callStatus, startCall: startGlobalCall, endCall: endGlobalCall } = useCallStore();
   const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
 
   useEffect(() => {
@@ -707,64 +700,6 @@ export default function WatchPage() {
                 </button>
               ))}
             </div>
-
-            {/* Discord Style Tab & Audio Sharing Feature Highlight */}
-            <div className="w-full pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
-                  <MonitorUp size={18} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white leading-tight">Stream Netflix, Prime or Tab (Discord Style)</h4>
-                  <p className="text-[10px] text-slate-400 leading-normal">
-                    Stream your Chrome tab with synchronized audio directly via WebRTC peer-to-peer.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  if (callStatus === 'idle') {
-                    if (!socket) {
-                      toast.error('Connection not ready');
-                      return;
-                    }
-                    toast('Connecting private room call first... 🍿');
-                    try {
-                      await startGlobalCall(socket, 'video', partner, user);
-                      toast.success('Room call initiated! Now tap Share Tab to stream with audio.');
-                    } catch {
-                      toast.error('Could not connect call');
-                    }
-                  } else if (callStatus === 'connected') {
-                    try {
-                      if (isScreenSharing) {
-                        await stopScreenShare();
-                        toast.success('Screen share stopped. Camera restored.');
-                      } else {
-                        await startScreenShare();
-                        toast.success('Sharing screen with tab/system audio! 📺', { duration: 4000 });
-                      }
-                    } catch (err: any) {
-                      if (err?.name !== 'NotAllowedError') {
-                        toast.error('Could not share screen. Check permissions.');
-                      }
-                    }
-                  } else {
-                    toast('Waiting for partner to answer call...');
-                  }
-                }}
-                className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1.5 shrink-0 ${
-                  isScreenSharing
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-2 border-pink-400 animate-pulse'
-                    : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 hover:border-purple-500/50'
-                }`}
-              >
-                <MonitorUp size={14} />
-                <span>{isScreenSharing ? 'Sharing Tab Live' : 'Share Tab & Audio'}</span>
-              </button>
-            </div>
           </div>
         )}
       </main>
@@ -808,50 +743,6 @@ export default function WatchPage() {
               {chatMessages.length > 0 && !chatOpen && (
                 <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-ping" />
               )}
-            </button>
-
-            {/* Screen Share Button (Tab & Audio for Netflix/Prime/YouTube) */}
-            <button
-              onClick={async () => {
-                if (callStatus === 'idle') {
-                  if (!socket) {
-                    toast.error('Connection not ready');
-                    return;
-                  }
-                  toast('Starting video space first... 🍿');
-                  try {
-                    await startGlobalCall(socket, 'video', partner, user);
-                    toast.success('Call connected! Tap Share Screen once connected to stream tabs with sound.');
-                  } catch {
-                    toast.error('Failed to start call');
-                  }
-                } else if (callStatus === 'connected') {
-                  try {
-                    if (isScreenSharing) {
-                      await stopScreenShare();
-                      toast.success('Screen share stopped. Camera restored.');
-                    } else {
-                      await startScreenShare();
-                      toast.success('Sharing screen with tab/system audio! 📺', { duration: 4000 });
-                    }
-                  } catch (err: any) {
-                    if (err?.name !== 'NotAllowedError') {
-                      toast.error('Could not share screen. Check permissions.');
-                    }
-                  }
-                } else {
-                  toast('Waiting for partner to answer call...');
-                }
-              }}
-              className={`px-3.5 py-2 rounded-full border text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all ${
-                isScreenSharing
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-pink-400 shadow-[0_0_20px_rgba(244,63,142,0.6)] animate-pulse'
-                  : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/30'
-              }`}
-              title="Share Chrome tab with Audio (Discord style)"
-            >
-              <MonitorUp size={14} />
-              <span>{isScreenSharing ? 'Sharing' : 'Share Tab'}</span>
             </button>
 
             {callStatus === 'idle' ? (
