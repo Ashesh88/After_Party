@@ -41,8 +41,6 @@ export default function WatchPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [useProxy, setUseProxy] = useState(false);
-  const [ytBlocked, setYtBlocked] = useState(false);
-  const [useNocookie, setUseNocookie] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
@@ -114,8 +112,6 @@ export default function WatchPage() {
     const finalState = { ...target, title: customTitle || target.title };
     setMediaState(finalState);
     setUseProxy(false);
-    setYtBlocked(false);
-    setUseNocookie(false);
     if (finalState.type === 'youtube') {
       setUrl(`https://www.youtube.com/watch?v=${finalState.src}`);
     } else {
@@ -173,8 +169,6 @@ export default function WatchPage() {
 
     socket.on('watch:load', (data: any) => {
       setUseProxy(false);
-      setYtBlocked(false);
-      setUseNocookie(false);
       if (data?.mediaType && data?.src) {
         setMediaState({ type: data.mediaType, src: data.src, title: data.title });
         setUrl(data.src);
@@ -506,7 +500,7 @@ export default function WatchPage() {
         {mediaState ? (
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full aspect-video rounded-2xl sm:rounded-[32px] overflow-hidden glass-panel border border-pink-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,142,0.15)] relative bg-black">
-              {mediaState.type === 'youtube' && !useNocookie && (
+              {mediaState.type === 'youtube' && (
                 <YouTube
                   videoId={mediaState.src}
                   className="w-full h-full"
@@ -524,10 +518,6 @@ export default function WatchPage() {
                   }}
                   onReady={(event: any) => {
                     ytPlayerRef.current = event.target;
-                  }}
-                  onError={(event: any) => {
-                    // YouTube error codes: 150/101 = embedding disabled / age restricted
-                    setYtBlocked(true);
                   }}
                   onPlay={(event: any) => {
                     if (isRemoteActionRef.current) return;
@@ -554,17 +544,6 @@ export default function WatchPage() {
                       }
                     } catch {}
                   }}
-                />
-              )}
-
-              {/* Alternative Nocookie / Embed mode when toggled */}
-              {mediaState.type === 'youtube' && useNocookie && (
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${mediaState.src}?autoplay=1&controls=1&rel=0`}
-                  title="YouTube Player (Privacy Enhanced)"
-                  className="w-full h-full border-0 rounded-2xl sm:rounded-[32px] bg-black"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                  allowFullScreen
                 />
               )}
 
@@ -609,54 +588,6 @@ export default function WatchPage() {
                 />
               )}
             </div>
-
-            {/* Unblock & Popout Assistant Bar for Age-Restricted or Blocked YouTube Videos */}
-            {mediaState.type === 'youtube' && (
-              <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-200 shadow-lg">
-                <div className="flex items-center gap-2 text-left">
-                  <ShieldAlert size={18} className="text-amber-400 shrink-0" />
-                  <span>
-                    {ytBlocked ? (
-                      <strong className="text-amber-300">
-                        ⚠️ Age-Restricted Video Detected: YouTube blocks embedded playback for age-restricted content.
-                      </strong>
-                    ) : (
-                      <span>If video shows &quot;Age-restricted&quot; or won&apos;t play inside the embed, try Privacy Player or Popout Tab:</span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !useNocookie;
-                      setUseNocookie(next);
-                      toast(next ? 'Switched to Privacy Player 🛡️' : 'Switched to Standard Player', { icon: '🍿' });
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 ${
-                      useNocookie
-                        ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
-                        : 'bg-white/10 hover:bg-white/20 border border-white/15 text-white'
-                    }`}
-                  >
-                    <RefreshCw size={13} className={useNocookie ? 'animate-spin' : ''} />
-                    <span>{useNocookie ? '🛡️ Using Privacy Player' : '🛡️ Try Privacy Player'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.open(`https://www.youtube.com/watch?v=${mediaState.src}`, '_blank');
-                      toast.success('Opened YouTube in a new tab! Voice/video call & chat stay live here.');
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
-                  >
-                    <ExternalLink size={13} />
-                    <span>Open in YouTube ↗</span>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Unblock & Popout Assistant Bar for Web Streams */}
             {mediaState.type === 'embed' && (
