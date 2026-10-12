@@ -24,25 +24,29 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://after-party-xi.vercel.app'),
-  title: 'After Party — Private Virtual Lounge for Long-Distance Couples',
-  description: 'Watch movies, play games, and talk privately with your partner, in perfect sync, from anywhere. Free, private, and works right in your browser.',
+  title: 'After Party — Close the physical distance between you two',
+  description: 'Watch movies, play games and talk privately with your partner, in perfect sync, from anywhere. Free, private, and works right in your browser.',
   applicationName: 'After Party',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon.svg',
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' }
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }
+    ],
   },
   openGraph: {
-    title: 'After Party — Private Virtual Lounge for Long-Distance Couples',
-    description: 'Watch movies, play games, and talk privately with your partner, in perfect sync, from anywhere.',
+    title: 'After Party — Close the physical distance between you two',
+    description: 'Watch movies, play games and talk privately with your partner, in perfect sync, from anywhere.',
     url: 'https://after-party-xi.vercel.app',
     siteName: 'After Party',
     images: [
       {
-        url: '/og-image.svg',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
+        type: 'image/png',
         alt: 'After Party — Private Virtual Lounge for Long-Distance Couples',
       },
     ],
@@ -51,9 +55,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'After Party — Private Virtual Lounge for Long-Distance Couples',
-    description: 'Watch movies, play games, and talk privately with your partner in sync. No app download needed.',
-    images: ['/og-image.svg'],
+    title: 'After Party — Close the physical distance between you two',
+    description: 'Watch movies, play games and talk privately with your partner, in perfect sync, from anywhere.',
+    images: ['/og-image.png'],
   },
   alternates: {
     canonical: 'https://after-party-xi.vercel.app',
@@ -71,7 +75,7 @@ export default function RootLayout({
     name: 'After Party',
     operatingSystem: 'Any (Web-based PWA)',
     applicationCategory: 'CommunicationApplication',
-    description: 'Private virtual lounge for long-distance couples to watch synchronized videos, play multiplayer games, and stay connected.',
+    description: 'Private virtual lounge for long-distance couples to watch synchronized videos, play games, and talk privately in sync.',
     offers: {
       '@type': 'Offer',
       price: '0',
