@@ -198,7 +198,7 @@ function GameVideoCard({
           src={thumbSrc}
           alt={game.name}
           loading="lazy"
-          className="absolute inset-x-0 top-0 w-full h-[116%] object-cover object-top transition-transform duration-500 group-hover:scale-105 pointer-events-none"
+          className={`absolute inset-x-0 top-0 w-full ${game.id === 'tod' ? 'h-full' : 'h-[116%]'} object-cover object-top transition-transform duration-500 group-hover:scale-105 pointer-events-none`}
           style={{ objectPosition: 'top center', transform: 'translateZ(0)' }}
         />
 
@@ -215,7 +215,7 @@ function GameVideoCard({
             muted
             playsInline
             preload="auto"
-            className="absolute inset-x-0 top-0 w-full h-[116%] object-cover object-top pointer-events-none"
+            className={`absolute inset-x-0 top-0 w-full ${game.id === 'tod' ? 'h-full' : 'h-[116%]'} object-cover object-top pointer-events-none`}
             style={{
               objectPosition: 'top center',
               transform: 'translateZ(0)',
@@ -224,8 +224,12 @@ function GameVideoCard({
           />
         )}
 
-        {/* Soft bottom vignette to ensure watermark is completely blocked and text is sharp */}
-        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/95 via-black/60 to-transparent pointer-events-none" />
+        {/* Soft bottom vignette to ensure watermark is blocked while keeping jar visible */}
+        <div
+          className={`absolute inset-x-0 bottom-0 ${
+            game.id === 'tod' ? 'h-4 bg-gradient-to-t from-black/40' : 'h-10 bg-gradient-to-t from-black/95 via-black/60'
+          } to-transparent pointer-events-none`}
+        />
       </div>
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-30 transition-opacity pointer-events-none" />
