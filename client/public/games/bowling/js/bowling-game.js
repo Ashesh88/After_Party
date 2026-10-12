@@ -187,7 +187,7 @@
             const isMobile = window.innerWidth < 650;
             const aspect = window.innerWidth / window.innerHeight;
             // Higher FOV on portrait mobile to ensure the ball and full lane are visible
-            const fov = isMobile ? 62 : 48;
+            const fov = isMobile ? 68 : 48;
 
             this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 150);
             this.updateCameraPosition();
@@ -241,10 +241,11 @@
 
             window.addEventListener('resize', () => {
                 const mob = window.innerWidth < 650;
-                this.camera.fov = mob ? 62 : 48;
+                this.camera.fov = mob ? 68 : 48;
                 this.camera.aspect = window.innerWidth / window.innerHeight;
                 this.camera.updateProjectionMatrix();
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.updateCameraPosition();
             });
         }
 
@@ -258,12 +259,17 @@
                 if (this.isRolling) {
                     // Action cam dynamically tracks ball down lane
                     const bPos = this.ball ? this.ball.position : new THREE.Vector3(0, 0.34, 1.8);
-                    this.camera.position.set(bPos.x * 0.35, 1.8, bPos.z + 3.4);
-                    this.camera.lookAt(bPos.x, 0.4, bPos.z - 7.0);
+                    if (isMobile) {
+                        this.camera.position.set(bPos.x * 0.35, 2.3, bPos.z + 4.0);
+                        this.camera.lookAt(bPos.x, 0.4, bPos.z - 7.5);
+                    } else {
+                        this.camera.position.set(bPos.x * 0.35, 1.8, bPos.z + 3.4);
+                        this.camera.lookAt(bPos.x, 0.4, bPos.z - 7.0);
+                    }
                 } else {
                     if (isMobile) {
-                        this.camera.position.set(0, 2.8, 4.8);
-                        this.camera.lookAt(0, 0.4, -17);
+                        this.camera.position.set(0, 3.3, 5.6);
+                        this.camera.lookAt(0, 0.35, -11.0);
                     } else {
                         this.camera.position.copy(current.pos);
                         this.camera.lookAt(current.target);
@@ -271,8 +277,8 @@
                 }
             } else if (current.label === 'Bowler') {
                 if (isMobile) {
-                    this.camera.position.set(0, 3.4, 5.8);
-                    this.camera.lookAt(0, 0.45, -13);
+                    this.camera.position.set(0, 3.6, 6.2);
+                    this.camera.lookAt(0, 0.4, -10.0);
                 } else {
                     this.camera.position.set(0, 2.7, 5.0);
                     this.camera.lookAt(0, 0.4, -15);
@@ -1091,7 +1097,8 @@
                 this.roundBadge.textContent = `Round ${this.currentFrame}/${this.maxFrames} • Chance ${this.currentRoll}/2`;
             }
             if (this.btnRollText) {
-                this.btnRollText.textContent = `ROLL (${this.currentRoll}/2)`;
+                const isNarrow = window.innerWidth < 580;
+                this.btnRollText.textContent = isNarrow ? 'ROLL' : `ROLL (${this.currentRoll}/2)`;
             }
         }
 
@@ -1320,6 +1327,7 @@
 
             container.addEventListener('pointerdown', (e) => {
                 if (e.target.closest && e.target.closest('.interactive')) return;
+                if (this.laneHint) this.laneHint.style.opacity = '0';
                 if (e.clientY > window.innerHeight * 0.35 && !this.isRolling && !this.isOrbitEnabled) {
                     isDragging = true;
                     onPointerMove(e);
@@ -1329,6 +1337,11 @@
             window.addEventListener('pointermove', onPointerMove);
             window.addEventListener('pointerup', () => { isDragging = false; });
             window.addEventListener('pointercancel', () => { isDragging = false; });
+
+            // Auto fade-out hint after 3.5s
+            setTimeout(() => {
+                if (this.laneHint) this.laneHint.style.opacity = '0';
+            }, 3500);
         }
 
         restartMatch() {

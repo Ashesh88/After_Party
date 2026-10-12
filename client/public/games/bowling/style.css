@@ -641,68 +641,155 @@ html, body {
         padding: 4px 6px;
     }
     .top-dock-panel {
-        padding: 5px 8px;
+        padding: 4px 6px;
         border-radius: 14px;
+        gap: 3px;
+    }
+    .top-row {
         gap: 4px;
     }
-    .status-floating-pill {
-        padding: 4px 8px;
+    .mode-btn {
+        font-size: 8.5px;
+        padding: 2.5px 5px;
     }
-    .announcer-text {
-        font-size: 10px;
+    .btn-icon {
+        height: 24px;
+        padding: 0 5px;
+        font-size: 9.5px;
+        gap: 3px;
     }
-    .round-badge {
+    .cam-badge {
         font-size: 8px;
     }
+    .scoreboards-dock {
+        gap: 4px;
+        padding: 1px 0;
+    }
+    .player-scorecard {
+        padding: 2px 6px;
+        border-radius: 8px;
+        gap: 4px;
+    }
+    .player-badge {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+    .player-name {
+        font-size: 9.5px;
+    }
+    .score-val {
+        font-size: 11px;
+    }
+    .score-pts {
+        font-size: 8px;
+    }
+    .status-floating-pill {
+        padding: 3px 6px;
+        border-radius: 12px;
+    }
+    .announcer-text {
+        font-size: 9.5px;
+    }
+    .round-badge {
+        font-size: 7.5px;
+    }
+    .pin-mini-radar {
+        gap: 1px;
+    }
+    .radar-row {
+        gap: 2px;
+    }
+    .radar-pin {
+        width: 3.5px;
+        height: 3.5px;
+    }
+    .lane-hint {
+        bottom: 74px;
+        font-size: 8.5px;
+        padding: 2px 8px;
+        white-space: nowrap;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+    }
+    .bottom-dock {
+        width: 100%;
+        max-width: 100%;
+    }
     .controls-glass-bar {
-        padding: 6px 8px;
+        padding: 5px 8px;
         border-radius: 16px;
-        gap: 6px;
+        gap: 4px;
     }
     .controls-row-1 {
-        gap: 6px;
+        gap: 4px;
+        width: 100%;
     }
     .pos-control-wrap,
     .angle-control-wrap {
-        gap: 3px;
+        gap: 2px;
+        min-width: 0;
     }
     .ctrl-tag {
-        font-size: 8px;
+        font-size: 7.5px;
     }
     .btn-step {
-        width: 19px;
-        height: 19px;
-        font-size: 8px;
+        width: 18px;
+        height: 18px;
+        font-size: 7.5px;
         border-radius: 4px;
     }
     .aim-slider {
         height: 4px;
+        min-width: 28px;
     }
     .aim-slider::-webkit-slider-thumb {
-        width: 14px;
-        height: 14px;
+        width: 13px;
+        height: 13px;
     }
     .controls-row-2 {
         gap: 4px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
     .spin-group,
     .speed-toggle {
-        padding: 2px;
-        gap: 2px;
+        padding: 1.5px 3px;
+        gap: 1.5px;
+        flex-shrink: 1;
     }
     .preset-btn,
     .speed-pill {
-        font-size: 8.5px;
-        padding: 3px 5px;
+        font-size: 8px;
+        padding: 2.5px 4px;
+        white-space: nowrap;
     }
     .btn-roll {
+        flex: 1;
+        flex-shrink: 0;
+        min-width: 65px;
+        max-width: none;
         font-size: 11px;
-        padding: 6px 10px;
-        max-width: 95px;
+        font-weight: 900;
+        padding: 6px 8px;
+        white-space: nowrap;
+        box-shadow: 0 2px 10px rgba(168, 85, 247, 0.4);
     }
-    .lane-hint {
-        bottom: 82px;
-        font-size: 9px;
-        padding: 3px 8px;
+}
+
+@media (max-width: 380px) {
+    .ctrl-tag {
+        display: none;
+    }
+    .preset-btn,
+    .speed-pill {
+        font-size: 7.5px;
+        padding: 2px 3px;
+    }
+    .btn-roll {
+        font-size: 10px;
+        padding: 5px 6px;
+        min-width: 58px;
     }
 }

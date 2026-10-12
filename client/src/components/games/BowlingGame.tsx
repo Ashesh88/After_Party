@@ -26,10 +26,10 @@ export default function BowlingGame({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#090814] flex flex-col select-none">
-      <header className="h-13 sm:h-14 px-3 sm:px-4 flex items-center justify-between border-b border-white/10 bg-black/70 backdrop-blur-xl z-20">
+      <header className="h-11 sm:h-13 px-2.5 sm:px-4 flex items-center justify-between border-b border-white/10 bg-black/80 backdrop-blur-xl z-20 shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer shrink-0"
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-[11px] sm:text-xs font-semibold text-slate-200 transition-colors cursor-pointer shrink-0"
         >
           <ArrowLeft className="w-4 h-4 text-purple-400" />
           <span>Arcade</span>
