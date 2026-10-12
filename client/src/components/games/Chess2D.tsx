@@ -1177,89 +1177,43 @@ export default function Chess2D({ onBack }: Chess2DProps) {
       ref={boardContainerRef}
       className="fixed inset-0 z-[100] bg-[#090b10] text-slate-100 flex flex-col select-none overflow-hidden font-sans"
     >
-      {/* Top Navigation Bar */}
-      <header className="h-14 px-3 sm:px-5 flex items-center justify-between border-b border-white/10 bg-[#0c0e14]/95 backdrop-blur-md z-30 shrink-0">
+      {/* Top Navigation Bar - Compact and 100% visible on Mobile & Desktop */}
+      <header className="h-14 px-2.5 sm:px-5 flex items-center justify-between border-b border-white/10 bg-[#0c0e14]/95 backdrop-blur-md z-30 shrink-0 w-full">
         {/* Left: Back & Title */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <button
             onClick={handleLeaveGame}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-amber-400" />
             <span className="hidden sm:inline">Arcade</span>
           </button>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-300 to-amber-200">
-              Classic 2D Chess
+              <span className="sm:hidden">Chess</span>
+              <span className="hidden sm:inline">Classic 2D Chess</span>
             </span>
           </div>
         </div>
 
-        {/* Center: Mode Tabs */}
-        <div className="flex items-center gap-1 sm:gap-2">
-          <div className="flex items-center p-0.5 rounded-xl bg-white/[0.06] border border-white/10 text-xs">
-            <button
-              onClick={() => handleSelectAiMode()}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                mode === 'ai'
-                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs">Solo AI</span>
-            </button>
-            <button
-              onClick={handleSelectPassMode}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                mode === 'pass'
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Shuffle className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs hidden md:inline">Pass & Play</span>
-              <span className="text-[11px] sm:text-xs md:hidden">2P</span>
-            </button>
-            <button
-              onClick={() => {
-                fetchFriends();
-                setShowFriendsModal(true);
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                mode === 'online'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs">Play Friend</span>
-            </button>
-          </div>
-
-          {/* AI Difficulty dropdown */}
-          {mode === 'ai' && (
-            <select
-              value={aiDifficulty}
-              onChange={(e) => handleSelectAiMode(e.target.value as 'easy' | 'medium' | 'hard')}
-              className="hidden lg:inline-block bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 rounded-xl px-2.5 py-1 text-[11px] font-semibold text-slate-200 outline-none cursor-pointer"
-            >
-              <option value="easy" className="bg-[#12141c] text-white">Casual (Easy)</option>
-              <option value="medium" className="bg-[#12141c] text-white">Tactician (Medium)</option>
-              <option value="hard" className="bg-[#12141c] text-white">Grandmaster (Hard)</option>
-            </select>
-          )}
-        </div>
-
-        {/* Right: Quick Tools */}
+        {/* Right: Sound, Chat, Challenge (Always Visible on Mobile & Desktop) */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Sound Toggle */}
+          <button
+            onClick={toggleMute}
+            title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
+            className="p-1.5 sm:p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
+          </button>
+
           {/* In-Game Match Chat Toggle */}
           <button
             onClick={() => {
               setShowChatModal(true);
               setUnreadChatCount(0);
             }}
-            className="relative p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="relative p-1.5 sm:p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
             title="Match Chat"
           >
             <MessageSquare className="w-4 h-4 text-cyan-400" />
@@ -1270,22 +1224,13 @@ export default function Chess2D({ onBack }: Chess2DProps) {
             )}
           </button>
 
-          {/* Sound Toggle */}
-          <button
-            onClick={toggleMute}
-            title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
-            className="p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white transition-colors cursor-pointer"
-          >
-            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
-          </button>
-
           {/* Friend Challenge Button */}
           <button
             onClick={() => {
               fetchFriends();
               setShowFriendsModal(true);
             }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 hover:from-amber-500/30 to-orange-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 hover:from-amber-500/30 to-orange-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all cursor-pointer shadow-sm"
           >
             <Swords className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Challenge</span>
@@ -1295,7 +1240,7 @@ export default function Chess2D({ onBack }: Chess2DProps) {
           <button
             onClick={handleToggleFullscreen}
             title="Fullscreen"
-            className="hidden sm:flex p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="hidden md:flex p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
@@ -1325,6 +1270,70 @@ export default function Chess2D({ onBack }: Chess2DProps) {
 
         {/* Board and Player Area Container */}
         <div className="flex flex-col items-center justify-center w-full max-w-[530px]">
+          {/* Mode Tabs & AI Difficulty Bar (Always Visible on Mobile & Desktop) */}
+          <div className="w-full flex items-center justify-between gap-1.5 mb-2 px-1">
+            {/* Mode Switcher */}
+            <div className="flex items-center p-0.5 rounded-xl bg-white/[0.06] border border-white/10 text-xs">
+              <button
+                onClick={() => handleSelectAiMode()}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  mode === 'ai'
+                    ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span className="text-[11px] sm:text-xs">Solo AI</span>
+              </button>
+              <button
+                onClick={handleSelectPassMode}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  mode === 'pass'
+                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                <span className="text-[11px] sm:text-xs">2P</span>
+              </button>
+              <button
+                onClick={() => {
+                  fetchFriends();
+                  setShowFriendsModal(true);
+                }}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  mode === 'online'
+                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span className="text-[11px] sm:text-xs">Friends</span>
+              </button>
+            </div>
+
+            {/* AI Difficulty Dropdown (Visible on Mobile & Desktop in Solo AI mode) */}
+            {mode === 'ai' && (
+              <div className="flex items-center gap-1">
+                <select
+                  value={aiDifficulty}
+                  onChange={(e) => handleSelectAiMode(e.target.value as 'easy' | 'medium' | 'hard')}
+                  className="bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/40 rounded-xl px-2 py-1 text-[11px] font-bold text-amber-300 outline-none cursor-pointer"
+                >
+                  <option value="easy" className="bg-[#12141c] text-white">Casual (Easy)</option>
+                  <option value="medium" className="bg-[#12141c] text-amber-300 font-bold">Tactician (Medium)</option>
+                  <option value="hard" className="bg-[#12141c] text-white">Grandmaster (Hard)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Online match room code badge */}
+            {mode === 'online' && sessionCode && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-[10px] font-mono text-cyan-200">
+                <span>{sessionCode}</span>
+              </div>
+            )}
+          </div>
           {/* Top Player Card (Opponent or Black) */}
           <div className="w-full flex items-center justify-between px-3.5 py-2 mb-2 rounded-2xl bg-white/[0.04] border border-white/10 text-xs shadow-md">
             <div className="flex items-center gap-2.5">
@@ -1613,6 +1622,23 @@ export default function Chess2D({ onBack }: Chess2DProps) {
                   <Flag className="w-4 h-4" />
                 </button>
               )}
+
+              {/* Chat Button (Quick Access from Bottom) */}
+              <button
+                onClick={() => {
+                  setShowChatModal(true);
+                  setUnreadChatCount(0);
+                }}
+                title="Match Chat"
+                className="relative p-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4" />
+                {unreadChatCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-[8px] font-black flex items-center justify-center text-white">
+                    {unreadChatCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
