@@ -223,13 +223,19 @@ export const useCallStore = create<CallState>((set, get) => ({
           displaySurface: 'browser',
           frameRate: { ideal: 30, max: 60 },
         },
-        audio: true, // Captures tab/system audio if user checks "Share tab audio"
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        } as any,
       });
 
       const screenVideoTrack = screenStream.getVideoTracks()[0];
       if (!screenVideoTrack) return;
 
       const currentVideoTrack = localStream.getVideoTracks()[0];
+      const micAudioTrack = localStream.getAudioTracks()[0];
+      const screenAudioTrack = screenStream.getAudioTracks()[0];
 
       // 1. Swap video track in WebRTC peer
       if (peer && currentVideoTrack) {
@@ -237,7 +243,7 @@ export const useCallStore = create<CallState>((set, get) => ({
           try {
             (peer as any).replaceTrack(currentVideoTrack, screenVideoTrack, localStream);
           } catch (e) {
-            console.warn('peer.replaceTrack warning on screenshare:', e);
+            console.warn('peer.replaceTrack warning on screenshare video:', e);
           }
         }
         if ((peer as any)._pc) {
@@ -248,26 +254,75 @@ export const useCallStore = create<CallState>((set, get) => ({
               await videoSender.replaceTrack(screenVideoTrack);
             }
           } catch (e) {
-            console.warn('videoSender.replaceTrack warning on screenshare:', e);
+            console.warn('videoSender.replaceTrack warning on screenshare video:', e);
           }
         }
       }
 
-      // Also swap / mix screen audio if available
-      const screenAudioTrack = screenStream.getAudioTracks()[0];
-      const audioTracks = [...localStream.getAudioTracks()];
+      // 2. Mix mic audio + screen tab audio so partner hears BOTH microphone & movie audio!
+      let outgoingAudioTrack: MediaStreamTrack | null = micAudioTrack || null;
+      let audioMixContext: AudioContext | null = null;
+
       if (screenAudioTrack) {
-        audioTracks.push(screenAudioTrack);
+        try {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioContextClass) {
+            audioMixContext = new AudioContextClass();
+            const dest = audioMixContext.createMediaStreamDestination();
+
+            // Screen audio source
+            const screenSource = audioMixContext.createMediaStreamSource(new MediaStream([screenAudioTrack]));
+            screenSource.connect(dest);
+
+            // Mic audio source (if user has mic track)
+            if (micAudioTrack) {
+              const micSource = audioMixContext.createMediaStreamSource(new MediaStream([micAudioTrack]));
+              micSource.connect(dest);
+            }
+
+            const mixedTrack = dest.stream.getAudioTracks()[0];
+            if (mixedTrack) {
+              outgoingAudioTrack = mixedTrack;
+            }
+          }
+        } catch (mixErr) {
+          console.warn('Audio mixing fallback to screen audio track:', mixErr);
+          outgoingAudioTrack = screenAudioTrack;
+        }
+
+        // Swap audio track in WebRTC peer sender so partner actually receives the movie sound!
+        if (peer && outgoingAudioTrack) {
+          if (typeof (peer as any).replaceTrack === 'function' && micAudioTrack) {
+            try {
+              (peer as any).replaceTrack(micAudioTrack, outgoingAudioTrack, localStream);
+            } catch (e) {
+              console.warn('peer.replaceTrack warning on audio:', e);
+            }
+          }
+          if ((peer as any)._pc) {
+            try {
+              const senders = (peer as any)._pc.getSenders();
+              const audioSender = senders.find((s: any) => s.track && s.track.kind === 'audio');
+              if (audioSender) {
+                await audioSender.replaceTrack(outgoingAudioTrack);
+              }
+            } catch (e) {
+              console.warn('audioSender.replaceTrack warning on audio:', e);
+            }
+          }
+        }
       }
 
-      // 2. Update local stream
+      // 3. Update local stream
       if (currentVideoTrack) {
         localStream.removeTrack(currentVideoTrack);
       }
       localStream.addTrack(screenVideoTrack);
 
+      const activeAudioTracks = outgoingAudioTrack ? [outgoingAudioTrack] : localStream.getAudioTracks();
+
       const updatedStream = new MediaStream([
-        ...audioTracks,
+        ...activeAudioTracks,
         screenVideoTrack,
       ]);
 
@@ -278,6 +333,9 @@ export const useCallStore = create<CallState>((set, get) => ({
 
       // Handle user stopping screen share via Chrome native floating bar ("Stop sharing")
       screenVideoTrack.onended = () => {
+        if (audioMixContext) {
+          try { audioMixContext.close(); } catch {}
+        }
         get().stopScreenShare();
       };
     } catch (err) {
