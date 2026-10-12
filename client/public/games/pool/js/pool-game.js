@@ -50,6 +50,8 @@ class PoolGameApp {
         this.initEntities();
         this.initEvents();
         this.setCameraView(this.cameraViewMode);
+        this.cue.visible = true;
+        this.updateAiming();
         this.updateHUD();
 
         this.animate = this.animate.bind(this);
@@ -451,6 +453,15 @@ class PoolGameApp {
                 if (e.data.playerGroups) this.playerGroups = e.data.playerGroups;
                 this.updateHUD();
                 this.updateAiming();
+            }
+
+            if (e.data.type === 'POOL_START_MATCH') {
+                if (this.cue) {
+                    this.cue.reset();
+                    this.cue.visible = true;
+                }
+                this.updateAiming();
+                this.updateHUD();
             }
 
             if (e.data.type === 'POOL_REMATCH') {
@@ -928,6 +939,13 @@ class PoolGameApp {
             } else if (this.physics.areAllBallsStationary(this.ballsData)) {
                 this.onShotComplete();
             }
+        } else {
+            // Idle safety: ensure cue stick and trajectory are visible if cue ball is alive and ready
+            const cueBall = this.ballsData[0];
+            if (cueBall && !cueBall.inPocket && !this.isBallInHand && !this.cue.visible) {
+                this.cue.visible = true;
+                this.updateAiming();
+            }
         }
 
         this.controls.update();
@@ -1355,6 +1373,11 @@ class PoolGameApp {
         const bar = document.getElementById('ball-in-hand-bar');
         if (bar) bar.style.display = 'none';
         this.spawnBalls();
+        if (this.cue) {
+            this.cue.reset();
+            this.cue.visible = true;
+        }
+        this.updateAiming();
         this.showStatus('New Rack! Player 1 breaks the balls');
         this.updateHUD();
     }

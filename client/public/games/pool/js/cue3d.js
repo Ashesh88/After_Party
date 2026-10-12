@@ -8,7 +8,7 @@ class PoolCue3D {
         this.guidelineGroup = new THREE.Group();
         this.angle = 0; // Radians
         this.power = 0.5; // 0.1 to 1.0
-        this.visible = true;
+        this._visible = true;
         this.isStriking = false;
 
         this.buildCueMesh();
@@ -16,6 +16,22 @@ class PoolCue3D {
 
         this.scene.add(this.cueGroup);
         this.scene.add(this.guidelineGroup);
+    }
+
+    get visible() {
+        return this._visible;
+    }
+
+    set visible(val) {
+        this._visible = Boolean(val);
+        if (this.cueGroup) this.cueGroup.visible = this._visible;
+        if (this.guidelineGroup) this.guidelineGroup.visible = this._visible;
+    }
+
+    reset() {
+        this.isStriking = false;
+        if (this.stickGroup) this.stickGroup.position.z = 0.25;
+        this.visible = true;
     }
 
     buildCueMesh() {
@@ -96,9 +112,11 @@ class PoolCue3D {
             gapSize: 0.06,
             linewidth: 2,
             transparent: true,
-            opacity: 0.95
+            opacity: 0.95,
+            depthTest: false
         });
         this.cueAimLine = new THREE.Line(cueLineGeo, cueLineMat);
+        this.cueAimLine.renderOrder = 999;
         this.guidelineGroup.add(this.cueAimLine);
 
         // 2. Ghost Ball Impact Ring & Sphere
@@ -107,10 +125,12 @@ class PoolCue3D {
             color: 0x38bdf8,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.85
+            opacity: 0.85,
+            depthTest: false
         });
         this.ghostRing = new THREE.Mesh(ghostRingGeo, ghostRingMat);
         this.ghostRing.rotation.x = -Math.PI / 2;
+        this.ghostRing.renderOrder = 999;
         this.guidelineGroup.add(this.ghostRing);
 
         const ghostSphereGeo = new THREE.SphereGeometry(0.108, 16, 16);
@@ -118,9 +138,11 @@ class PoolCue3D {
             color: 0xffffff,
             wireframe: true,
             transparent: true,
-            opacity: 0.25
+            opacity: 0.25,
+            depthTest: false
         });
         this.ghostSphere = new THREE.Mesh(ghostSphereGeo, ghostSphereMat);
+        this.ghostSphere.renderOrder = 999;
         this.guidelineGroup.add(this.ghostSphere);
 
         // 3. Target Ball Trajectory Path (Yellow/Cyan Glowing Line)
@@ -130,9 +152,11 @@ class PoolCue3D {
             color: 0xfacc15, // Bright Gold Arrow line
             linewidth: 3,
             transparent: true,
-            opacity: 0.95
+            opacity: 0.95,
+            depthTest: false
         });
         this.targetPathLine = new THREE.Line(targetLineGeo, targetLineMat);
+        this.targetPathLine.renderOrder = 999;
         this.guidelineGroup.add(this.targetPathLine);
 
         // 4. Cue Ball Deflection Path (Soft Blue Tangent Line)
@@ -144,9 +168,11 @@ class PoolCue3D {
             gapSize: 0.05,
             linewidth: 2,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.8,
+            depthTest: false
         });
         this.deflectPathLine = new THREE.Line(deflectLineGeo, deflectLineMat);
+        this.deflectPathLine.renderOrder = 999;
         this.guidelineGroup.add(this.deflectPathLine);
     }
 
@@ -268,14 +294,10 @@ class PoolCue3D {
 
             if (progress >= 1.0 && !hitCalled) {
                 hitCalled = true;
+                this.isStriking = false;
+                this.stickGroup.position.z = 0.25;
+                this.visible = false;
                 if (onHitCallback) onHitCallback();
-
-                // Recoil & hide cue during ball motion
-                setTimeout(() => {
-                    this.visible = false;
-                    this.isStriking = false;
-                    this.stickGroup.position.z = 0.25;
-                }, 40);
             } else if (progress < 1.0) {
                 requestAnimationFrame(animateStrike);
             }

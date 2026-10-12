@@ -204,7 +204,7 @@ class PoolPhysics {
     areAllBallsStationary(balls) {
         for (let i = 0; i < balls.length; i++) {
             const b = balls[i];
-            if (!b.inPocket && (Math.abs(b.vx) > 0 || Math.abs(b.vz) > 0)) {
+            if (!b.inPocket && Math.hypot(b.vx, b.vz) > 0.005) {
                 return false;
             }
         }

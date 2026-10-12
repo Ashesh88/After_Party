@@ -453,14 +453,6 @@
                 isRolling: false,
                 inGutter: false
             };
-
-            // Interactive Ball Position Ring (Carrom-style draggable cue marker)
-            const ringGeo = new THREE.RingGeometry(0.36, 0.46, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65, side: THREE.DoubleSide });
-            this.ballRing = new THREE.Mesh(ringGeo, ringMat);
-            this.ballRing.rotation.x = -Math.PI / 2;
-            this.ballRing.position.set(0, 0.016, 1.8);
-            this.scene.add(this.ballRing);
         }
 
         initTrajectoryGuide() {
@@ -479,46 +471,15 @@
             this.guideLine.computeLineDistances();
             this.scene.add(this.guideLine);
 
-            // Carrom-style Interactive Aim Target Reticle on Lane Floor
-            this.targetReticle = new THREE.Group();
-            const reticleOuter = new THREE.Mesh(
-                new THREE.RingGeometry(0.28, 0.38, 32),
-                new THREE.MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
-            );
-            reticleOuter.rotation.x = -Math.PI / 2;
-            this.targetReticle.add(reticleOuter);
-
-            const reticleInner = new THREE.Mesh(
-                new THREE.CircleGeometry(0.12, 16),
-                new THREE.MeshBasicMaterial({ color: 0xfb7185, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
-            );
-            reticleInner.rotation.x = -Math.PI / 2;
-            this.targetReticle.add(reticleInner);
-
-            this.targetReticle.position.set(0, 0.02, -8.0);
-            this.scene.add(this.targetReticle);
-
             this.updateTrajectoryGuide();
         }
 
         updateTrajectoryGuide() {
             if (!this.guideLine || this.isRolling) {
                 if (this.guideLine) this.guideLine.visible = false;
-                if (this.ballRing) this.ballRing.visible = false;
-                if (this.targetReticle) this.targetReticle.visible = false;
                 return;
             }
             this.guideLine.visible = true;
-            if (this.ballRing) {
-                this.ballRing.visible = true;
-                this.ballRing.position.x = this.aimX;
-            }
-            if (this.targetReticle) {
-                this.targetReticle.visible = true;
-                const targetZ = -8.0;
-                const targetX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX - (1.8 - targetZ) * Math.tan(this.aimAngle)));
-                this.targetReticle.position.set(targetX, 0.02, targetZ);
-            }
 
             const positions = this.guideLine.geometry.attributes.position.array;
             const pointCount = 27;
@@ -1340,94 +1301,34 @@
                 });
             }
 
-            // Carrom-style Direct Touch & Cursor Interaction: Drag Ball to Position, Drag Lane to Aim!
+            // Direct Touch/Drag on the 3D Lane to position the ball
             let isDragging = false;
-            let dragMode = null; // 'position' or 'aim'
             const container = this.container;
-            const raycaster = new THREE.Raycaster();
-            const laneFloorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const hitPoint = new THREE.Vector3();
 
-            const getLaneFloorIntersection = (clientX, clientY) => {
-                const rect = container.getBoundingClientRect();
-                const mouse = new THREE.Vector2(
-                    ((clientX - rect.left) / rect.width) * 2 - 1,
-                    -((clientY - rect.top) / rect.height) * 2 + 1
-                );
-                raycaster.setFromCamera(mouse, this.camera);
-                const hit = raycaster.ray.intersectPlane(laneFloorPlane, hitPoint);
-                return hit;
-            };
-
-            const onPointerStart = (clientX, clientY) => {
-                if (this.isRolling || this.isOrbitEnabled) return;
-                const hit = getLaneFloorIntersection(clientX, clientY);
-                if (!hit) return;
-
-                isDragging = true;
-                // If touching near the foul line / ball (z > -1.2): slide ball left/right across lane!
-                // If touching further down the lane (z <= -1.2): rotate aim direction towards target point!
-                if (hit.z > -1.2) {
-                    dragMode = 'position';
-                    this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, hit.x));
-                    if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
-                    this.ball.position.x = this.aimX;
-                    this.ballState.pos.x = this.aimX;
-                    this.updateTrajectoryGuide();
-                } else {
-                    dragMode = 'aim';
-                    const dx = hit.x - this.aimX;
-                    const dz = 1.8 - hit.z;
-                    if (dz > 0.1) {
-                        const angle = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, -Math.atan2(dx, dz)));
-                        this.aimAngle = angle;
-                        if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
-                        this.updateTrajectoryGuide();
-                    }
-                }
-            };
-
-            const onPointerMoveAction = (clientX, clientY) => {
+            const onPointerMove = (e) => {
                 if (!isDragging || this.isRolling || this.isOrbitEnabled) return;
-                const hit = getLaneFloorIntersection(clientX, clientY);
-                if (!hit) return;
-
-                if (dragMode === 'position') {
-                    this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, hit.x));
-                    if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
-                    this.ball.position.x = this.aimX;
-                    this.ballState.pos.x = this.aimX;
-                    this.updateTrajectoryGuide();
-                } else if (dragMode === 'aim') {
-                    const dx = hit.x - this.aimX;
-                    const dz = 1.8 - hit.z;
-                    if (dz > 0.1) {
-                        const angle = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, -Math.atan2(dx, dz)));
-                        this.aimAngle = angle;
-                        if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
-                        this.updateTrajectoryGuide();
-                    }
-                }
-            };
-
-            const onPointerEndAction = () => {
-                isDragging = false;
-                dragMode = null;
+                const rect = container.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const normX = (clientX - rect.left) / rect.width;
+                const computedAim = (normX - 0.5) * (LANE_WIDTH * 0.95);
+                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, computedAim));
+                if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
+                this.ball.position.x = this.aimX;
+                this.ballState.pos.x = this.aimX;
+                this.updateTrajectoryGuide();
             };
 
             container.addEventListener('pointerdown', (e) => {
-                if (e.target.closest('.interactive')) return;
-                onPointerStart(e.clientX, e.clientY);
-            });
-
-            window.addEventListener('pointermove', (e) => {
-                if (isDragging) {
-                    onPointerMoveAction(e.clientX, e.clientY);
+                if (e.target.closest && e.target.closest('.interactive')) return;
+                if (e.clientY > window.innerHeight * 0.35 && !this.isRolling && !this.isOrbitEnabled) {
+                    isDragging = true;
+                    onPointerMove(e);
                 }
             });
 
-            window.addEventListener('pointerup', onPointerEndAction);
-            window.addEventListener('pointercancel', onPointerEndAction);
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', () => { isDragging = false; });
+            window.addEventListener('pointercancel', () => { isDragging = false; });
         }
 
         restartMatch() {
