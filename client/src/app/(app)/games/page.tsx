@@ -103,7 +103,9 @@ const games = [
     desc: 'Quick 3-in-a-row showdown',
     icon: XCircle, 
     color: 'from-blue-500 to-cyan-500', 
-    tag: 'QUICK' 
+    tag: '3D SHOWDOWN',
+    video: '/videos/tictactoe-preview.mp4',
+    thumb: '/videos/tictactoe-thumb.jpg'
   },
   { 
     id: 'tod', 
@@ -111,7 +113,9 @@ const games = [
     desc: '100 intimate & spicy cards',
     icon: Sparkles, 
     color: 'from-purple-500 to-pink-500', 
-    tag: 'SPICY' 
+    tag: '3D SPICY',
+    video: '/videos/tod-preview.mp4',
+    thumb: '/videos/tod-thumb.jpg'
   },
   { 
     id: 'quiz', 
@@ -119,7 +123,9 @@ const games = [
     desc: 'How well do you know each other?',
     icon: HelpCircle, 
     color: 'from-orange-500 to-rose-500', 
-    tag: 'TRIVIA' 
+    tag: '3D TRIVIA',
+    video: '/videos/quiz-preview.mp4',
+    thumb: '/videos/quiz-thumb.jpg'
   },
   { 
     id: 'wyr', 
@@ -127,7 +133,9 @@ const games = [
     desc: 'Hilarious dilemnas for two',
     icon: Split, 
     color: 'from-emerald-500 to-teal-500', 
-    tag: 'FUN' 
+    tag: '3D ARCADE',
+    video: '/videos/wyr-preview.mp4',
+    thumb: '/videos/wyr-thumb.jpg'
   },
 ];
 
