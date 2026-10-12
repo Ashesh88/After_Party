@@ -53,7 +53,7 @@ export default function CallOverlay() {
     try {
       await switchCamera();
       const currentMode = useCallStore.getState().facingMode;
-      toast.success(currentMode === 'environment' ? 'Switched to back camera 📸' : 'Switched to front camera 🤳', {
+      toast.success(currentMode === 'environment' ? 'Switched to back camera' : 'Switched to front camera', {
         id: 'switch-camera-toast',
       });
     } catch (err: any) {
@@ -114,14 +114,14 @@ export default function CallOverlay() {
     const handleRejected = (data?: any) => {
       const currentUserId = useAuthStore.getState().user?._id;
       if (data?.receiverId && currentUserId && data.receiverId.toString() === currentUserId.toString()) return;
-      toast('Partner was unable to answer', { icon: '📞' });
+      toast('Partner was unable to answer');
       useCallStore.getState().endCall(null);
     };
 
     const handleHangup = (data?: any) => {
       const currentUserId = useAuthStore.getState().user?._id;
       if (data?.senderId && currentUserId && data.senderId.toString() === currentUserId.toString()) return;
-      toast('Call ended', { icon: '📞' });
+      toast('Call ended');
       useCallStore.getState().endCall(null);
     };
 
