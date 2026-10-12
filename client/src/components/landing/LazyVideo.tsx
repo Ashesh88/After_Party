@@ -48,11 +48,11 @@ export default function LazyVideo({ src, poster, ariaLabel, className }: LazyVid
         muted
         playsInline
         aria-label={ariaLabel}
-        className={className || 'w-full h-full object-cover pointer-events-none'}
+        className={className || 'absolute inset-x-0 top-0 w-full h-[110%] object-cover object-top pointer-events-none'}
         style={{ objectPosition: 'top center' }}
       />
       {/* Subtle bottom edge gradient to ensure any bottom-right corner watermark is completely invisible */}
-      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#121224] via-[#121224]/70 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#121224] via-[#121224]/85 to-transparent pointer-events-none" />
     </div>
   );
 }
