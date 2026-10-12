@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useMoodStore, MOOD_CONFIG } from '../lib/store/moodStore';
 import { useSocketStore } from '../lib/store/socketStore';
 import { soundService } from '../lib/soundService';
@@ -9,12 +10,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, Flame, Users, CloudRain } from 'lucide-react';
 
 export default function MoodAtmosphereOverlay() {
+  const pathname = usePathname();
   const moodTheme = useMoodStore((state) => state.moodTheme);
   const socket = useSocketStore((state) => state.socket);
   const [nudgeAlert, setNudgeAlert] = useState<{ emoji: string; text: string; sender: string } | null>(null);
 
   const currentMood = moodTheme.current || 'love';
   const config = MOOD_CONFIG[currentMood] || MOOD_CONFIG.love;
+  const isGamesPage = pathname?.startsWith('/games');
 
   // Listen to socket mood:nudge event from partner
   useEffect(() => {
@@ -37,8 +40,9 @@ export default function MoodAtmosphereOverlay() {
 
   return (
     <>
-      {/* Interactive Particle Atmosphere */}
-      <div className="fixed inset-0 pointer-events-none z-[2] overflow-hidden select-none">
+      {/* Interactive Particle Atmosphere - disabled on games canvas and kept strictly in background */}
+      {!isGamesPage && (
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
         {/* LOVE: Floating glowing hearts */}
         {currentMood === 'love' && (
           <div className="absolute inset-0">
@@ -123,6 +127,7 @@ export default function MoodAtmosphereOverlay() {
           </div>
         )}
       </div>
+      )}
 
       {/* Floating Center Screen Partner Nudge Notification */}
       <AnimatePresence>

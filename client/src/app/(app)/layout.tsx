@@ -51,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Floating dynamic mood atmosphere particles */}
       <MoodAtmosphereOverlay />
 
-      <div className="relative">{children}</div>
+      <div className="relative z-10">{children}</div>
       <BottomNav />
       <CallOverlay />
       <MoodThemeModal />
