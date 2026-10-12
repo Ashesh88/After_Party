@@ -52,7 +52,10 @@
 
             <!-- Announcer Pill & 10-Pin Mini Radar -->
             <div class="status-floating-pill">
-                <span class="announcer-text" id="announcer-text">Player 1: Aim & Roll!</span>
+                <div class="announcer-col">
+                    <span class="announcer-text" id="announcer-text">Player 1: Aim & Roll!</span>
+                    <span class="round-badge" id="round-badge">Round 1/10 • Chance 1/2</span>
+                </div>
                 <div class="pin-mini-radar" id="pin-radar" title="10-Pin Radar">
                     <!-- Row 4 -->
                     <div class="radar-row">
@@ -83,38 +86,46 @@
         <!-- Touch Lane Drag Hint -->
         <div class="lane-hint" id="lane-hint">
             <i class="fa-solid fa-hand-pointer"></i>
-            <span>Drag lane to position ball</span>
+            <span>Drag lane to position ball & direction</span>
         </div>
 
         <!-- Sleek Transparent Floating Bottom Control Dock -->
         <footer class="bottom-dock interactive">
             <div class="controls-glass-bar">
-                <!-- Position track with steppers -->
+                <!-- Position & Aim Angle Row -->
                 <div class="controls-row-1">
-                    <div class="pos-control-wrap">
-                        <span class="ctrl-tag"><i class="fa-solid fa-arrows-left-right"></i> POSITION:</span>
-                        <button class="btn-step" id="btn-pos-left" title="Step Left"><i class="fa-solid fa-chevron-left"></i></button>
-                        <input type="range" min="-1.46" max="1.46" step="0.01" value="0" id="slider-pos" class="aim-slider">
-                        <button class="btn-step" id="btn-pos-right" title="Step Right"><i class="fa-solid fa-chevron-right"></i></button>
+                    <div class="pos-control-wrap" title="Ball Position Across Lane">
+                        <span class="ctrl-tag"><i class="fa-solid fa-arrows-left-right"></i> POS:</span>
+                        <button class="btn-step" id="btn-pos-left" title="Move Left"><i class="fa-solid fa-chevron-left"></i></button>
+                        <input type="range" min="-1.46" max="1.46" step="0.01" value="0" id="slider-pos" class="aim-slider" title="Position">
+                        <button class="btn-step" id="btn-pos-right" title="Move Right"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+
+                    <div class="angle-control-wrap" title="Aim Direction Angle">
+                        <span class="ctrl-tag"><i class="fa-solid fa-compass"></i> AIM:</span>
+                        <button class="btn-step" id="btn-angle-left" title="Steer Angle Left"><i class="fa-solid fa-arrow-turn-up fa-rotate-270"></i></button>
+                        <input type="range" min="-0.07" max="0.07" step="0.005" value="0" id="slider-angle" class="aim-slider" title="Aim Angle">
+                        <button class="btn-step" id="btn-angle-right" title="Steer Angle Right"><i class="fa-solid fa-arrow-turn-down fa-rotate-270"></i></button>
                     </div>
                 </div>
 
-                <!-- Spin, Power & Roll button in one sleek row -->
+                <!-- Spin Presets, Speed Selector & Roll Button Row -->
                 <div class="controls-row-2">
-                    <div class="spin-group">
-                        <button class="preset-btn" id="btn-preset-hook-l" title="Hook Left">◀ Hook L</button>
-                        <button class="preset-btn active" id="btn-preset-straight" title="Straight">Straight</button>
-                        <button class="preset-btn" id="btn-preset-hook-r" title="Hook Right">Hook R ▶</button>
+                    <div class="spin-group" title="Ball Spin Curve">
+                        <button class="preset-btn" id="btn-preset-hook-l" title="Hook Left (Curves Left)">Hook L</button>
+                        <button class="preset-btn active" id="btn-preset-straight" title="Straight Path">Straight</button>
+                        <button class="preset-btn" id="btn-preset-hook-r" title="Hook Right (Curves Right)">Hook R</button>
                     </div>
 
-                    <div class="power-toggle">
-                        <button class="power-pill active" data-power="normal" title="Normal Power">Normal</button>
-                        <button class="power-pill" data-power="turbo" title="Turbo Strike Power">Turbo</button>
+                    <div class="speed-toggle" title="Throw Speed">
+                        <button class="speed-pill" data-speed="slow" title="Slow Control Speed">18 km/h</button>
+                        <button class="speed-pill active" data-speed="normal" title="Normal Speed">26 km/h</button>
+                        <button class="speed-pill" data-speed="fast" title="Fast Strike Power">36 km/h</button>
                     </div>
 
-                    <button class="btn-roll" id="btn-roll">
+                    <button class="btn-roll" id="btn-roll" title="Roll Bowling Ball">
                         <i class="fa-solid fa-bowling-ball"></i>
-                        <span>ROLL</span>
+                        <span id="btn-roll-text">ROLL</span>
                     </button>
                 </div>
             </div>

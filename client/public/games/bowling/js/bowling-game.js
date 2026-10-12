@@ -20,9 +20,12 @@
     const GUTTER_LEFT_X = -2.12;
     const GUTTER_RIGHT_X = 2.12;
     const HARD_LIMIT_X = 2.22;
-    const STEER_SPEED_AIM = 2.5; // units per second during aiming
-    const STEER_FORCE_ROLL = 4.2; // lateral steering acceleration during roll
-    const BASE_ROLL_SPEED = -22.0; // units per second forward velocity
+    const STEER_SPEED_AIM = 2.5; // units per second for position
+    const ANGLE_STEER_SPEED = 0.12; // radians per second for aim angle
+    const ANGLE_MIN = -0.07; // ~4.0 degrees left
+    const ANGLE_MAX = 0.07;  // ~4.0 degrees right
+    const STEER_FORCE_ROLL = 3.8; // lateral steering during roll
+    const BASE_ROLL_SPEED = -22.0; // forward base velocity
 
     class CosmicBowling3D {
         constructor() {
@@ -32,24 +35,30 @@
             this.urlP1 = params.get('p1') || 'You';
             this.urlP2 = params.get('p2') || 'Friend';
 
-            // Match State
+            // Match State (10 Rounds, 2 Chances each per player)
             this.gameMode = '2p'; // 'ai', '2p', '3p', '4p'
             this.maxFrames = 10;
-            this.currentFrame = 1;
+            this.currentFrame = 1; // 1 to 10
             this.currentRoll = 1; // 1 or 2
+            this.roll1Knocked = 0;
+            this.roll2Knocked = 0;
             this.activePlayerIndex = 0;
             this.players = [];
 
-            // Aim & Power
+            // Aim Position, Direction Angle, Spin Curve & Throw Speed
             this.aimX = 0; // -1.46 to 1.46
-            this.aimSpin = 0; // -0.035 to 0.035
-            this.powerMultiplier = 0.85;
+            this.aimAngle = 0; // -0.07 to 0.07 radians
+            this.aimSpinMode = 'straight'; // 'hook-l', 'straight', 'hook-r'
+            this.aimSpinForce = 0;
+            this.throwSpeedMode = 'normal'; // 'slow', 'normal', 'fast'
+            this.speedMultiplier = 1.0; // 0.78 (18km/h), 1.0 (26km/h), 1.30 (36km/h)
             this.isRolling = false;
+            this.rollTimeout = null;
 
             // Frame-rate Independent Clock & Controls
             this.clock = new THREE.Clock();
-            this.keys = { left: false, right: false };
-            this.stepperHold = { left: false, right: false };
+            this.keys = { posLeft: false, posRight: false, angleLeft: false, angleRight: false };
+            this.stepperHold = { posLeft: false, posRight: false, angleLeft: false, angleRight: false };
 
             // Camera & OrbitControls
             this.isOrbitEnabled = false;
@@ -88,8 +97,11 @@
         cacheDOM() {
             this.scoreboardsDock = document.getElementById('scoreboards-dock');
             this.announcerText = document.getElementById('announcer-text');
+            this.roundBadge = document.getElementById('round-badge');
             this.sliderPos = document.getElementById('slider-pos');
+            this.sliderAngle = document.getElementById('slider-angle');
             this.btnRoll = document.getElementById('btn-roll');
+            this.btnRollText = document.getElementById('btn-roll-text');
             this.btnCam = document.getElementById('btn-cam');
             this.camBadge = document.getElementById('cam-badge');
             this.btnOrbit = document.getElementById('btn-orbit');
@@ -133,6 +145,8 @@
             this.activePlayerIndex = 0;
             this.currentFrame = 1;
             this.currentRoll = 1;
+            this.roll1Knocked = 0;
+            this.roll2Knocked = 0;
             this.renderScorecards();
             this.updateActivePlayerBall();
         }
@@ -149,7 +163,7 @@
                 chip.innerHTML = `
                     <span class="p-badge ${p.id}-badge">${p.badgeText}</span>
                     <span class="p-name">${p.name}</span>
-                    <span class="score-num" id="${p.id}-score-val">${p.score}</span>
+                    <span class="score-num" id="${p.id}-score-val">${p.score} PTS</span>
                 `;
                 this.scoreboardsDock.appendChild(chip);
             });
@@ -234,8 +248,19 @@
         updateCameraPosition() {
             if (this.isOrbitEnabled && this.controls) return;
 
+            const isMobile = window.innerWidth < 650;
             const current = this.camViews[this.camViewIndex];
-            if (this.camViewIndex === 2 && this.isRolling) {
+
+            if (this.camViewIndex === 0) {
+                // Bowler view: elevate on mobile so ball at z=1.8 and pins are framed clearly above bottom dock
+                if (isMobile) {
+                    this.camera.position.set(0, 3.4, 5.8);
+                    this.camera.lookAt(0, 0.45, -13);
+                } else {
+                    this.camera.position.set(0, 2.7, 5.0);
+                    this.camera.lookAt(0, 0.4, -15);
+                }
+            } else if (this.camViewIndex === 2 && this.isRolling) {
                 // Action cam follows ball down lane
                 const bPos = this.ball ? this.ball.position : new THREE.Vector3(0, 0.34, 1.8);
                 this.camera.position.set(bPos.x * 0.35, 1.8, bPos.z + 3.4);
@@ -420,14 +445,14 @@
 
         initTrajectoryGuide() {
             const points = [];
-            for (let i = 0; i <= 22; i++) {
-                points.push(new THREE.Vector3(0, 0.02, 1.8 - i * 1.0));
+            for (let i = 0; i <= 26; i++) {
+                points.push(new THREE.Vector3(0, 0.025, 1.8 - i * 0.95));
             }
             const guideGeo = new THREE.BufferGeometry().setFromPoints(points);
             this.guideMat = new THREE.LineDashedMaterial({
-                color: 0xfbbf24,
-                dashSize: 0.4,
-                gapSize: 0.25,
+                color: 0x38bdf8,
+                dashSize: 0.35,
+                gapSize: 0.2,
                 linewidth: 2
             });
             this.guideLine = new THREE.Line(guideGeo, this.guideMat);
@@ -444,14 +469,22 @@
             this.guideLine.visible = true;
 
             const positions = this.guideLine.geometry.attributes.position.array;
-            let curX = this.aimX;
-            let velX = this.aimSpin * 7.5;
+            const pointCount = 27;
+            let simX = this.aimX;
+            const fwdSpeed = Math.abs(BASE_ROLL_SPEED) * this.speedMultiplier;
+            let simVx = -fwdSpeed * Math.tan(this.aimAngle);
+            const dtSim = 0.045;
 
-            for (let i = 0; i <= 22; i++) {
-                const z = 1.8 - i * 1.0;
-                curX += velX * 0.12;
-                positions[i * 3] = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, curX));
-                positions[i * 3 + 1] = 0.02;
+            for (let i = 0; i < pointCount; i++) {
+                const z = 1.8 - i * 0.95;
+                const backendFactor = (i / pointCount);
+                simVx += this.aimSpinForce * backendFactor * dtSim;
+                simVx *= Math.pow(0.93, dtSim * 60);
+                simX += simVx * dtSim;
+
+                const clampedX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, simX));
+                positions[i * 3] = clampedX;
+                positions[i * 3 + 1] = 0.025;
                 positions[i * 3 + 2] = z;
             }
             this.guideLine.geometry.attributes.position.needsUpdate = true;
@@ -562,15 +595,27 @@
         }
 
         updateControls(dt) {
-            let moveDir = 0;
-            if (this.keys.left || this.stepperHold.left) moveDir -= 1;
-            if (this.keys.right || this.stepperHold.right) moveDir += 1;
+            // Position adjustment
+            let movePos = 0;
+            if (this.keys.posLeft || this.stepperHold.posLeft) movePos -= 1;
+            if (this.keys.posRight || this.stepperHold.posRight) movePos += 1;
 
-            if (moveDir !== 0) {
-                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX + moveDir * STEER_SPEED_AIM * dt));
+            if (movePos !== 0) {
+                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX + movePos * STEER_SPEED_AIM * dt));
                 if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
                 this.ball.position.x = this.aimX;
                 this.ballState.pos.x = this.aimX;
+                this.updateTrajectoryGuide();
+            }
+
+            // Aim angle adjustment
+            let moveAngle = 0;
+            if (this.keys.angleLeft || this.stepperHold.angleLeft) moveAngle -= 1;
+            if (this.keys.angleRight || this.stepperHold.angleRight) moveAngle += 1;
+
+            if (moveAngle !== 0) {
+                this.aimAngle = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, this.aimAngle + moveAngle * ANGLE_STEER_SPEED * dt));
+                if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
                 this.updateTrajectoryGuide();
             }
         }
@@ -582,12 +627,24 @@
             if (this.laneHint) this.laneHint.style.opacity = '0';
             if (this.guideLine) this.guideLine.visible = false;
 
-            // Roll starting from z = 1.8, grounded at BALL_Y_LANE
+            // Start watchdog timer: 3.2s failsafe max roll duration
+            if (this.rollTimeout) clearTimeout(this.rollTimeout);
+            this.rollTimeout = setTimeout(() => {
+                if (this.isRolling) {
+                    this.finishCurrentRoll();
+                }
+            }, 3200);
+
+            // Starting position at foul line z = 1.8
             this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX));
             this.ballState.pos.set(this.aimX, BALL_Y_LANE, 1.8);
-            const baseSpeed = BASE_ROLL_SPEED * this.powerMultiplier;
-            this.ballState.vel.set(0, 0, baseSpeed);
-            this.ballState.spin = this.aimSpin;
+
+            // Forward velocity and lateral heading angle
+            const fwdSpeed = BASE_ROLL_SPEED * this.speedMultiplier;
+            const lateralSpeed = -fwdSpeed * Math.tan(this.aimAngle);
+
+            this.ballState.vel.set(lateralSpeed, 0, fwdSpeed);
+            this.ballState.spinForce = this.aimSpinForce;
             this.ballState.inGutter = false;
 
             this.ball.position.copy(this.ballState.pos);
@@ -600,27 +657,31 @@
 
             const safeDt = Math.min(dt || 0.016, 0.05);
 
-            // Ball lateral steering & curving
+            // Ball lateral translation with curve spin & steering
             if (!this.ballState.inGutter) {
                 let steerInput = 0;
-                if (this.keys.left || this.stepperHold.left) steerInput -= 1;
-                if (this.keys.right || this.stepperHold.right) steerInput += 1;
+                if (this.keys.posLeft || this.keys.angleLeft) steerInput -= 1;
+                if (this.keys.posRight || this.keys.angleRight) steerInput += 1;
 
-                this.ballState.vel.x += (steerInput * STEER_FORCE_ROLL + this.ballState.spin * 36.0) * safeDt;
-                const lateralDamping = Math.pow(0.85, safeDt * 60);
+                // Hook spin develops strongly as the ball nears the pins (backend hook)
+                const distanceRatio = Math.max(0, Math.min(1, (1.8 - this.ballState.pos.z) / 22.0));
+                const hookCurve = this.ballState.spinForce * (0.4 + 0.9 * distanceRatio);
+
+                this.ballState.vel.x += (steerInput * STEER_FORCE_ROLL + hookCurve) * safeDt;
+                const lateralDamping = Math.pow(0.88, safeDt * 60);
                 this.ballState.vel.x *= lateralDamping;
 
                 this.ballState.pos.x += this.ballState.vel.x * safeDt;
                 this.ballState.pos.y = BALL_Y_LANE;
 
-                // Gutter drop detection when ball rolls off lane edge (lane half-width is 1.80)
+                // Gutter drop detection when ball rolls off lane edge
                 if (Math.abs(this.ballState.pos.x) > 1.80) {
                     this.ballState.inGutter = true;
                     this.ballState.vel.x = 0;
                     if (window.bowlingAudio) window.bowlingAudio.playGutter();
                 }
             } else {
-                // Ball in gutter channel: disabled steering, smooth channel follow towards pins
+                // Ball in gutter channel
                 const targetGutterX = this.ballState.pos.x < 0 ? GUTTER_LEFT_X : GUTTER_RIGHT_X;
                 this.ballState.pos.x = THREE.MathUtils.lerp(this.ballState.pos.x, targetGutterX, safeDt * 8);
                 this.ballState.pos.y = THREE.MathUtils.lerp(this.ballState.pos.y, BALL_Y_GUTTER, safeDt * 8);
@@ -651,7 +712,7 @@
                     hitOccurred = true;
                     pin.isKnocked = true;
                     const hitDir = new THREE.Vector3().subVectors(pin.mesh.position, this.ballState.pos).normalize();
-                    const force = 18.0 * this.powerMultiplier;
+                    const force = 18.0 * this.speedMultiplier;
                     pin.vel.copy(hitDir).multiplyScalar(force);
                     pin.angVel.set(
                         (Math.random() - 0.5) * 20.0,
@@ -706,60 +767,65 @@
         }
 
         finishCurrentRoll() {
+            if (!this.isRolling) return;
             this.isRolling = false;
+            if (this.rollTimeout) {
+                clearTimeout(this.rollTimeout);
+                this.rollTimeout = null;
+            }
             if (window.bowlingAudio) window.bowlingAudio.stopRollSound();
 
-            const totalKnocked = this.pins.filter(p => p.isKnocked).length;
-            const pinsThisRoll = totalKnocked - this.pinsKnockedThisFrame;
-            this.pinsKnockedThisFrame = totalKnocked;
-
-            const isStrike = this.currentRoll === 1 && totalKnocked === 10;
-            const isSpare = this.currentRoll === 2 && totalKnocked === 10;
-
-            if (isStrike) {
-                this.showCelebration('STRIKE!', 'Perfect Pocket Hit!');
-                if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
-            } else if (isSpare) {
-                this.showCelebration('SPARE!', 'Cleaned the Deck!');
-                if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
-            } else if (pinsThisRoll === 0 && this.ballState.inGutter) {
-                this.showCelebration('GUTTER BALL!', 'Zero pins knocked');
-            }
-
+            const knockedCount = this.pins.filter(p => p.isKnocked).length;
             const activePlayer = this.players[this.activePlayerIndex];
             const f = activePlayer.frames[this.currentFrame - 1];
 
             if (this.currentRoll === 1) {
-                f.r1 = isStrike ? 'X' : pinsThisRoll;
-                if (isStrike) {
-                    const prevTotal = this.currentFrame > 1 ? activePlayer.frames[this.currentFrame - 2].total || 0 : 0;
-                    f.total = prevTotal + 10;
-                    activePlayer.score = f.total;
-                    this.renderScorecards();
-                    this.triggerSweeperAnimation(() => {
-                        this.nextPlayerTurn();
-                    });
-                    return;
-                } else {
-                    this.currentRoll = 2;
-                    this.renderScorecards();
-                    this.triggerSweeperAnimation(() => {
-                        this.pins.forEach(p => {
-                            if (p.isKnocked) p.mesh.visible = false;
-                        });
-                        this.resetBallPosition();
-                        this.btnRoll.disabled = false;
-                        this.setAnnouncer(`${activePlayer.name}: Roll 2 (${10 - totalKnocked} left)`);
-                    });
-                    return;
-                }
-            } else {
-                f.r2 = isSpare ? '/' : pinsThisRoll;
-                const prevTotal = this.currentFrame > 1 ? activePlayer.frames[this.currentFrame - 2].total || 0 : 0;
-                f.total = prevTotal + totalKnocked;
-                activePlayer.score = f.total;
-                this.renderScorecards();
+                // Roll 1 finished
+                this.roll1Knocked = knockedCount;
+                f.r1 = knockedCount === 10 ? 'X' : knockedCount;
 
+                if (knockedCount === 10) {
+                    this.showCelebration('STRIKE!', '10 Pins in Chance 1!');
+                    if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
+                } else if (knockedCount === 0 && this.ballState.inGutter) {
+                    this.showCelebration('GUTTER BALL!', 'Zero pins knocked');
+                } else {
+                    this.showCelebration(knockedCount + ' PINS!', 'Chance 1 complete');
+                }
+
+                // Advance to Chance 2 of this round
+                this.currentRoll = 2;
+                this.renderScorecards();
+                this.triggerSweeperAnimation(() => {
+                    // Set up fresh 10 pins for Chance 2 so player can knock more pins (e.g. 7 + 5 = 12)
+                    this.setup10Pins();
+                    this.resetBallPosition();
+                    this.updateHUD();
+
+                    if (activePlayer.isAI) {
+                        this.btnRoll.disabled = true;
+                        setTimeout(() => this.playAIRoll(), 900);
+                    } else {
+                        this.btnRoll.disabled = false;
+                    }
+                });
+            } else {
+                // Roll 2 finished
+                this.roll2Knocked = knockedCount;
+                f.r2 = knockedCount === 10 ? 'X' : knockedCount;
+
+                const roundTotal = this.roll1Knocked + this.roll2Knocked;
+                f.total = roundTotal;
+                activePlayer.score += roundTotal;
+
+                if (knockedCount === 10) {
+                    this.showCelebration('STRIKE!', '10 Pins in Chance 2!');
+                    if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
+                } else {
+                    this.showCelebration('+' + roundTotal + ' PTS!', activePlayer.name + ' Round ' + this.currentFrame + ' Total');
+                }
+
+                this.renderScorecards();
                 this.triggerSweeperAnimation(() => {
                     this.nextPlayerTurn();
                 });
@@ -803,6 +869,8 @@
 
         nextPlayerTurn() {
             this.currentRoll = 1;
+            this.roll1Knocked = 0;
+            this.roll2Knocked = 0;
             this.pinsKnockedThisFrame = 0;
             this.setup10Pins();
             this.resetBallPosition();
@@ -823,7 +891,7 @@
             this.updateHUD();
 
             const p = this.players[this.activePlayerIndex];
-            this.setAnnouncer(`${p.name}'s Turn • Frame ${this.currentFrame}`);
+            this.setAnnouncer(`${p.name}'s Turn • Round ${this.currentFrame}/${this.maxFrames}`);
 
             if (p.isAI) {
                 this.btnRoll.disabled = true;
@@ -835,23 +903,96 @@
 
         playAIRoll() {
             if (this.isRolling) return;
-            this.aimX = (Math.random() - 0.5) * 2.2;
-            this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX));
-            this.aimSpin = (Math.random() - 0.5) * 0.02;
+            // Strategic lane approach towards pocket
+            const targetOffset = (Math.random() - 0.5) * 1.0;
+            this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, targetOffset));
+
+            // Slight aim angle towards pocket
+            this.aimAngle = (Math.random() - 0.5) * 0.04;
+
+            // Spin selection
+            const spinChoice = Math.random();
+            if (spinChoice < 0.3) {
+                this.setSpinMode('hook-l');
+            } else if (spinChoice < 0.6) {
+                this.setSpinMode('hook-r');
+            } else {
+                this.setSpinMode('straight');
+            }
+
+            // Speed selection
+            const speedChoice = Math.random();
+            if (speedChoice < 0.25) {
+                this.setSpeedMode('slow');
+            } else if (speedChoice < 0.75) {
+                this.setSpeedMode('normal');
+            } else {
+                this.setSpeedMode('fast');
+            }
+
             if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
+            if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
             this.updateTrajectoryGuide();
             this.rollBall();
+        }
+
+        setSpinMode(mode) {
+            this.aimSpinMode = mode;
+            if (mode === 'hook-l') {
+                this.aimSpinForce = -5.5;
+            } else if (mode === 'hook-r') {
+                this.aimSpinForce = 5.5;
+            } else {
+                this.aimSpinForce = 0;
+            }
+
+            const spinBtns = [
+                { id: 'btn-preset-hook-l', mode: 'hook-l' },
+                { id: 'btn-preset-straight', mode: 'straight' },
+                { id: 'btn-preset-hook-r', mode: 'hook-r' }
+            ];
+            spinBtns.forEach(item => {
+                const b = document.getElementById(item.id);
+                if (b) {
+                    if (item.mode === mode) b.classList.add('active');
+                    else b.classList.remove('active');
+                }
+            });
+
+            this.updateTrajectoryGuide();
+        }
+
+        setSpeedMode(mode) {
+            this.throwSpeedMode = mode;
+            if (mode === 'slow') {
+                this.speedMultiplier = 0.78;
+            } else if (mode === 'fast') {
+                this.speedMultiplier = 1.30;
+            } else {
+                this.speedMultiplier = 1.0;
+            }
+
+            document.querySelectorAll('.speed-pill').forEach(pill => {
+                if (pill.getAttribute('data-speed') === mode) {
+                    pill.classList.add('active');
+                } else {
+                    pill.classList.remove('active');
+                }
+            });
+
+            this.updateTrajectoryGuide();
         }
 
         resetBallPosition() {
             this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX));
             this.ballState.pos.set(this.aimX, BALL_Y_LANE, 1.8);
             this.ballState.vel.set(0, 0, 0);
-            this.ballState.spin = 0;
+            this.ballState.spinForce = 0;
             this.ballState.inGutter = false;
             this.ball.position.copy(this.ballState.pos);
             this.ball.rotation.set(0, 0, 0);
             if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
+            if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
             this.updateCameraPosition();
             this.updateTrajectoryGuide();
             if (this.laneHint) this.laneHint.style.opacity = '0.85';
@@ -896,7 +1037,13 @@
         updateHUD() {
             const p = this.players[this.activePlayerIndex];
             if (p) {
-                this.setAnnouncer(`${p.name}'s Turn • Frame ${this.currentFrame}`);
+                this.setAnnouncer(`${p.name}'s Turn • Round ${this.currentFrame}/${this.maxFrames}`);
+            }
+            if (this.roundBadge) {
+                this.roundBadge.textContent = `Round ${this.currentFrame}/${this.maxFrames} • Chance ${this.currentRoll}/2`;
+            }
+            if (this.btnRollText) {
+                this.btnRollText.textContent = `ROLL (${this.currentRoll}/2)`;
             }
         }
 
@@ -905,10 +1052,16 @@
             window.addEventListener('keydown', (e) => {
                 if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
                 if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-                    this.keys.left = true;
+                    this.keys.posLeft = true;
                     e.preventDefault();
                 } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-                    this.keys.right = true;
+                    this.keys.posRight = true;
+                    e.preventDefault();
+                } else if (e.code === 'KeyQ') {
+                    this.keys.angleLeft = true;
+                    e.preventDefault();
+                } else if (e.code === 'KeyE') {
+                    this.keys.angleRight = true;
                     e.preventDefault();
                 } else if (e.code === 'Space' || e.code === 'Enter') {
                     if (!this.isRolling && !this.btnRoll.disabled) {
@@ -920,100 +1073,117 @@
 
             window.addEventListener('keyup', (e) => {
                 if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-                    this.keys.left = false;
+                    this.keys.posLeft = false;
                 } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-                    this.keys.right = false;
+                    this.keys.posRight = false;
+                } else if (e.code === 'KeyQ') {
+                    this.keys.angleLeft = false;
+                } else if (e.code === 'KeyE') {
+                    this.keys.angleRight = false;
                 }
             });
 
             window.addEventListener('blur', () => {
-                this.keys.left = false;
-                this.keys.right = false;
-                this.stepperHold.left = false;
-                this.stepperHold.right = false;
+                this.keys.posLeft = false;
+                this.keys.posRight = false;
+                this.keys.angleLeft = false;
+                this.keys.angleRight = false;
+                this.stepperHold.posLeft = false;
+                this.stepperHold.posRight = false;
+                this.stepperHold.angleLeft = false;
+                this.stepperHold.angleRight = false;
             });
 
             // Position Slider
-            this.sliderPos.addEventListener('input', (e) => {
-                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, parseFloat(e.target.value)));
-                if (!this.isRolling) {
-                    this.ball.position.x = this.aimX;
-                    this.ballState.pos.x = this.aimX;
-                    this.updateTrajectoryGuide();
-                }
-            });
+            if (this.sliderPos) {
+                this.sliderPos.addEventListener('input', (e) => {
+                    this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, parseFloat(e.target.value)));
+                    if (!this.isRolling) {
+                        this.ball.position.x = this.aimX;
+                        this.ballState.pos.x = this.aimX;
+                        this.updateTrajectoryGuide();
+                    }
+                });
+            }
+
+            // Aim Angle Slider
+            if (this.sliderAngle) {
+                this.sliderAngle.addEventListener('input', (e) => {
+                    this.aimAngle = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, parseFloat(e.target.value)));
+                    if (!this.isRolling) {
+                        this.updateTrajectoryGuide();
+                    }
+                });
+            }
 
             // Position Steppers with continuous hold support
-            const btnLeft = document.getElementById('btn-pos-left');
-            const btnRight = document.getElementById('btn-pos-right');
+            const btnPosLeft = document.getElementById('btn-pos-left');
+            const btnPosRight = document.getElementById('btn-pos-right');
 
-            if (btnLeft) {
-                const startLeft = (e) => {
+            const wireHold = (btn, prop) => {
+                if (!btn) return;
+                const start = (e) => {
                     e.preventDefault();
                     if (window.bowlingAudio) window.bowlingAudio.playClick();
-                    this.stepperHold.left = true;
+                    this.stepperHold[prop] = true;
                 };
-                const stopLeft = () => {
-                    this.stepperHold.left = false;
+                const stop = () => {
+                    this.stepperHold[prop] = false;
                 };
-                btnLeft.addEventListener('pointerdown', startLeft);
-                btnLeft.addEventListener('pointerup', stopLeft);
-                btnLeft.addEventListener('pointercancel', stopLeft);
-                btnLeft.addEventListener('pointerleave', stopLeft);
-            }
+                btn.addEventListener('pointerdown', start);
+                btn.addEventListener('pointerup', stop);
+                btn.addEventListener('pointercancel', stop);
+                btn.addEventListener('pointerleave', stop);
+            };
 
-            if (btnRight) {
-                const startRight = (e) => {
-                    e.preventDefault();
-                    if (window.bowlingAudio) window.bowlingAudio.playClick();
-                    this.stepperHold.right = true;
-                };
-                const stopRight = () => {
-                    this.stepperHold.right = false;
-                };
-                btnRight.addEventListener('pointerdown', startRight);
-                btnRight.addEventListener('pointerup', stopRight);
-                btnRight.addEventListener('pointercancel', stopRight);
-                btnRight.addEventListener('pointerleave', stopRight);
-            }
+            wireHold(btnPosLeft, 'posLeft');
+            wireHold(btnPosRight, 'posRight');
+
+            // Angle Steppers with continuous hold support
+            const btnAngleLeft = document.getElementById('btn-angle-left');
+            const btnAngleRight = document.getElementById('btn-angle-right');
+            wireHold(btnAngleLeft, 'angleLeft');
+            wireHold(btnAngleRight, 'angleRight');
 
             // Spin Presets
-            const presets = [
-                { id: 'btn-preset-hook-l', spin: -0.025 },
-                { id: 'btn-preset-straight', spin: 0 },
-                { id: 'btn-preset-hook-r', spin: 0.025 }
-            ];
-            presets.forEach(pr => {
-                const btn = document.getElementById(pr.id);
-                if (btn) {
-                    btn.addEventListener('click', () => {
-                        if (window.bowlingAudio) window.bowlingAudio.playClick();
-                        presets.forEach(p => {
-                            const b = document.getElementById(p.id);
-                            if (b) b.classList.remove('active');
-                        });
-                        btn.classList.add('active');
-                        this.aimSpin = pr.spin;
-                        this.updateTrajectoryGuide();
-                    });
-                }
-            });
+            const hookLBtn = document.getElementById('btn-preset-hook-l');
+            const straightBtn = document.getElementById('btn-preset-straight');
+            const hookRBtn = document.getElementById('btn-preset-hook-r');
 
-            // Power selection
-            document.querySelectorAll('.power-pill').forEach(pill => {
+            if (hookLBtn) {
+                hookLBtn.addEventListener('click', () => {
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.setSpinMode('hook-l');
+                });
+            }
+            if (straightBtn) {
+                straightBtn.addEventListener('click', () => {
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.setSpinMode('straight');
+                });
+            }
+            if (hookRBtn) {
+                hookRBtn.addEventListener('click', () => {
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.setSpinMode('hook-r');
+                });
+            }
+
+            // Speed pills
+            document.querySelectorAll('.speed-pill').forEach(pill => {
                 pill.addEventListener('click', () => {
                     if (window.bowlingAudio) window.bowlingAudio.playClick();
-                    document.querySelectorAll('.power-pill').forEach(p => p.classList.remove('active'));
-                    pill.classList.add('active');
-                    const pw = pill.getAttribute('data-power');
-                    this.powerMultiplier = pw === 'turbo' ? 1.0 : 0.85;
+                    const sp = pill.getAttribute('data-speed');
+                    this.setSpeedMode(sp);
                 });
             });
 
             // Roll button
-            this.btnRoll.addEventListener('click', () => {
-                this.rollBall();
-            });
+            if (this.btnRoll) {
+                this.btnRoll.addEventListener('click', () => {
+                    this.rollBall();
+                });
+            }
 
             // Player Mode Buttons
             ['btn-mode-ai', 'btn-mode-2p', 'btn-mode-3p', 'btn-mode-4p'].forEach(id => {
@@ -1030,43 +1200,51 @@
             });
 
             // Camera View cycle
-            this.btnCam.addEventListener('click', () => {
-                if (window.bowlingAudio) window.bowlingAudio.playClick();
-                this.isOrbitEnabled = false;
-                if (this.controls) this.controls.enabled = false;
-                this.btnOrbit.style.background = 'rgba(255, 255, 255, 0.08)';
+            if (this.btnCam) {
+                this.btnCam.addEventListener('click', () => {
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.isOrbitEnabled = false;
+                    if (this.controls) this.controls.enabled = false;
+                    if (this.btnOrbit) this.btnOrbit.style.background = 'rgba(255, 255, 255, 0.08)';
 
-                this.camViewIndex = (this.camViewIndex + 1) % this.camViews.length;
-                this.camBadge.textContent = this.camViews[this.camViewIndex].label;
-                this.updateCameraPosition();
-            });
-
-            // Free 3D Orbit View toggle (like Chess and Ludo)
-            this.btnOrbit.addEventListener('click', () => {
-                if (window.bowlingAudio) window.bowlingAudio.playClick();
-                this.isOrbitEnabled = !this.isOrbitEnabled;
-                if (this.controls) this.controls.enabled = this.isOrbitEnabled;
-                this.btnOrbit.style.background = this.isOrbitEnabled ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 255, 255, 0.08)';
-                if (!this.isOrbitEnabled) {
+                    this.camViewIndex = (this.camViewIndex + 1) % this.camViews.length;
+                    if (this.camBadge) this.camBadge.textContent = this.camViews[this.camViewIndex].label;
                     this.updateCameraPosition();
-                }
-            });
+                });
+            }
+
+            // Free 3D Orbit View toggle
+            if (this.btnOrbit) {
+                this.btnOrbit.addEventListener('click', () => {
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.isOrbitEnabled = !this.isOrbitEnabled;
+                    if (this.controls) this.controls.enabled = this.isOrbitEnabled;
+                    this.btnOrbit.style.background = this.isOrbitEnabled ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 255, 255, 0.08)';
+                    if (!this.isOrbitEnabled) {
+                        this.updateCameraPosition();
+                    }
+                });
+            }
 
             // Audio mute toggle
-            this.btnMute.addEventListener('click', () => {
-                if (window.bowlingAudio) {
-                    const isMuted = window.bowlingAudio.toggleMute();
-                    this.btnMute.innerHTML = isMuted 
-                        ? '<i class="fa-solid fa-volume-xmark" style="color: #ef4444"></i>' 
-                        : '<i class="fa-solid fa-volume-high"></i>';
-                }
-            });
+            if (this.btnMute) {
+                this.btnMute.addEventListener('click', () => {
+                    if (window.bowlingAudio) {
+                        const isMuted = window.bowlingAudio.toggleMute();
+                        this.btnMute.innerHTML = isMuted 
+                            ? '<i class="fa-solid fa-volume-xmark" style="color: #ef4444"></i>' 
+                            : '<i class="fa-solid fa-volume-high"></i>';
+                    }
+                });
+            }
 
             // Restart match
-            this.btnRestart.addEventListener('click', () => {
-                if (window.bowlingAudio) window.bowlingAudio.playClick();
-                this.restartMatch();
-            });
+            if (this.btnRestart) {
+                this.btnRestart.addEventListener('click', () => {
+                    if (window.bowlingAudio) window.bowlingAudio.playClick();
+                    this.restartMatch();
+                });
+            }
 
             if (this.btnRematch) {
                 this.btnRematch.addEventListener('click', () => {
@@ -1084,7 +1262,6 @@
                 const rect = container.getBoundingClientRect();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const normX = (clientX - rect.left) / rect.width;
-                // Map screen width to lane width (-1.46 to 1.46)
                 const computedAim = (normX - 0.5) * (LANE_WIDTH * 0.95);
                 this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, computedAim));
                 if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
@@ -1094,7 +1271,7 @@
             };
 
             container.addEventListener('pointerdown', (e) => {
-                if (e.clientY > window.innerHeight * 0.4 && !this.isRolling && !this.isOrbitEnabled) {
+                if (e.clientY > window.innerHeight * 0.35 && !this.isRolling && !this.isOrbitEnabled) {
                     isDragging = true;
                     onPointerMove(e);
                 }
@@ -1107,10 +1284,13 @@
 
         restartMatch() {
             if (this.modalVictory) this.modalVictory.classList.remove('show');
+            if (this.rollTimeout) clearTimeout(this.rollTimeout);
             this.isRolling = false;
             this.currentFrame = 1;
             this.currentRoll = 1;
             this.activePlayerIndex = 0;
+            this.roll1Knocked = 0;
+            this.roll2Knocked = 0;
             this.pinsKnockedThisFrame = 0;
 
             this.setupPlayers();
