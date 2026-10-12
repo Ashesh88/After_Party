@@ -55,6 +55,12 @@ export default function WatchPage() {
   const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
+  useEffect(() => {
     import('../../../lib/api').then(({ default: api }) => {
       api.get('/rooms/mine').then(res => {
         const members = res.data.room?.members || [];
@@ -302,7 +308,7 @@ export default function WatchPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#07070f] text-slate-100 flex flex-col overflow-y-auto pb-44 sm:pb-36">
+    <div className="relative min-h-screen text-slate-100 flex flex-col pb-44 sm:pb-36">
       {/* Ambient Romantic Orbs */}
       <div className="ambient-glow-pink -top-28 -left-20 pointer-events-none" />
       <div className="ambient-glow-purple -bottom-28 -right-20 pointer-events-none" />
@@ -326,8 +332,8 @@ export default function WatchPage() {
       </div>
 
       {/* Top Navbar Header */}
-      <header className="relative z-20 px-3 pt-3 pb-2 sm:p-5 max-w-5xl mx-auto w-full shrink-0">
-        <div className="p-2.5 sm:p-3.5 rounded-3xl glass-panel flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 shadow-2xl">
+      <header className="relative z-20 px-3.5 pt-4 sm:pt-6 pb-2 sm:px-6 max-w-5xl mx-auto w-full shrink-0">
+        <div className="p-3 sm:p-4 rounded-3xl glass-panel flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shadow-2xl border border-white/[0.08]">
           <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 shrink-0">
