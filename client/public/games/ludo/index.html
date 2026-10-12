@@ -17,7 +17,7 @@
         <!-- Sleek Floating Status & Players Dock -->
         <div class="top-dock-panel interactive">
             <div class="top-status-row">
-                <span class="status-pill" id="status-banner">Red Player 🔴 rolls first!</span>
+                <span class="status-pill" id="status-banner">Red Player rolls first!</span>
                 <div class="players-bar" id="players-bar">
                     <!-- Dynamically populated by JS for active players -->
                 </div>
@@ -28,7 +28,7 @@
             </div>
         </div>
 
-        <!-- 3-Second Floating Incoming Message Toast Bubble -->
+        <!-- Floating Incoming Message Toast Bubble -->
         <div class="chat-toast-bubble" id="chat-toast-bubble"></div>
 
         <!-- Bottom Action HUD (Positioned safely above bottom app nav bar) -->
@@ -49,13 +49,13 @@
         <div class="air-chat-messages" id="panel-chat-messages">
             <!-- Up to 5 live match chat messages -->
         </div>
-        <!-- Corner Emojis Bar -->
+        <!-- Corner Quick Chat Buttons Bar -->
         <div class="air-chat-emojis">
-            <button class="emoji-btn" data-emoji="🎲">🎲</button>
-            <button class="emoji-btn" data-emoji="🔥">🔥</button>
-            <button class="emoji-btn" data-emoji="👑">👑</button>
-            <button class="emoji-btn" data-emoji="👍">👍</button>
-            <button class="emoji-btn" data-emoji="🎯">🎯</button>
+            <button class="emoji-btn" data-emoji="Good Luck!" title="Good Luck!"><i class="fa-solid fa-clover"></i></button>
+            <button class="emoji-btn" data-emoji="Nice Move!" title="Nice Move!"><i class="fa-solid fa-thumbs-up"></i></button>
+            <button class="emoji-btn" data-emoji="Play Fast!" title="Play Fast!"><i class="fa-solid fa-bolt"></i></button>
+            <button class="emoji-btn" data-emoji="Well Played!" title="Well Played!"><i class="fa-solid fa-trophy"></i></button>
+            <button class="emoji-btn" data-emoji="GG!" title="GG!"><i class="fa-solid fa-handshake"></i></button>
         </div>
         <!-- Transparent Air Input -->
         <form class="air-chat-input-bar" id="panel-chat-form">
@@ -67,9 +67,9 @@
     <!-- Victory Celebration Modal -->
     <div class="modal-overlay" id="modal-victory">
         <div class="victory-card interactive">
-            <div class="victory-icon">👑</div>
-            <h2 class="victory-title" id="victory-title">Victory! 🏆</h2>
-            <p class="victory-desc">All pawns reached the Golden Crown! Congratulations on winning the game!</p>
+            <div class="victory-icon"><i class="fa-solid fa-trophy"></i></div>
+            <h2 class="victory-title" id="victory-title">Victory!</h2>
+            <p class="victory-desc">All pawns reached the Home triangle! Congratulations on winning the game!</p>
             <button class="btn-victory-replay" id="btn-play-again">
                 <i class="fa-solid fa-play"></i> Play Again
             </button>

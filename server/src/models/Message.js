@@ -19,7 +19,7 @@ const messageSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['text', 'image', 'emoji', 'audio', 'whisper'],
+      enum: ['text', 'image', 'emoji', 'audio', 'whisper', 'game_invite'],
       default: 'text',
     },
     content: {
@@ -34,6 +34,16 @@ const messageSchema = new mongoose.Schema(
     audioDuration: {
       type: Number,
       default: 0,
+    },
+    gameInvite: {
+      game: { type: String, default: 'chess' },
+      sessionCode: { type: String },
+      senderId: { type: String },
+      senderName: { type: String },
+      targetUserId: { type: String },
+      targetUserName: { type: String },
+      expiresAt: { type: Date },
+      status: { type: String, enum: ['pending', 'accepted', 'expired', 'declined'], default: 'pending' },
     },
     seen: {
       type: Boolean,

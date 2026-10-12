@@ -168,7 +168,7 @@ export default function PoolGame({ onBack }: PoolGameProps) {
         setIsWaitingForFriend(false);
         setIsOpponentConnected(true);
         iframeRef.current?.contentWindow?.postMessage({ type: 'POOL_START_MATCH' }, '*');
-        toast.success(`${opponentName || 'Friend'} accepted your challenge! 🎱`, { icon: '👑' });
+        toast.success(`${opponentName || 'Friend'} accepted your challenge!`);
       }
     };
 
@@ -186,7 +186,7 @@ export default function PoolGame({ onBack }: PoolGameProps) {
       setIsOpponentConnected(true);
       if (data.playerName) setOpponentName(data.playerName);
       iframeRef.current?.contentWindow?.postMessage({ type: 'POOL_START_MATCH', opponentName: data.playerName }, '*');
-      toast.success(`${data.playerName || 'Opponent'} joined the table! Game is live! 🎱`);
+      toast.success(`${data.playerName || 'Opponent'} joined the table! Game is live!`);
     };
 
     // Opponent shot
@@ -219,7 +219,7 @@ export default function PoolGame({ onBack }: PoolGameProps) {
     // Rematch requested
     const handleRematch = () => {
       iframeRef.current?.contentWindow?.postMessage({ type: 'POOL_REMATCH' }, '*');
-      toast.success('Opponent requested a new rack! Racking balls...', { icon: '🔄' });
+      toast.success('Opponent requested a new rack! Racking balls...');
     };
 
     // Opponent chat
@@ -373,8 +373,7 @@ export default function PoolGame({ onBack }: PoolGameProps) {
     }
 
     setShowFriendsModal(false);
-    toast.success(`Challenge sent to ${friend.displayName}! ⏳ Waiting for them to accept...`, {
-      icon: '🎱',
+    toast.success(`Challenge sent to ${friend.displayName}! Waiting for them to accept...`, {
       duration: 6000,
     });
   };
@@ -429,8 +428,8 @@ export default function PoolGame({ onBack }: PoolGameProps) {
 
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300 truncate whitespace-nowrap">
-              <span className="sm:hidden">8-Ball Pool 🎱</span>
-              <span className="hidden sm:inline">Luxury 8-Ball Pool 🎱</span>
+              <span className="sm:hidden">8-Ball Pool</span>
+              <span className="hidden sm:inline">Luxury 8-Ball Pool</span>
             </span>
           </div>
         </div>
@@ -656,7 +655,7 @@ export default function PoolGame({ onBack }: PoolGameProps) {
                           className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-xs font-bold text-white shadow-md active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                         >
                           <CircleDot className="w-3.5 h-3.5" />
-                          <span>Challenge 🎱</span>
+                          <span>Challenge</span>
                         </button>
                       </div>
                     );

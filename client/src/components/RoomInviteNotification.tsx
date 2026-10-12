@@ -65,14 +65,14 @@ export default function RoomInviteNotification() {
       // Trigger Browser System Notification
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          new Notification(`${normalized.from.displayName} invited you to room! 🚀`, {
+          new Notification(`${normalized.from.displayName} invited you to room!`, {
             body: `Room Code: ${normalized.room.inviteCode}. Click to join!`,
             icon: normalized.from.avatar || '/icon-192x192.png',
             tag: 'room-invite',
           });
         } catch {}
       }
-      toast(`${normalized.from.displayName} invited you to Room ${normalized.room.inviteCode}!`, { icon: '💌' });
+      toast(`${normalized.from.displayName} invited you to Room ${normalized.room.inviteCode}!`);
     };
 
     const handleGameInvite = (data: GameInvitePayload) => {
@@ -85,6 +85,7 @@ export default function RoomInviteNotification() {
       else if (data.game === 'carrom') gameLabel = 'Carrom';
       else if (data.game === 'ludo') gameLabel = 'Ludo';
       else if (data.game === 'pool') gameLabel = '8-Ball Pool';
+      else if (data.game === 'bowling') gameLabel = 'Cosmic 3D Bowling';
       else if (data.game === 'chess') gameLabel = 'Chess';
 
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -99,14 +100,34 @@ export default function RoomInviteNotification() {
       toast(`${data.senderName} invited you to ${gameLabel}!`);
     };
 
+    const handleInviteAccepted = (data: any) => {
+      soundService.playMessageTone();
+      toast.success('Your challenge was accepted! Launching match...');
+      let gameId = data.game || 'chess';
+      let hostRole = 'p1';
+      if (gameId === 'chess') hostRole = 'w';
+      else if (gameId === 'ludo') hostRole = 'red';
+      else if (gameId === 'paint' || gameId === 'painting') hostRole = 'host';
+
+      setActiveGame(gameId, {
+        sessionCode: data.sessionCode,
+        role: hostRole,
+      });
+      router.push('/games');
+    };
+
     socket.on('room:invite', handleRoomInvite);
     socket.on('game:invite:received', handleGameInvite);
+    socket.on('game:invite:accepted', handleInviteAccepted);
+    socket.on('game:invite_accepted', handleInviteAccepted);
 
     return () => {
       socket.off('room:invite', handleRoomInvite);
       socket.off('game:invite:received', handleGameInvite);
+      socket.off('game:invite:accepted', handleInviteAccepted);
+      socket.off('game:invite_accepted', handleInviteAccepted);
     };
-  }, [socket]);
+  }, [socket, router, setActiveGame]);
 
   const handleAcceptRoom = async () => {
     if (!currentInvite) return;
@@ -127,7 +148,7 @@ export default function RoomInviteNotification() {
         socket.emit('room:switch', { roomId: res.data.room._id });
       }
 
-      toast.success(`Joined ${currentInvite.from?.displayName || 'room'}! 🎮`);
+      toast.success(`Joined ${currentInvite.from?.displayName || 'room'}!`);
       setCurrentInvite(null);
 
       window.dispatchEvent(new CustomEvent('room:changed', { detail: res.data.room }));
@@ -183,6 +204,10 @@ export default function RoomInviteNotification() {
     } else if (isPool) {
       gameId = 'pool';
       gameLabel = '8-Ball Pool Match';
+      guestRole = 'p2';
+    } else if (currentGameInvite.game === 'bowling') {
+      gameId = 'bowling';
+      gameLabel = 'Cosmic Bowling Match';
       guestRole = 'p2';
     }
 

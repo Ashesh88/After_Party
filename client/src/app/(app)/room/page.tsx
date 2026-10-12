@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Crown, Copy, Check, UserMinus, UserPlus, 
   LogOut, ShieldAlert, Sparkles, Circle, Clock, RefreshCw, Send,
-  Lock, Unlock, Edit3, Volume2, Mic, Layers
+  Lock, Unlock, Edit3, Volume2, Mic, Layers, Gamepad2, Swords
 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -55,6 +55,8 @@ export default function RoomPage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [inVoiceLounge, setInVoiceLounge] = useState(false);
+  const [challengeModalOpen, setChallengeModalOpen] = useState(false);
+  const [selectedChallengeMember, setSelectedChallengeMember] = useState<User | null>(null);
 
   // Fetch current user's room
   const loadRoom = useCallback(async () => {
@@ -204,12 +206,33 @@ export default function RoomPage() {
     setInvitingId(friendUserId);
     try {
       await api.post('/friends/invite', { friendUserId });
-      toast.success(`Invite sent to ${friendName} 🚀`);
+      toast.success(`Invite sent to ${friendName}!`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send invite');
     } finally {
       setInvitingId(null);
     }
+  };
+
+  // Open Game Challenge Modal
+  const openGameChallengeModal = (member: User) => {
+    setSelectedChallengeMember(member);
+    setChallengeModalOpen(true);
+  };
+
+  // Send Game Challenge to Room Chat (with 60-second timer)
+  const sendGameChallenge = (gameKey: string) => {
+    if (!socket || !room || !selectedChallengeMember) return;
+    const sessionCode = Math.random().toString(36).substring(2, 9);
+    socket.emit('game:invite', {
+      roomId: room._id,
+      targetUserId: selectedChallengeMember._id,
+      game: gameKey,
+      sessionCode,
+    });
+    toast.success(`Challenge sent to ${selectedChallengeMember.displayName}! Delivered to room chat.`);
+    setChallengeModalOpen(false);
+    setSelectedChallengeMember(null);
   };
 
   // Toggle Room Lock
@@ -254,7 +277,7 @@ export default function RoomPage() {
       if (otherMember) {
         useCallStore.getState().startCall(socket, 'audio', otherMember, currentUser).catch(() => {});
       }
-      toast.success('Connected to Voice Lounge! Audio mic live 🎙️');
+      toast.success('Connected to Voice Lounge! Audio mic live');
     }
   };
 
@@ -506,8 +529,18 @@ export default function RoomPage() {
                     </div>
                   </div>
 
-                  {/* Host Actions (Kick Member) */}
+                  {/* Member Actions */}
                   <div className="flex items-center gap-2">
+                    {!isMe && (
+                      <button
+                        onClick={() => openGameChallengeModal(member)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/25 text-xs font-semibold transition-all shadow-sm"
+                        title={`Challenge ${member.displayName} to a game`}
+                      >
+                        <Gamepad2 size={13} />
+                        <span className="hidden sm:inline">Challenge</span>
+                      </button>
+                    )}
                     {isHost && !isMemberHost && (
                       <button
                         onClick={() => handleKickMember(member._id, member.displayName)}
@@ -697,6 +730,85 @@ export default function RoomPage() {
 
               <button
                 onClick={() => setInviteModalOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-medium text-xs transition-colors"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Game Challenge Modal */}
+      <AnimatePresence>
+        {challengeModalOpen && selectedChallengeMember && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#121324] border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Swords size={18} className="text-pink-400" />
+                    <span>Challenge to Game</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Select a game to challenge {selectedChallengeMember.displayName}. The invite card will appear in room chat for 1 minute!
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setChallengeModalOpen(false);
+                    setSelectedChallengeMember(null);
+                  }}
+                  className="px-2 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { id: 'pool', name: '8-Ball Pool', desc: 'Real physics cue pool' },
+                  { id: 'bowling', name: 'Cosmic Bowling', desc: '10-pin alley action' },
+                  { id: 'ludo', name: 'Ludo Party', desc: 'Classic board race' },
+                  { id: 'chess', name: 'Speed Chess', desc: 'Head-to-head strategy' },
+                  { id: 'uno', name: 'UNO Showdown', desc: 'Cards and color party' },
+                  { id: 'carrom', name: 'Carrom Match', desc: 'Smooth striker disc game' },
+                ].map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => sendGameChallenge(g.id)}
+                    className="p-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-purple-500/40 text-left transition-all group flex flex-col justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform">
+                        <Gamepad2 size={16} />
+                      </div>
+                      <span className="text-[10px] text-pink-400 font-semibold uppercase tracking-wider group-hover:underline">
+                        Send
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-pink-300 transition-colors">
+                        {g.name}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {g.desc}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  setChallengeModalOpen(false);
+                  setSelectedChallengeMember(null);
+                }}
                 className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-medium text-xs transition-colors"
               >
                 Close

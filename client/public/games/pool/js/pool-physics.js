@@ -14,6 +14,17 @@ class PoolPhysics {
         this.halfW = table.halfW; // 1.8
         this.ballRadius = 0.11;
         this.pockets = table.pockets;
+        this.resetShotStats();
+    }
+
+    resetShotStats() {
+        this.shotStats = {
+            firstContactBall: null,
+            cushionHitAfterContact: false,
+            breakRailContacts: new Set(),
+            pocketedBalls: [],
+            cueBallScratch: false
+        };
     }
 
     update(balls, delta) {
@@ -73,6 +84,14 @@ class PoolPhysics {
                 ball.pocketTime = performance.now();
                 ball.vx = 0;
                 ball.vz = 0;
+                if (this.shotStats) {
+                    if (!this.shotStats.pocketedBalls.includes(ball.number)) {
+                        this.shotStats.pocketedBalls.push(ball.number);
+                    }
+                    if (ball.number === 0) {
+                        this.shotStats.cueBallScratch = true;
+                    }
+                }
                 if (window.poolAudio) window.poolAudio.playPocketDrop();
                 return;
             }
@@ -94,16 +113,20 @@ class PoolPhysics {
             }
         }
 
+        let bounced = false;
+
         // Left Head Rail
         if (ball.x < minX && ball.vx < 0) {
             ball.x = minX;
             ball.vx = -ball.vx * this.cushionRestitution;
+            bounced = true;
             if (window.poolAudio) window.poolAudio.playCushionHit(Math.abs(ball.vx));
         }
         // Right Foot Rail
         else if (ball.x > maxX && ball.vx > 0) {
             ball.x = maxX;
             ball.vx = -ball.vx * this.cushionRestitution;
+            bounced = true;
             if (window.poolAudio) window.poolAudio.playCushionHit(Math.abs(ball.vx));
         }
 
@@ -111,13 +134,24 @@ class PoolPhysics {
         if (ball.z < minZ && ball.vz < 0) {
             ball.z = minZ;
             ball.vz = -ball.vz * this.cushionRestitution;
+            bounced = true;
             if (window.poolAudio) window.poolAudio.playCushionHit(Math.abs(ball.vz));
         }
         // Bottom Long Rail
         else if (ball.z > maxZ && ball.vz > 0) {
             ball.z = maxZ;
             ball.vz = -ball.vz * this.cushionRestitution;
+            bounced = true;
             if (window.poolAudio) window.poolAudio.playCushionHit(Math.abs(ball.vz));
+        }
+
+        if (bounced && this.shotStats) {
+            if (this.shotStats.firstContactBall !== null) {
+                this.shotStats.cushionHitAfterContact = true;
+            }
+            if (ball.number !== 0) {
+                this.shotStats.breakRailContacts.add(ball.number);
+            }
         }
     }
 
@@ -145,6 +179,15 @@ class PoolPhysics {
 
             // Only bounce if balls are moving toward each other
             if (vn > 0) {
+                // Record first contact ball if cue ball is involved
+                if (this.shotStats && this.shotStats.firstContactBall === null) {
+                    if (b1.number === 0 && b2.number !== 0) {
+                        this.shotStats.firstContactBall = b2.number;
+                    } else if (b2.number === 0 && b1.number !== 0) {
+                        this.shotStats.firstContactBall = b1.number;
+                    }
+                }
+
                 const impulse = (1 + this.ballRestitution) * 0.5 * vn;
                 b1.vx -= impulse * nx;
                 b1.vz -= impulse * nz;

@@ -40,6 +40,9 @@ class PoolGameApp {
         this.power = 0.5; // 0.1 to 1.0
         this.isShotActive = false;
         this.cueBallScratch = false;
+        this.isBreakShot = true;
+        this.isBallInHand = false;
+        this.ballInHandValid = true;
         this.pocketedThisShot = [];
         this.cameraViewMode = 'top'; // Default to Top-Down tactical view
 
@@ -148,6 +151,15 @@ class PoolGameApp {
         this.ballFactory = new PoolBallFactory();
         this.cue = new PoolCue3D(this.scene);
 
+        // Visual Ball-In-Hand placement ring indicator
+        const bihGeo = new THREE.RingGeometry(0.12, 0.17, 32);
+        this.bihMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+        this.bihRing = new THREE.Mesh(bihGeo, this.bihMat);
+        this.bihRing.rotation.x = -Math.PI / 2;
+        this.bihRing.position.set(-1.8, 0.105, 0);
+        this.bihRing.visible = false;
+        this.scene.add(this.bihRing);
+
         this.ballsData = [];
         this.ballMeshes = {};
 
@@ -168,6 +180,7 @@ class PoolGameApp {
         });
 
         this.aimAngle = 0; // Point towards foot rack
+        this.updatePower(this.power);
         this.updateAiming();
     }
 
@@ -193,6 +206,10 @@ class PoolGameApp {
 
             if (intersects.length > 0) {
                 const hit = intersects[0].point;
+                if (this.isBallInHand) {
+                    this.moveCueBallInHand(hit.x, hit.z);
+                    return;
+                }
                 // Vector from Cue Ball to hit point
                 const dx = hit.x - cueBall.x;
                 const dz = hit.z - cueBall.z;
@@ -202,6 +219,13 @@ class PoolGameApp {
                 }
             }
         };
+
+        const btnConfirmBih = document.getElementById('btn-confirm-bih');
+        if (btnConfirmBih) {
+            btnConfirmBih.addEventListener('click', () => {
+                this.confirmBallInHand();
+            });
+        }
 
         this.renderer.domElement.addEventListener('pointerdown', (e) => {
             if (e.target.closest('.interactive')) return;
@@ -268,16 +292,51 @@ class PoolGameApp {
             });
         }
 
-        // Shot Power Slider
+        // Shot Power Slider (Bottom HUD)
         const sliderPower = document.getElementById('slider-power');
         if (sliderPower) {
             sliderPower.addEventListener('input', (e) => {
-                this.power = parseFloat(e.target.value);
-                const pct = Math.round(this.power * 100);
-                const label = document.getElementById('power-value-label');
-                if (label) label.textContent = `${pct}%`;
-                this.updateAiming();
+                this.updatePower(parseFloat(e.target.value));
             });
+        }
+
+        // Vertical Cue Stick Puller Track (Right Edge)
+        const pullerTrack = document.getElementById('cue-puller-track');
+        let isDraggingCue = false;
+
+        if (pullerTrack) {
+            const handlePull = (clientY) => {
+                const rect = pullerTrack.getBoundingClientRect();
+                const offsetY = Math.max(0, Math.min(rect.height, clientY - rect.top));
+                const ratio = offsetY / rect.height;
+                const p = 0.10 + ratio * 0.90;
+                this.updatePower(p);
+            };
+
+            pullerTrack.addEventListener('pointerdown', (e) => {
+                if (this.isShotActive) return;
+                isDraggingCue = true;
+                if (pullerTrack.setPointerCapture) pullerTrack.setPointerCapture(e.pointerId);
+                handlePull(e.clientY);
+            });
+
+            pullerTrack.addEventListener('pointermove', (e) => {
+                if (isDraggingCue) {
+                    handlePull(e.clientY);
+                }
+            });
+
+            const finishPull = () => {
+                if (!isDraggingCue) return;
+                isDraggingCue = false;
+                // Release-to-shoot mechanic if charged
+                if (this.power > 0.18 && !this.isShotActive) {
+                    this.takeShot();
+                }
+            };
+
+            pullerTrack.addEventListener('pointerup', finishPull);
+            pullerTrack.addEventListener('pointercancel', finishPull);
         }
 
         // Shoot Button
@@ -299,11 +358,22 @@ class PoolGameApp {
             this.updateAiming();
         });
 
-        // Desktop Spacebar to Shoot
+        // Desktop Keyboard Controls
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+            if (e.target && e.target.matches('input, textarea')) return;
+            if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
                 this.takeShot();
+            } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                this.aimAngle -= 0.025;
+                this.updateAiming();
+            } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                this.aimAngle += 0.025;
+                this.updateAiming();
+            } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+                this.updatePower(this.power + 0.05);
+            } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+                this.updatePower(this.power - 0.05);
             }
         });
 
@@ -394,16 +464,17 @@ class PoolGameApp {
             }
 
             if (e.data.type === 'REMOTE_CHAT') {
-                const text = e.data.text;
-                if (this.isOnlyEmoji(text)) {
-                    this.showFloatingReaction(text.trim());
+                const text = e.data.text || e.data.message || '';
+                if (text) {
+                    this.showChatToast(text, e.data.senderName || 'Opponent');
+                    setTimeout(() => {
+                        this.appendChatMessage(text, 'remote', e.data.senderName || 'Opponent');
+                    }, 2000);
                 }
-                this.showChatToast(text, e.data.senderName);
-                this.appendChatMessage(text, 'remote', e.data.senderName);
             }
         });
 
-        // Floating Corner Chat Form & Emojis
+        // Floating Corner Chat Form & Quick Phrases
         const chatForm = document.getElementById('panel-chat-form');
         const chatInput = document.getElementById('panel-chat-input');
         if (chatForm && chatInput) {
@@ -412,21 +483,26 @@ class PoolGameApp {
                 const text = chatInput.value.trim();
                 if (!text) return;
                 chatInput.value = '';
-                this.appendChatMessage(text, 'self');
+                this.showChatToast(text, 'You');
+                setTimeout(() => {
+                    this.appendChatMessage(text, 'self');
+                }, 2000);
                 if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({ type: 'GAME_CHAT', text }, '*');
+                    window.parent.postMessage({ type: 'GAME_CHAT', text, message: text }, '*');
                 }
             });
         }
 
         document.querySelectorAll('.emoji-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const emoji = btn.getAttribute('data-emoji');
-                if (!emoji) return;
-                this.showFloatingReaction(emoji);
-                this.appendChatMessage(emoji, 'self');
+                const phrase = btn.getAttribute('data-emoji');
+                if (!phrase) return;
+                this.showChatToast(phrase, 'You');
+                setTimeout(() => {
+                    this.appendChatMessage(phrase, 'self');
+                }, 2000);
                 if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({ type: 'GAME_CHAT', text: emoji }, '*');
+                    window.parent.postMessage({ type: 'GAME_CHAT', text: phrase, message: phrase }, '*');
                 }
             });
         });
@@ -475,7 +551,7 @@ class PoolGameApp {
         if (this.chatToastTimer) clearTimeout(this.chatToastTimer);
         this.chatToastTimer = setTimeout(() => {
             toast.classList.remove('show');
-        }, 3000);
+        }, 2000);
     }
 
     appendChatMessage(text, senderType = 'self', senderName = '') {
@@ -725,6 +801,31 @@ class PoolGameApp {
         }
     }
 
+    updatePower(val) {
+        this.power = Math.max(0.10, Math.min(1.0, val));
+        const pct = Math.round(this.power * 100);
+
+        const slider = document.getElementById('slider-power');
+        if (slider) slider.value = this.power.toFixed(2);
+
+        const label = document.getElementById('power-value-label');
+        if (label) label.textContent = `${pct}%`;
+
+        const stickPct = document.getElementById('stick-power-pct');
+        if (stickPct) stickPct.textContent = `${pct}%`;
+
+        const fill = document.getElementById('cue-puller-fill');
+        if (fill) fill.style.height = `${pct}%`;
+
+        const handle = document.getElementById('cue-stick-slider-handle');
+        if (handle) {
+            const pullPx = ((this.power - 0.10) / 0.90) * 85;
+            handle.style.transform = `translateX(-50%) translateY(${pullPx}px)`;
+        }
+
+        this.updateAiming();
+    }
+
     takeShot() {
         if (this.isShotActive) return;
         if (this.mode === 'online' && this.currentTurn !== this.myRole) return;
@@ -748,11 +849,29 @@ class PoolGameApp {
     }
 
     executePhysicsShot(power, aimAngle) {
+        if (this.isBallInHand) {
+            if (!this.ballInHandValid) {
+                this.showStatus('Place cue ball in a legal position first!');
+                return;
+            }
+            this.confirmBallInHand();
+        }
+
         this.isShotActive = true;
         this.shotFrameDelay = 30;
         this.pocketedThisShot = [];
         this.cueBallScratch = false;
+        this.cue.visible = false;
+        this.physics.resetShotStats();
         document.getElementById('btn-shoot')?.setAttribute('disabled', 'true');
+
+        if (this.shotWatchdogTimer) clearTimeout(this.shotWatchdogTimer);
+        this.shotWatchdogTimer = setTimeout(() => {
+            if (this.isShotActive) {
+                this.ballsData.forEach(b => { b.vx = 0; b.vz = 0; });
+                this.onShotComplete();
+            }
+        }, 7500);
 
         const cueBall = this.ballsData[0];
         const speed = 4.5 + power * 11.5;
@@ -817,93 +936,355 @@ class PoolGameApp {
 
     onShotComplete() {
         this.isShotActive = false;
+        if (this.shotWatchdogTimer) {
+            clearTimeout(this.shotWatchdogTimer);
+            this.shotWatchdogTimer = null;
+        }
         document.getElementById('btn-shoot')?.removeAttribute('disabled');
 
-        const cueBall = this.ballsData[0];
+        const stats = this.physics.shotStats || {
+            firstContactBall: null,
+            cushionHitAfterContact: false,
+            breakRailContacts: new Set(),
+            pocketedBalls: [],
+            cueBallScratch: false
+        };
 
-        // 1. Check Scratch
-        if (cueBall.inPocket) {
-            this.cueBallScratch = true;
-            this.showStatus('Scratch! Foul committed ⚠️ Cue ball replaced.');
-            cueBall.inPocket = false;
-            cueBall.x = -1.8;
-            cueBall.z = 0;
-            cueBall.vx = 0;
-            cueBall.vz = 0;
-            const mesh = this.ballMeshes[0];
-            if (mesh) {
-                mesh.visible = true;
-                mesh.scale.set(1, 1, 1);
-                mesh.position.set(-1.8, this.ballFactory.radius, 0);
+        const pocketed = stats.pocketedBalls;
+        const firstHit = stats.firstContactBall;
+        const cueScratch = stats.cueBallScratch || this.ballsData[0].inPocket;
+        const cushionHit = stats.cushionHitAfterContact;
+        const breakRailCount = stats.breakRailContacts ? stats.breakRailContacts.size : 0;
+
+        const pTurn = this.currentTurn;
+        const opponent = pTurn === 'p1' ? 'p2' : 'p1';
+        const pGroup = this.playerGroups[pTurn];
+
+        // 1. 8-Ball Pocketed Evaluation
+        if (pocketed.includes(8)) {
+            if (this.isBreakShot) {
+                if (cueScratch) {
+                    this.handleVictory(opponent, '8-ball and cue ball pocketed on break!');
+                    return;
+                } else {
+                    // Re-spot the 8-ball at foot spot
+                    const eightBall = this.ballsData.find(b => b.number === 8);
+                    if (eightBall) {
+                        eightBall.inPocket = false;
+                        eightBall.x = 1.4;
+                        eightBall.z = 0;
+                        eightBall.vx = 0;
+                        eightBall.vz = 0;
+                        const mesh = this.ballMeshes[8];
+                        if (mesh) {
+                            mesh.visible = true;
+                            mesh.scale.set(1, 1, 1);
+                            mesh.position.set(1.4, this.ballFactory.radius, 0);
+                        }
+                    }
+                    this.showStatus('8-ball pocketed on break: re-spotted to foot spot.');
+                }
+            } else {
+                // Regular shot: pocketing 8-ball
+                const hasRemaining = this.hasRemainingGroupBalls(pGroup);
+                if (!pGroup) {
+                    this.handleVictory(opponent, '8-ball pocketed prematurely while table was open!');
+                    return;
+                } else if (hasRemaining) {
+                    this.handleVictory(opponent, `8-ball pocketed prematurely while ${pGroup} remain!`);
+                    return;
+                } else if (cueScratch) {
+                    this.handleVictory(opponent, 'Scratch committed while pocketing the 8-ball!');
+                    return;
+                } else if (firstHit !== 8) {
+                    this.handleVictory(opponent, '8-ball pocketed on an illegal shot (wrong ball hit first)!');
+                    return;
+                } else {
+                    // Legal win!
+                    this.handleVictory(pTurn, `${this.playerNames[pTurn]} legally pocketed the 8-ball!`);
+                    return;
+                }
             }
         }
 
-        // 2. Check 8-Ball Pocketed
-        const eightBall = this.ballsData.find(b => b.number === 8);
-        if (eightBall && eightBall.inPocket) {
-            const pGroup = this.playerGroups[this.currentTurn];
-            const hasRemainingBalls = this.hasRemainingGroupBalls(pGroup);
+        // 2. Break Shot Evaluation
+        if (this.isBreakShot) {
+            this.isBreakShot = false;
 
-            if (!hasRemainingBalls && !this.cueBallScratch) {
-                this.handleVictory(this.currentTurn);
+            if (cueScratch) {
+                this.grantBallInHand(opponent, `Break scratch! ${this.playerNames[opponent]} receives Ball in Hand (Open Table).`);
+                return;
+            }
+
+            const objectBallsPotted = pocketed.filter(n => n >= 1 && n <= 15 && n !== 8);
+            const isLegalBreak = objectBallsPotted.length > 0 || breakRailCount >= 4;
+
+            if (!isLegalBreak) {
+                this.grantBallInHand(opponent, `Illegal break (fewer than 4 balls contacted rails). ${this.playerNames[opponent]} receives Ball in Hand.`);
+                return;
+            }
+
+            // Legal break: table remains open
+            if (objectBallsPotted.length > 0) {
+                this.showStatus(`${this.playerNames[pTurn]} pocketed ball on break! Table remains open.`);
+                this.cue.visible = true;
+                this.updateAiming();
+                this.updateHUD();
+                this.broadcastSync();
                 return;
             } else {
-                const opponent = this.currentTurn === 'p1' ? 'p2' : 'p1';
-                this.handleVictory(opponent, '8-ball sunk prematurely or with a foul!');
+                this.currentTurn = opponent;
+                this.showStatus(`Legal break. ${this.playerNames[opponent]}'s Turn (Open Table).`);
+                this.cue.visible = true;
+                this.updateAiming();
+                this.updateHUD();
+                this.broadcastSync();
+                if (this.mode === 'ai' && this.currentTurn === 'p2') {
+                    setTimeout(() => this.executeAIShot(), 900);
+                }
                 return;
             }
         }
 
-        // 3. Assign groups if open
-        const pocketedThisTurn = this.ballsData.filter(b => b.number !== 0 && b.number !== 8 && b.inPocket);
-        if (!this.playerGroups.p1 && pocketedThisTurn.length > 0) {
-            const first = pocketedThisTurn[0];
-            const isSolid = first.number <= 7;
-            if (this.currentTurn === 'p1') {
-                this.playerGroups.p1 = isSolid ? 'solids' : 'stripes';
-                this.playerGroups.p2 = isSolid ? 'stripes' : 'solids';
+        // 3. Regular Shot Foul Evaluation
+        let foulMsg = null;
+        if (cueScratch) {
+            foulMsg = 'Scratch (cue ball pocketed)';
+        } else if (firstHit === null) {
+            foulMsg = 'No contact with any object ball';
+        } else if (!pGroup) {
+            // Open Table: hitting 8-ball first is a foul
+            if (firstHit === 8) {
+                foulMsg = 'Hit 8-ball first while table was open';
+            }
+        } else {
+            // Assigned Table
+            const hasRest = this.hasRemainingGroupBalls(pGroup);
+            if (hasRest) {
+                const isSolid = pGroup === 'solids';
+                const hitLegal = isSolid ? (firstHit >= 1 && firstHit <= 7) : (firstHit >= 9 && firstHit <= 15);
+                if (!hitLegal) {
+                    foulMsg = `Wrong target ball first (must hit ${pGroup})`;
+                }
             } else {
-                this.playerGroups.p2 = isSolid ? 'solids' : 'stripes';
-                this.playerGroups.p1 = isSolid ? 'stripes' : 'solids';
+                // Group cleared: must hit 8-ball first
+                if (firstHit !== 8) {
+                    foulMsg = 'Must hit the 8-ball first';
+                }
             }
         }
 
-        // 4. Determine turn continuation
-        let switchTurn = true;
-        if (!this.cueBallScratch) {
-            const currentGroup = this.playerGroups[this.currentTurn];
-            const sunkOwnGroup = pocketedThisTurn.some(b => {
-                if (!currentGroup) return true;
-                return currentGroup === 'solids' ? b.number <= 7 : b.number >= 9;
-            });
-            if (sunkOwnGroup) {
-                switchTurn = false;
-                this.showStatus(`${this.playerNames[this.currentTurn]} Sunk Ball!`);
+        if (!foulMsg) {
+            // Rail contact rule: if no ball pocketed, at least one ball must hit a rail after collision
+            if (pocketed.length === 0 && !cushionHit) {
+                foulMsg = 'No rail contact after ball collision';
             }
         }
 
-        if (switchTurn) {
-            this.currentTurn = this.currentTurn === 'p1' ? 'p2' : 'p1';
-            this.showStatus(`${this.playerNames[this.currentTurn]}'s Turn`);
+        // Handle Foul Result
+        if (foulMsg) {
+            this.grantBallInHand(opponent, `Foul: ${foulMsg}. ${this.playerNames[opponent]} receives Ball in Hand.`);
+            return;
+        }
+
+        // 4. Legal Shot: Group Assignment & Turn Continuation
+        const legalObjectBallsPotted = pocketed.filter(n => n >= 1 && n <= 15 && n !== 8);
+
+        if (!pGroup) {
+            // Table was OPEN
+            if (legalObjectBallsPotted.length > 0) {
+                const first = legalObjectBallsPotted[0];
+                const isSolid = first <= 7;
+                this.playerGroups[pTurn] = isSolid ? 'solids' : 'stripes';
+                this.playerGroups[opponent] = isSolid ? 'stripes' : 'solids';
+
+                this.showStatus(`${this.playerNames[pTurn]} claimed ${this.playerGroups[pTurn].toUpperCase()}! Shoots again.`);
+            } else {
+                this.currentTurn = opponent;
+                this.showStatus(`${this.playerNames[opponent]}'s Turn (Open Table)`);
+            }
+        } else {
+            // Table was ASSIGNED
+            const ownPotted = legalObjectBallsPotted.filter(n => pGroup === 'solids' ? (n >= 1 && n <= 7) : (n >= 9 && n <= 15));
+            if (ownPotted.length > 0) {
+                this.showStatus(`${this.playerNames[pTurn]} pocketed ${pGroup}! Shoots again.`);
+            } else {
+                this.currentTurn = opponent;
+                this.showStatus(`${this.playerNames[opponent]}'s Turn`);
+            }
         }
 
         this.cue.visible = true;
         this.updateAiming();
         this.updateHUD();
+        this.broadcastSync();
 
-        // 5. Broadcast Ball Sync to multiplayer peer
+        if (this.mode === 'ai' && this.currentTurn === 'p2') {
+            setTimeout(() => this.executeAIShot(), 900);
+        }
+    }
+
+    isLegalCueBallPlacement(x, z) {
+        const R = this.ballFactory.radius; // 0.11
+        const halfL = this.table.halfL; // 3.6
+        const halfW = this.table.halfW; // 1.8
+        const cushionMargin = 0.04;
+
+        if (x < -halfL + R + cushionMargin || x > halfL - R - cushionMargin) return false;
+        if (z < -halfW + R + cushionMargin || z > halfW - R - cushionMargin) return false;
+
+        for (let i = 0; i < this.table.pockets.length; i++) {
+            const p = this.table.pockets[i];
+            if (Math.hypot(x - p.x, z - p.z) < p.r + R + 0.05) return false;
+        }
+
+        for (let i = 0; i < this.ballsData.length; i++) {
+            const b = this.ballsData[i];
+            if (b.number === 0 || b.inPocket) continue;
+            if (Math.hypot(x - b.x, z - b.z) < (R * 2 + 0.03)) return false;
+        }
+
+        return true;
+    }
+
+    moveCueBallInHand(x, z) {
+        const cueBall = this.ballsData[0];
+        const mesh = this.ballMeshes[0];
+        if (!cueBall || !mesh) return;
+
+        const isLegal = this.isLegalCueBallPlacement(x, z);
+        this.ballInHandValid = isLegal;
+
+        cueBall.x = x;
+        cueBall.z = z;
+        mesh.position.set(x, this.ballFactory.radius, z);
+
+        if (this.bihRing) {
+            this.bihRing.visible = true;
+            this.bihRing.position.set(x, 0.105, z);
+            this.bihMat.color.setHex(isLegal ? 0x22c55e : 0xef4444);
+        }
+
+        const confirmBtn = document.getElementById('btn-confirm-bih');
+        if (confirmBtn) {
+            confirmBtn.disabled = !isLegal;
+            confirmBtn.textContent = isLegal ? 'Place Ball' : 'Invalid Location';
+        }
+    }
+
+    confirmBallInHand() {
+        if (!this.isBallInHand || !this.ballInHandValid) return;
+        this.isBallInHand = false;
+        if (this.bihRing) this.bihRing.visible = false;
+        const bar = document.getElementById('ball-in-hand-bar');
+        if (bar) bar.style.display = 'none';
+
+        this.cue.visible = true;
+        this.updateAiming();
+        this.updateHUD();
+        this.showStatus(`${this.playerNames[this.currentTurn]} placed ball. Ready to shoot!`);
+    }
+
+    grantBallInHand(playerKey, reasonMsg) {
+        this.currentTurn = playerKey;
+        this.isBallInHand = true;
+        this.ballInHandValid = true;
+
+        const cueBall = this.ballsData[0];
+        const mesh = this.ballMeshes[0];
+        if (cueBall && mesh) {
+            cueBall.inPocket = false;
+            cueBall.vx = 0;
+            cueBall.vz = 0;
+            mesh.visible = true;
+            mesh.scale.set(1, 1, 1);
+
+            const testSpots = [
+                { x: -1.8, z: 0 },
+                { x: -1.4, z: 0.35 },
+                { x: -1.4, z: -0.35 },
+                { x: -2.2, z: 0.2 },
+                { x: 0, z: 0 }
+            ];
+            let placed = false;
+            for (let spot of testSpots) {
+                if (this.isLegalCueBallPlacement(spot.x, spot.z)) {
+                    cueBall.x = spot.x;
+                    cueBall.z = spot.z;
+                    mesh.position.set(spot.x, this.ballFactory.radius, spot.z);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                cueBall.x = -1.8;
+                cueBall.z = 0;
+                mesh.position.set(-1.8, this.ballFactory.radius, 0);
+            }
+        }
+
+        if (this.bihRing && cueBall) {
+            this.bihRing.visible = true;
+            this.bihRing.position.set(cueBall.x, 0.105, cueBall.z);
+            this.bihMat.color.setHex(0x22c55e);
+        }
+
+        const bar = document.getElementById('ball-in-hand-bar');
+        if (bar) {
+            bar.style.display = 'flex';
+            const btn = document.getElementById('btn-confirm-bih');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Place Ball';
+            }
+        }
+
+        this.cue.visible = false;
+        this.showStatus(reasonMsg);
+        this.updateHUD();
+        this.broadcastSync();
+
+        if (this.mode === 'ai' && this.currentTurn === 'p2') {
+            setTimeout(() => this.executeAIBallInHand(), 700);
+        }
+    }
+
+    executeAIBallInHand() {
+        if (!this.isBallInHand || this.currentTurn !== 'p2') return;
+        const group = this.playerGroups.p2;
+        let targets = this.ballsData.filter(b => {
+            if (b.inPocket || b.number === 0) return false;
+            if (!group) return b.number !== 8;
+            const hasRest = this.hasRemainingGroupBalls(group);
+            if (!hasRest) return b.number === 8;
+            return group === 'solids' ? b.number <= 7 : b.number >= 9;
+        });
+        if (targets.length === 0) targets = this.ballsData.filter(b => !b.inPocket && b.number === 8);
+
+        if (targets.length > 0) {
+            const target = targets[0];
+            const desiredX = Math.max(-3.0, Math.min(3.0, target.x - 0.8));
+            const desiredZ = Math.max(-1.4, Math.min(1.4, target.z));
+            if (this.isLegalCueBallPlacement(desiredX, desiredZ)) {
+                this.moveCueBallInHand(desiredX, desiredZ);
+            }
+        }
+        setTimeout(() => {
+            this.confirmBallInHand();
+            setTimeout(() => this.executeAIShot(), 600);
+        }, 500);
+    }
+
+    broadcastSync() {
         if (this.mode === 'online' && window.parent && window.parent !== window) {
             window.parent.postMessage({
                 type: 'POOL_LOCAL_SYNC',
                 ballsData: this.ballsData.map(b => ({ number: b.number, x: b.x, z: b.z, inPocket: b.inPocket })),
                 currentTurn: this.currentTurn,
-                playerGroups: this.playerGroups
+                playerGroups: this.playerGroups,
+                isBreakShot: this.isBreakShot,
+                isBallInHand: this.isBallInHand
             }, '*');
-        }
-
-        // 6. Trigger AI shot if AI's turn
-        if (this.mode === 'ai' && this.currentTurn === 'p2') {
-            setTimeout(() => this.executeAIShot(), 900);
         }
     }
 
@@ -967,6 +1348,12 @@ class PoolGameApp {
         this.playerGroups = { p1: null, p2: null };
         this.isShotActive = false;
         this.cueBallScratch = false;
+        this.isBreakShot = true;
+        this.isBallInHand = false;
+        this.ballInHandValid = true;
+        if (this.bihRing) this.bihRing.visible = false;
+        const bar = document.getElementById('ball-in-hand-bar');
+        if (bar) bar.style.display = 'none';
         this.spawnBalls();
         this.showStatus('New Rack! Player 1 breaks the balls');
         this.updateHUD();
@@ -1041,7 +1428,7 @@ class PoolGameApp {
 
         if (badgeEl) {
             if (isEightReady) {
-                badgeEl.textContent = `🎯 SINK THE 8-BALL!`;
+                badgeEl.textContent = `SINK THE 8-BALL!`;
                 badgeEl.style.color = '#facc15';
             } else {
                 badgeEl.textContent = `${group.toUpperCase()} (${pottedCount}/7)`;

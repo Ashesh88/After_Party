@@ -64,9 +64,9 @@
             this.isOrbitEnabled = false;
             this.camViewIndex = 0;
             this.camViews = [
+                { pos: new THREE.Vector3(0, 2.4, 4.2), target: new THREE.Vector3(0, 0.4, -18), label: 'Action' },
                 { pos: new THREE.Vector3(0, 2.7, 5.0), target: new THREE.Vector3(0, 0.4, -15), label: 'Bowler' },
-                { pos: new THREE.Vector3(0, 8.5, -4.0), target: new THREE.Vector3(0, 0, -17), label: 'Overhead' },
-                { pos: new THREE.Vector3(0, 2.4, 4.2), target: new THREE.Vector3(0, 0.4, -18), label: 'Action' }
+                { pos: new THREE.Vector3(0, 8.5, -4.0), target: new THREE.Vector3(0, 0, -17), label: 'Overhead' }
             ];
 
             // 10 Pins
@@ -114,6 +114,9 @@
             this.resultsPodium = document.getElementById('results-podium');
             this.btnRematch = document.getElementById('btn-rematch');
             this.laneHint = document.getElementById('lane-hint');
+            if (this.camBadge && this.camViews && this.camViews[this.camViewIndex]) {
+                this.camBadge.textContent = this.camViews[this.camViewIndex].label;
+            }
         }
 
         setupPlayers() {
@@ -249,10 +252,24 @@
             if (this.isOrbitEnabled && this.controls) return;
 
             const isMobile = window.innerWidth < 650;
-            const current = this.camViews[this.camViewIndex];
+            const current = this.camViews[this.camViewIndex] || this.camViews[0];
 
-            if (this.camViewIndex === 0) {
-                // Bowler view: elevate on mobile so ball at z=1.8 and pins are framed clearly above bottom dock
+            if (current.label === 'Action') {
+                if (this.isRolling) {
+                    // Action cam dynamically tracks ball down lane
+                    const bPos = this.ball ? this.ball.position : new THREE.Vector3(0, 0.34, 1.8);
+                    this.camera.position.set(bPos.x * 0.35, 1.8, bPos.z + 3.4);
+                    this.camera.lookAt(bPos.x, 0.4, bPos.z - 7.0);
+                } else {
+                    if (isMobile) {
+                        this.camera.position.set(0, 2.8, 4.8);
+                        this.camera.lookAt(0, 0.4, -17);
+                    } else {
+                        this.camera.position.copy(current.pos);
+                        this.camera.lookAt(current.target);
+                    }
+                }
+            } else if (current.label === 'Bowler') {
                 if (isMobile) {
                     this.camera.position.set(0, 3.4, 5.8);
                     this.camera.lookAt(0, 0.45, -13);
@@ -260,11 +277,6 @@
                     this.camera.position.set(0, 2.7, 5.0);
                     this.camera.lookAt(0, 0.4, -15);
                 }
-            } else if (this.camViewIndex === 2 && this.isRolling) {
-                // Action cam follows ball down lane
-                const bPos = this.ball ? this.ball.position : new THREE.Vector3(0, 0.34, 1.8);
-                this.camera.position.set(bPos.x * 0.35, 1.8, bPos.z + 3.4);
-                this.camera.lookAt(bPos.x, 0.4, bPos.z - 7.0);
             } else {
                 this.camera.position.copy(current.pos);
                 this.camera.lookAt(current.target);
@@ -441,6 +453,14 @@
                 isRolling: false,
                 inGutter: false
             };
+
+            // Interactive Ball Position Ring (Carrom-style draggable cue marker)
+            const ringGeo = new THREE.RingGeometry(0.36, 0.46, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65, side: THREE.DoubleSide });
+            this.ballRing = new THREE.Mesh(ringGeo, ringMat);
+            this.ballRing.rotation.x = -Math.PI / 2;
+            this.ballRing.position.set(0, 0.016, 1.8);
+            this.scene.add(this.ballRing);
         }
 
         initTrajectoryGuide() {
@@ -458,15 +478,47 @@
             this.guideLine = new THREE.Line(guideGeo, this.guideMat);
             this.guideLine.computeLineDistances();
             this.scene.add(this.guideLine);
+
+            // Carrom-style Interactive Aim Target Reticle on Lane Floor
+            this.targetReticle = new THREE.Group();
+            const reticleOuter = new THREE.Mesh(
+                new THREE.RingGeometry(0.28, 0.38, 32),
+                new THREE.MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+            );
+            reticleOuter.rotation.x = -Math.PI / 2;
+            this.targetReticle.add(reticleOuter);
+
+            const reticleInner = new THREE.Mesh(
+                new THREE.CircleGeometry(0.12, 16),
+                new THREE.MeshBasicMaterial({ color: 0xfb7185, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+            );
+            reticleInner.rotation.x = -Math.PI / 2;
+            this.targetReticle.add(reticleInner);
+
+            this.targetReticle.position.set(0, 0.02, -8.0);
+            this.scene.add(this.targetReticle);
+
             this.updateTrajectoryGuide();
         }
 
         updateTrajectoryGuide() {
             if (!this.guideLine || this.isRolling) {
                 if (this.guideLine) this.guideLine.visible = false;
+                if (this.ballRing) this.ballRing.visible = false;
+                if (this.targetReticle) this.targetReticle.visible = false;
                 return;
             }
             this.guideLine.visible = true;
+            if (this.ballRing) {
+                this.ballRing.visible = true;
+                this.ballRing.position.x = this.aimX;
+            }
+            if (this.targetReticle) {
+                this.targetReticle.visible = true;
+                const targetZ = -8.0;
+                const targetX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, this.aimX - (1.8 - targetZ) * Math.tan(this.aimAngle)));
+                this.targetReticle.position.set(targetX, 0.02, targetZ);
+            }
 
             const positions = this.guideLine.geometry.attributes.position.array;
             const pointCount = 27;
@@ -546,7 +598,9 @@
         }
 
         setup10Pins() {
-            this.pins.forEach(p => this.scene.remove(p.mesh));
+            this.pins.forEach(p => {
+                if (p.mesh) this.scene.remove(p.mesh);
+            });
             this.pins = [];
 
             // Standard Official 10-Pin Coordinates
@@ -574,10 +628,33 @@
                     initPos: new THREE.Vector3(item.x, 0, item.z),
                     vel: new THREE.Vector3(0, 0, 0),
                     angVel: new THREE.Vector3(0, 0, 0),
-                    isKnocked: false
+                    isKnocked: false,
+                    clearedInRoll1: false
                 });
             });
 
+            this.updatePinRadar();
+        }
+
+        // For Chance 2: Remove ONLY the knocked pins and preserve the standing pins on the deck!
+        clearKnockedPinsForRoll2() {
+            this.pins.forEach(p => {
+                if (p.isKnocked) {
+                    if (p.mesh) this.scene.remove(p.mesh);
+                    p.clearedInRoll1 = true;
+                    p.mesh.position.set(0, -50, 0);
+                    p.vel.set(0, 0, 0);
+                    p.angVel.set(0, 0, 0);
+                } else {
+                    // Standing pin remains upright on pin deck
+                    p.mesh.position.copy(p.initPos);
+                    p.mesh.rotation.set(0, 0, 0);
+                    p.vel.set(0, 0, 0);
+                    p.angVel.set(0, 0, 0);
+                    p.isKnocked = false;
+                    p.clearedInRoll1 = false;
+                }
+            });
             this.updatePinRadar();
         }
 
@@ -585,7 +662,7 @@
             this.pins.forEach(p => {
                 const dot = document.getElementById(`rpin-${p.id}`);
                 if (dot) {
-                    if (p.isKnocked) {
+                    if (p.isKnocked || p.clearedInRoll1) {
                         dot.classList.add('knocked');
                     } else {
                         dot.classList.remove('knocked');
@@ -706,7 +783,7 @@
             // Ball-to-Pin Collisions
             let hitOccurred = false;
             this.pins.forEach(pin => {
-                if (pin.isKnocked) return;
+                if (pin.isKnocked || pin.clearedInRoll1) return;
                 const dist = pin.mesh.position.distanceTo(this.ballState.pos);
                 if (dist < 0.54) {
                     hitOccurred = true;
@@ -724,9 +801,9 @@
 
             // Pin-to-Pin Collisions (Chain Reaction)
             this.pins.forEach(p1 => {
-                if (!p1.isKnocked) return;
+                if (!p1.isKnocked || p1.clearedInRoll1) return;
                 this.pins.forEach(p2 => {
-                    if (p2.isKnocked || p1 === p2) return;
+                    if (p2.isKnocked || p2.clearedInRoll1 || p1 === p2) return;
                     const d = p1.mesh.position.distanceTo(p2.mesh.position);
                     if (d < 0.5) {
                         hitOccurred = true;
@@ -743,14 +820,14 @@
             });
 
             if (hitOccurred) {
-                const knockedCount = this.pins.filter(p => p.isKnocked).length;
+                const knockedCount = this.pins.filter(p => p.isKnocked || p.clearedInRoll1).length;
                 if (window.bowlingAudio) window.bowlingAudio.playPinCrash(knockedCount);
                 this.updatePinRadar();
             }
 
             // Knocked Pin Tumbling & Physics
             this.pins.forEach(pin => {
-                if (pin.isKnocked && pin.vel.length() > 0.05) {
+                if (pin.isKnocked && !pin.clearedInRoll1 && pin.vel.length() > 0.05) {
                     pin.mesh.position.addScaledVector(pin.vel, safeDt);
                     pin.mesh.rotation.x += pin.angVel.x * safeDt;
                     pin.mesh.rotation.z += pin.angVel.z * safeDt;
@@ -775,30 +852,40 @@
             }
             if (window.bowlingAudio) window.bowlingAudio.stopRollSound();
 
-            const knockedCount = this.pins.filter(p => p.isKnocked).length;
             const activePlayer = this.players[this.activePlayerIndex];
             const f = activePlayer.frames[this.currentFrame - 1];
 
             if (this.currentRoll === 1) {
-                // Roll 1 finished
+                // Roll 1 finished: count knocked pins
+                const knockedCount = this.pins.filter(p => p.isKnocked).length;
                 this.roll1Knocked = knockedCount;
                 f.r1 = knockedCount === 10 ? 'X' : knockedCount;
 
                 if (knockedCount === 10) {
+                    // STRIKE! All 10 pins down on Roll 1
+                    f.total = 10;
+                    activePlayer.score += 10;
                     this.showCelebration('STRIKE!', '10 Pins in Chance 1!');
                     if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
+                    this.renderScorecards();
+
+                    // Strike completes the frame! Clear deck and pass to next player
+                    this.triggerSweeperAnimation(() => {
+                        this.nextPlayerTurn();
+                    });
+                    return;
                 } else if (knockedCount === 0 && this.ballState.inGutter) {
                     this.showCelebration('GUTTER BALL!', 'Zero pins knocked');
                 } else {
-                    this.showCelebration(knockedCount + ' PINS!', 'Chance 1 complete');
+                    const remaining = 10 - knockedCount;
+                    this.showCelebration(knockedCount + ' PINS!', remaining + ' Standing for Chance 2');
                 }
 
-                // Advance to Chance 2 of this round
+                // Advance to Chance 2 of this frame with ONLY remaining standing pins!
                 this.currentRoll = 2;
                 this.renderScorecards();
                 this.triggerSweeperAnimation(() => {
-                    // Set up fresh 10 pins for Chance 2 so player can knock more pins (e.g. 7 + 5 = 12)
-                    this.setup10Pins();
+                    this.clearKnockedPinsForRoll2();
                     this.resetBallPosition();
                     this.updateHUD();
 
@@ -810,19 +897,19 @@
                     }
                 });
             } else {
-                // Roll 2 finished
-                this.roll2Knocked = knockedCount;
-                f.r2 = knockedCount === 10 ? 'X' : knockedCount;
+                // Roll 2 finished: count newly knocked pins among the remaining standing pins
+                const roll2NewlyKnocked = this.pins.filter(p => p.isKnocked && !p.clearedInRoll1).length;
+                this.roll2Knocked = roll2NewlyKnocked;
+                const frameTotal = Math.min(10, this.roll1Knocked + this.roll2Knocked);
+                f.r2 = frameTotal === 10 ? '/' : this.roll2Knocked;
+                f.total = frameTotal;
+                activePlayer.score += frameTotal;
 
-                const roundTotal = this.roll1Knocked + this.roll2Knocked;
-                f.total = roundTotal;
-                activePlayer.score += roundTotal;
-
-                if (knockedCount === 10) {
-                    this.showCelebration('STRIKE!', '10 Pins in Chance 2!');
+                if (frameTotal === 10) {
+                    this.showCelebration('SPARE!', 'All 10 Pins Knocked in Chance 2!');
                     if (window.bowlingAudio) window.bowlingAudio.playStrikeFanfare();
                 } else {
-                    this.showCelebration('+' + roundTotal + ' PTS!', activePlayer.name + ' Round ' + this.currentFrame + ' Total');
+                    this.showCelebration('+' + frameTotal + ' PTS!', activePlayer.name + ' Round ' + this.currentFrame + ' Total');
                 }
 
                 this.renderScorecards();
@@ -1253,33 +1340,94 @@
                 });
             }
 
-            // Direct Touch/Drag on the 3D Lane to position the ball
+            // Carrom-style Direct Touch & Cursor Interaction: Drag Ball to Position, Drag Lane to Aim!
             let isDragging = false;
+            let dragMode = null; // 'position' or 'aim'
             const container = this.container;
+            const raycaster = new THREE.Raycaster();
+            const laneFloorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const hitPoint = new THREE.Vector3();
 
-            const onPointerMove = (e) => {
-                if (!isDragging || this.isRolling || this.isOrbitEnabled) return;
+            const getLaneFloorIntersection = (clientX, clientY) => {
                 const rect = container.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const normX = (clientX - rect.left) / rect.width;
-                const computedAim = (normX - 0.5) * (LANE_WIDTH * 0.95);
-                this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, computedAim));
-                if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
-                this.ball.position.x = this.aimX;
-                this.ballState.pos.x = this.aimX;
-                this.updateTrajectoryGuide();
+                const mouse = new THREE.Vector2(
+                    ((clientX - rect.left) / rect.width) * 2 - 1,
+                    -((clientY - rect.top) / rect.height) * 2 + 1
+                );
+                raycaster.setFromCamera(mouse, this.camera);
+                const hit = raycaster.ray.intersectPlane(laneFloorPlane, hitPoint);
+                return hit;
+            };
+
+            const onPointerStart = (clientX, clientY) => {
+                if (this.isRolling || this.isOrbitEnabled) return;
+                const hit = getLaneFloorIntersection(clientX, clientY);
+                if (!hit) return;
+
+                isDragging = true;
+                // If touching near the foul line / ball (z > -1.2): slide ball left/right across lane!
+                // If touching further down the lane (z <= -1.2): rotate aim direction towards target point!
+                if (hit.z > -1.2) {
+                    dragMode = 'position';
+                    this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, hit.x));
+                    if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
+                    this.ball.position.x = this.aimX;
+                    this.ballState.pos.x = this.aimX;
+                    this.updateTrajectoryGuide();
+                } else {
+                    dragMode = 'aim';
+                    const dx = hit.x - this.aimX;
+                    const dz = 1.8 - hit.z;
+                    if (dz > 0.1) {
+                        const angle = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, -Math.atan2(dx, dz)));
+                        this.aimAngle = angle;
+                        if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
+                        this.updateTrajectoryGuide();
+                    }
+                }
+            };
+
+            const onPointerMoveAction = (clientX, clientY) => {
+                if (!isDragging || this.isRolling || this.isOrbitEnabled) return;
+                const hit = getLaneFloorIntersection(clientX, clientY);
+                if (!hit) return;
+
+                if (dragMode === 'position') {
+                    this.aimX = Math.max(LANE_MIN_X, Math.min(LANE_MAX_X, hit.x));
+                    if (this.sliderPos) this.sliderPos.value = this.aimX.toFixed(2);
+                    this.ball.position.x = this.aimX;
+                    this.ballState.pos.x = this.aimX;
+                    this.updateTrajectoryGuide();
+                } else if (dragMode === 'aim') {
+                    const dx = hit.x - this.aimX;
+                    const dz = 1.8 - hit.z;
+                    if (dz > 0.1) {
+                        const angle = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, -Math.atan2(dx, dz)));
+                        this.aimAngle = angle;
+                        if (this.sliderAngle) this.sliderAngle.value = this.aimAngle.toFixed(3);
+                        this.updateTrajectoryGuide();
+                    }
+                }
+            };
+
+            const onPointerEndAction = () => {
+                isDragging = false;
+                dragMode = null;
             };
 
             container.addEventListener('pointerdown', (e) => {
-                if (e.clientY > window.innerHeight * 0.35 && !this.isRolling && !this.isOrbitEnabled) {
-                    isDragging = true;
-                    onPointerMove(e);
+                if (e.target.closest('.interactive')) return;
+                onPointerStart(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (isDragging) {
+                    onPointerMoveAction(e.clientX, e.clientY);
                 }
             });
 
-            window.addEventListener('pointermove', onPointerMove);
-            window.addEventListener('pointerup', () => { isDragging = false; });
-            window.addEventListener('pointercancel', () => { isDragging = false; });
+            window.addEventListener('pointerup', onPointerEndAction);
+            window.addEventListener('pointercancel', onPointerEndAction);
         }
 
         restartMatch() {

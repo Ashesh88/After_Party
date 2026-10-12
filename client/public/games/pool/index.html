@@ -57,7 +57,13 @@
             </div>
         </div>
 
-        <!-- 3-Second Floating Incoming Message Toast Bubble -->
+        <!-- Ball in Hand Floating Action Bar -->
+        <div class="ball-in-hand-bar interactive" id="ball-in-hand-bar" style="display: none;">
+            <span id="bih-text"><i class="fa-solid fa-hand-pointer"></i> Ball in Hand: Drag cue ball to place legally</span>
+            <button class="btn-confirm-bih" id="btn-confirm-bih"><i class="fa-solid fa-check"></i> Place Ball</button>
+        </div>
+
+        <!-- Floating Incoming Message Toast Bubble -->
         <div class="chat-toast-bubble" id="chat-toast-bubble"></div>
 
         <!-- Left Side Aim Fine-Tune Wheel (Touch to rotate aim with micro precision) -->
@@ -66,6 +72,31 @@
                 <div class="aim-wheel-indicator"></div>
             </div>
             <span class="aim-wheel-label">FINE AIM</span>
+        </div>
+
+        <!-- Right Side Vertical Cue Stick Power Puller UI -->
+        <div class="cue-puller-panel interactive" id="cue-puller-panel" title="Drag cue stick down to charge power, release to shoot!">
+            <div class="cue-puller-header">
+                <span class="cue-puller-tag"><i class="fa-solid fa-bolt"></i> CUE</span>
+                <span class="cue-puller-pct" id="stick-power-pct">50%</span>
+            </div>
+            <div class="cue-puller-track" id="cue-puller-track">
+                <div class="cue-puller-fill" id="cue-puller-fill"></div>
+                <div class="cue-puller-ticks">
+                    <span>100</span>
+                    <span>75</span>
+                    <span>50</span>
+                    <span>25</span>
+                    <span>0</span>
+                </div>
+                <!-- Interactive Stylized 2D Pool Cue Stick -->
+                <div class="cue-stick-slider-handle" id="cue-stick-slider-handle">
+                    <div class="cue-tip-dot"></div>
+                    <div class="cue-brass-band"></div>
+                    <div class="cue-wood-shaft"></div>
+                    <div class="cue-leather-grip"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Bottom Controls HUD (Shot Power & Strike Action) -->
@@ -104,13 +135,13 @@
         <div class="air-chat-messages" id="panel-chat-messages">
             <!-- Live match chat messages only (up to 5 messages) -->
         </div>
-        <!-- Corner Emojis Bar -->
+        <!-- Corner Quick Chat Buttons Bar -->
         <div class="air-chat-emojis">
-            <button class="emoji-btn" data-emoji="🎱">🎱</button>
-            <button class="emoji-btn" data-emoji="🔥">🔥</button>
-            <button class="emoji-btn" data-emoji="👑">👑</button>
-            <button class="emoji-btn" data-emoji="👍">👍</button>
-            <button class="emoji-btn" data-emoji="🎯">🎯</button>
+            <button class="emoji-btn" data-emoji="Good Luck!" title="Good Luck!"><i class="fa-solid fa-clover"></i></button>
+            <button class="emoji-btn" data-emoji="Nice Shot!" title="Nice Shot!"><i class="fa-solid fa-thumbs-up"></i></button>
+            <button class="emoji-btn" data-emoji="Tough Angle!" title="Tough Angle!"><i class="fa-solid fa-crosshairs"></i></button>
+            <button class="emoji-btn" data-emoji="Well Played!" title="Well Played!"><i class="fa-solid fa-trophy"></i></button>
+            <button class="emoji-btn" data-emoji="GG!" title="GG!"><i class="fa-solid fa-handshake"></i></button>
         </div>
         <!-- Transparent Air Input -->
         <form class="air-chat-input-bar" id="panel-chat-form">
@@ -122,8 +153,8 @@
     <!-- Victory Celebration Modal -->
     <div class="modal-overlay" id="modal-victory">
         <div class="victory-card interactive">
-            <div class="victory-icon">🎱👑</div>
-            <h2 class="victory-title" id="victory-title">Victory! 🏆</h2>
+            <div class="victory-icon"><i class="fa-solid fa-trophy"></i></div>
+            <h2 class="victory-title" id="victory-title">Victory!</h2>
             <p class="victory-desc" id="victory-desc">Masterful 8-Ball shot! Congratulations on winning the game!</p>
             <button class="btn-victory-replay" id="btn-play-again">
                 <i class="fa-solid fa-play"></i> Play Again

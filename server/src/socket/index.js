@@ -722,25 +722,96 @@ const setupSocket = (io) => {
       }
     });
 
-    // Direct Friend Game Challenge / Invite Handlers
+    // Helper for game names
+    const getGameTitle = (game) => {
+      if (game === 'pool') return '8-Ball Pool';
+      if (game === 'bowling') return 'Cosmic 3D Bowling';
+      if (game === 'ludo') return 'Classic Ludo';
+      if (game === 'chess') return 'Chess';
+      if (game === 'uno') return 'UNO Party';
+      if (game === 'carrom') return 'Carrom';
+      if (game === 'paint' || game === 'painting') return 'Co-Paint Studio';
+      return (game || 'Game').toUpperCase();
+    };
+
+    // Direct Friend & Room Game Challenge / Invite Handlers
     socket.on('game:invite', async (data) => {
       const targetUserId = data?.targetUserId;
       if (!targetUserId) return;
+      const gameTitle = getGameTitle(data.game);
+      const expiresAt = new Date(Date.now() + 60 * 1000); // 1 minute countdown
+
       io.to(`user:${targetUserId}`).emit('game:invite:received', {
         senderId: userId,
         senderName: data.senderName || 'Your Friend',
         senderAvatar: data.senderAvatar,
         game: data.game || 'chess',
         sessionCode: data.sessionCode,
+        roomId: data.roomId,
+        targetUserId: targetUserId,
+        targetUserName: data.targetUserName,
+        expiresAt: expiresAt,
       });
 
-      // Dispatch Web Push notification so friend gets alerted even if site is closed
+      // Broadcast interactive game invite into Room Chat if roomId provided
+      const targetRoomId = data.roomId || getActiveRoomId();
+      if (targetRoomId) {
+        try {
+          const newMsg = await Message.create({
+            roomId: targetRoomId,
+            senderId: userId,
+            type: 'game_invite',
+            content: `${data.senderName || 'Player'} challenged to ${gameTitle}!`,
+            gameInvite: {
+              game: data.game || 'chess',
+              sessionCode: data.sessionCode,
+              senderId: userId,
+              senderName: data.senderName || 'Player',
+              targetUserId: targetUserId,
+              targetUserName: data.targetUserName || 'Member',
+              expiresAt: expiresAt,
+              status: 'pending',
+            },
+          });
+          const populated = await Message.findById(newMsg._id).populate('senderId', 'displayName avatar');
+          io.to(`room:${targetRoomId}`).emit('chat:message', populated);
+        } catch (chatErr) {
+          console.error('Error creating room chat game invite:', chatErr);
+        }
+      } else if (targetUserId) {
+        // Direct Chat game invite
+        try {
+          const newMsg = await Message.create({
+            senderId: userId,
+            recipientId: targetUserId,
+            type: 'game_invite',
+            content: `${data.senderName || 'Player'} challenged you to ${gameTitle}!`,
+            gameInvite: {
+              game: data.game || 'chess',
+              sessionCode: data.sessionCode,
+              senderId: userId,
+              senderName: data.senderName || 'Player',
+              targetUserId: targetUserId,
+              targetUserName: data.targetUserName || 'Friend',
+              expiresAt: expiresAt,
+              status: 'pending',
+            },
+          });
+          const populated = await Message.findById(newMsg._id).populate('senderId', 'displayName avatar');
+          io.to(`user:${targetUserId}`).emit('chat:direct-message', populated);
+          io.to(`user:${userId}`).emit('chat:direct-message', populated);
+        } catch (chatErr) {
+          console.error('Error creating direct chat game invite:', chatErr);
+        }
+      }
+
+      // Dispatch Web Push notification
       try {
         const targetUser = await User.findById(targetUserId);
         if (targetUser) {
           pushService.sendPushToUser(targetUser, {
             title: `Game Invite from ${data.senderName || 'Your Friend'}`,
-            body: `Challenged you to play ${(data.game || 'arcade').toUpperCase()}! Tap to join.`,
+            body: `Challenged you to play ${gameTitle}! 1 min to accept.`,
             icon: data.senderAvatar || '/icon-192x192.png',
             data: { url: '/games', type: 'game-invite' },
             tag: 'game-invite',
@@ -749,9 +820,24 @@ const setupSocket = (io) => {
       } catch (err) {}
     });
 
-    socket.on('game:invite:accept', (data) => {
+    socket.on('game:invite:accept', async (data) => {
       const targetUserId = data?.targetUserId;
       if (!targetUserId) return;
+
+      if (data.messageId) {
+        try {
+          await Message.findByIdAndUpdate(data.messageId, {
+            'gameInvite.status': 'accepted',
+          });
+          if (data.roomId) {
+            io.to(`room:${data.roomId}`).emit('game:invite:status_updated', {
+              messageId: data.messageId,
+              status: 'accepted',
+            });
+          }
+        } catch (err) {}
+      }
+
       io.to(`user:${targetUserId}`).emit('game:invite:accepted', {
         acceptedBy: userId,
         game: data.game || 'chess',
@@ -759,9 +845,24 @@ const setupSocket = (io) => {
       });
     });
 
-    socket.on('game:invite:decline', (data) => {
+    socket.on('game:invite:decline', async (data) => {
       const targetUserId = data?.targetUserId;
       if (!targetUserId) return;
+
+      if (data.messageId) {
+        try {
+          await Message.findByIdAndUpdate(data.messageId, {
+            'gameInvite.status': 'declined',
+          });
+          if (data.roomId) {
+            io.to(`room:${data.roomId}`).emit('game:invite:status_updated', {
+              messageId: data.messageId,
+              status: 'declined',
+            });
+          }
+        } catch (err) {}
+      }
+
       io.to(`user:${targetUserId}`).emit('game:invite:declined', {
         declinedBy: userId,
         game: data.game || 'chess',
@@ -1008,10 +1109,12 @@ const setupSocket = (io) => {
       });
     });
 
-    socket.on('pool:chat', ({ sessionCode, message, senderName }) => {
+    socket.on('pool:chat', ({ sessionCode, message, text, senderName }) => {
       if (!sessionCode) return;
+      const content = message || text;
       socket.to(`pool:${sessionCode}`).emit('pool:chat', {
-        message,
+        message: content,
+        text: content,
         senderName,
         senderId: userId,
         timestamp: Date.now(),

@@ -21,10 +21,10 @@ class PoolCue3D {
     buildCueMesh() {
         this.stickGroup = new THREE.Group();
 
-        // 1. Tapered Canadian Hardwood Shaft (Length = 3.6)
-        const shaftGeo = new THREE.CylinderGeometry(0.022, 0.045, 3.6, 24);
+        // 1. Tapered Canadian Hardwood Shaft (Length = 3.6, thin tip at -Z, thick butt at +Z)
+        const shaftGeo = new THREE.CylinderGeometry(0.045, 0.022, 3.6, 32);
         const shaftMat = new THREE.MeshStandardMaterial({
-            color: 0xe2ba8a,
+            color: 0xdfb889,
             roughness: 0.35,
             metalness: 0.05
         });
@@ -33,20 +33,32 @@ class PoolCue3D {
         shaft.position.z = 1.8; // Extends backwards from cue ball
         this.stickGroup.add(shaft);
 
-        // 2. Premium Embossed Leather Grip (Length = 1.1)
-        const gripGeo = new THREE.CylinderGeometry(0.046, 0.049, 1.1, 24);
+        // 2. Premium Embossed Leather Grip & Inlay Butt (Length = 1.1)
+        const gripGeo = new THREE.CylinderGeometry(0.049, 0.046, 1.1, 32);
         const gripMat = new THREE.MeshStandardMaterial({
-            color: 0x181a20,
-            roughness: 0.7,
-            metalness: 0.1
+            color: 0x1c1e24,
+            roughness: 0.75,
+            metalness: 0.15
         });
         const grip = new THREE.Mesh(gripGeo, gripMat);
         grip.rotation.x = Math.PI / 2;
         grip.position.z = 3.05;
         this.stickGroup.add(grip);
 
-        // 3. Polished Brass Ferrule
-        const ferruleGeo = new THREE.CylinderGeometry(0.023, 0.023, 0.04, 20);
+        // 2b. Polished Rosewood Butt Cap (Length = 0.15)
+        const buttCapGeo = new THREE.CylinderGeometry(0.049, 0.048, 0.15, 32);
+        const buttCapMat = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.25,
+            metalness: 0.8
+        });
+        const buttCap = new THREE.Mesh(buttCapGeo, buttCapMat);
+        buttCap.rotation.x = Math.PI / 2;
+        buttCap.position.z = 3.65;
+        this.stickGroup.add(buttCap);
+
+        // 3. Polished Brass Ferrule (Length = 0.04, at tip)
+        const ferruleGeo = new THREE.CylinderGeometry(0.023, 0.022, 0.04, 24);
         const ferruleMat = new THREE.MeshStandardMaterial({
             color: 0xd4af37,
             metalness: 0.85,
@@ -57,8 +69,8 @@ class PoolCue3D {
         ferrule.position.z = 0.02;
         this.stickGroup.add(ferrule);
 
-        // 4. Master Blue Chalk Tip
-        const tipGeo = new THREE.CylinderGeometry(0.021, 0.021, 0.016, 20);
+        // 4. Master Blue Chalk Tip (Length = 0.016, touching cue ball)
+        const tipGeo = new THREE.CylinderGeometry(0.021, 0.021, 0.016, 24);
         const tipMat = new THREE.MeshStandardMaterial({
             color: 0x2563eb,
             roughness: 0.95
@@ -68,7 +80,7 @@ class PoolCue3D {
         tip.position.z = -0.005;
         this.stickGroup.add(tip);
 
-        // Natural elevation tilt so stick hovers cleanly over the cushion
+        // Natural elevation tilt so stick hovers cleanly over table rails
         this.stickGroup.rotation.x = 0.065;
 
         this.cueGroup.add(this.stickGroup);

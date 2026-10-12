@@ -1,9 +1,10 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useSocketStore } from '../../../lib/store/socketStore';
 import { useAuthStore } from '../../../lib/store/authStore';
 import { useCallStore } from '../../../lib/store/callStore';
+import { useGameStore } from '../../../lib/store/gameStore';
 import { soundService } from '../../../lib/soundService';
 import api from '../../../lib/api';
 import { Message, Friend, ConversationItem } from '../../../lib/types';
@@ -12,7 +13,7 @@ import toast from 'react-hot-toast';
 import { 
   Send, Check, CheckCheck, Phone, Video, Mic, Play, Pause, 
   Heart, ArrowLeft, Search, Image as ImageIcon, Smile, MoreVertical,
-  Users, Trash2, Sparkles, MessageCircle, Layers, Lock, EyeOff, Clock, X
+  Users, Trash2, Sparkles, MessageCircle, Layers, Lock, EyeOff, Clock, X, Gamepad2
 } from 'lucide-react';
 
 interface ActiveChat {
@@ -27,7 +28,7 @@ interface ActiveChat {
   room?: any;
 }
 
-const COMMON_EMOJIS = ['💕', '❤️', '😘', '😂', '🔥', '😍', '✨', '🥺', '👏', '🎮', '🥂', '🎉'];
+const COMMON_EMOJIS = ['GG', 'Hi', 'Nice', 'Cool', 'Ready', 'Yes', 'No'];
 
 function formatTime(dateStr?: string | Date): string {
   if (!dateStr) return '';
@@ -58,6 +59,7 @@ function ChatContent() {
   const user = useAuthStore((state) => state.user);
   const { socket } = useSocketStore();
   const startCall = useCallStore((state) => state.startCall);
+  const router = useRouter();
 
   // Conversations State
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -361,14 +363,14 @@ function ChatContent() {
     const handleDirectVanish = (data: { senderId: string }) => {
       if (activeChat?.type === 'direct' && activeChat.id === data.senderId) {
         setMessages([]);
-        toast('Conversation was cleared', { icon: '🧹' });
+        toast('Conversation was cleared');
       }
     };
 
     const handleRoomVanish = () => {
       if (activeChat?.type === 'room') {
         setMessages([]);
-        toast('Space messages were cleared', { icon: '🧹' });
+        toast('Space messages were cleared');
       }
     };
 
@@ -387,6 +389,17 @@ function ChatContent() {
       }));
     };
 
+    // Game Invite status updates
+    const handleGameInviteStatusUpdated = (data: { messageId: string; status: string }) => {
+      setMessages((prev) =>
+        prev.map((m: any) =>
+          m._id === data.messageId
+            ? { ...m, gameInvite: { ...m.gameInvite, status: data.status } }
+            : m
+        )
+      );
+    };
+
     socket.on('chat:direct-message', handleDirectMessage);
     socket.on('chat:message', handleRoomMessage);
     socket.on('chat:direct-typing', handleDirectTyping);
@@ -397,6 +410,7 @@ function ChatContent() {
     socket.on('chat:vanish', handleRoomVanish);
     socket.on('presence:online', handlePresenceOnline);
     socket.on('presence:offline', handlePresenceOffline);
+    socket.on('game:invite:status_updated', handleGameInviteStatusUpdated);
 
     return () => {
       socket.off('chat:direct-message', handleDirectMessage);
@@ -409,6 +423,7 @@ function ChatContent() {
       socket.off('chat:vanish', handleRoomVanish);
       socket.off('presence:online', handlePresenceOnline);
       socket.off('presence:offline', handlePresenceOffline);
+      socket.off('game:invite:status_updated', handleGameInviteStatusUpdated);
     };
   }, [socket, activeChat, user]);
 
@@ -618,7 +633,7 @@ function ChatContent() {
       });
     }
     soundService.playHeartbeatTone();
-    toast.success(`Heartbeat pulse sent to ${activeChat.title}! 💕`);
+    toast.success(`Heartbeat pulse sent to ${activeChat.title}!`);
   };
 
   // Clear Chat
@@ -636,7 +651,7 @@ function ChatContent() {
       }
       setMessages([]);
       setShowOptionsDropdown(false);
-      toast.success('Chat cleared! 🧹');
+      toast.success('Chat cleared!');
     } catch {
       toast.error('Failed to clear chat');
     }
@@ -645,7 +660,7 @@ function ChatContent() {
   // Direct Call Actions
   const handleStartCall = async (mediaType: 'audio' | 'video') => {
     if (!activeChat || activeChat.type !== 'direct' || !activeChat.friend) {
-      toast('Direct calls are available in 1-on-1 chats', { icon: '📞' });
+      toast('Direct calls are available in 1-on-1 chats');
       return;
     }
     if (!socket) {
@@ -666,6 +681,69 @@ function ChatContent() {
     } catch {
       toast.error(`Could not start ${mediaType} call`);
     }
+  };
+
+  // Accept Game Invite and Launch Match
+  const handleAcceptGameInvite = (msg: any) => {
+    if (!msg?.gameInvite) return;
+    const invite = msg.gameInvite;
+
+    if (socket) {
+      socket.emit('game:invite:accept', {
+        messageId: msg._id,
+        targetUserId: invite.senderId,
+        game: invite.game,
+        sessionCode: invite.sessionCode,
+      });
+    }
+
+    const isPaint = invite.game === 'paint' || invite.game === 'painting';
+    const isUno = invite.game === 'uno';
+    const isCarrom = invite.game === 'carrom';
+    const isLudo = invite.game === 'ludo';
+    const isPool = invite.game === 'pool';
+    const isBowling = invite.game === 'bowling';
+
+    let gameId = 'chess';
+    let gameLabel = 'Chess Match';
+    let guestRole = 'b';
+
+    if (isPaint) {
+      gameId = 'paint';
+      gameLabel = 'Co-Paint Studio';
+      guestRole = 'guest';
+    } else if (isUno) {
+      gameId = 'uno';
+      gameLabel = 'UNO Party';
+      guestRole = 'p2';
+    } else if (isCarrom) {
+      gameId = 'carrom';
+      gameLabel = 'Carrom Match';
+      guestRole = 'p2';
+    } else if (isLudo) {
+      gameId = 'ludo';
+      gameLabel = 'Ludo Match';
+      guestRole = 'yellow';
+    } else if (isPool) {
+      gameId = 'pool';
+      gameLabel = '8-Ball Pool Match';
+      guestRole = 'p2';
+    } else if (isBowling) {
+      gameId = 'bowling';
+      gameLabel = 'Cosmic Bowling Match';
+      guestRole = 'p2';
+    }
+
+    toast.success(`Joining ${invite.senderName || 'Member'}'s ${gameLabel}!`);
+
+    useGameStore.getState().setActiveGame(gameId, {
+      sessionCode: invite.sessionCode,
+      role: guestRole,
+      opponentName: invite.senderName,
+      opponentId: invite.senderId,
+    });
+
+    router.push('/games');
   };
 
   // Filter conversations
@@ -929,6 +1007,7 @@ function ChatContent() {
               setIsWhisperMode={setIsWhisperMode}
               onBack={() => setMobileChatOpen(false)}
               isMobileView={false}
+              onAcceptGameInvite={handleAcceptGameInvite}
             />
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
@@ -983,6 +1062,7 @@ function ChatContent() {
             setIsWhisperMode={setIsWhisperMode}
             onBack={() => setMobileChatOpen(false)}
             isMobileView={true}
+            onAcceptGameInvite={handleAcceptGameInvite}
           />
         </div>
       )}
@@ -1021,7 +1101,7 @@ function WhisperBubble({ msg, isMe, formatTime }: { msg: any; isMe: boolean; for
         }`}
       >
         <Sparkles size={14} className="text-purple-400 opacity-60" />
-        <span>💥 This whisper has vanished into thin air...</span>
+        <span>This whisper has vanished into thin air...</span>
       </div>
     );
   }
@@ -1040,7 +1120,7 @@ function WhisperBubble({ msg, isMe, formatTime }: { msg: any; isMe: boolean; for
           </div>
           <div>
             <div className="text-xs font-black tracking-wide text-pink-300 flex items-center gap-1.5">
-              <span>🤫 Secret Whisper</span>
+              <span>Secret Whisper</span>
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/25 border border-pink-400/40 font-bold uppercase tracking-wider text-pink-200">
                 Confidential
               </span>
@@ -1052,7 +1132,7 @@ function WhisperBubble({ msg, isMe, formatTime }: { msg: any; isMe: boolean; for
         </div>
         <div className="flex items-center justify-between mt-2.5 pt-1.5 border-t border-white/[0.06] text-[10px] text-purple-300/60 font-mono">
           <span>{formatTime(msg.createdAt)}</span>
-          <span className="text-pink-400/90 font-bold group-hover:underline">Tap to reveal 🔓</span>
+          <span className="text-pink-400/90 font-bold group-hover:underline">Tap to reveal</span>
         </div>
       </div>
     );
@@ -1099,6 +1179,134 @@ function WhisperBubble({ msg, isMe, formatTime }: { msg: any; isMe: boolean; for
   );
 }
 
+// Interactive Game Invite Bubble with 60s Live Countdown & Direct Game Launcher
+function GameInviteBubble({
+  msg,
+  isMe,
+  formatTime,
+  onAccept,
+}: {
+  msg: any;
+  isMe: boolean;
+  formatTime: (d?: any) => string;
+  onAccept: (msg: any) => void;
+}) {
+  const invite = msg.gameInvite || {};
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const expiryTime = invite.expiresAt
+    ? new Date(invite.expiresAt).getTime()
+    : new Date(msg.createdAt).getTime() + 60000;
+  const remainingSeconds = Math.max(0, Math.floor((expiryTime - now) / 1000));
+  const isExpired = remainingSeconds <= 0 || invite.status === 'expired';
+
+  let gameLabel = 'Game Challenge';
+  if (invite.game === 'pool') gameLabel = '8-Ball Pool Match';
+  else if (invite.game === 'bowling') gameLabel = 'Cosmic Bowling Match';
+  else if (invite.game === 'ludo') gameLabel = 'Ludo Match';
+  else if (invite.game === 'chess') gameLabel = 'Chess Match';
+  else if (invite.game === 'uno') gameLabel = 'UNO Party';
+  else if (invite.game === 'carrom') gameLabel = 'Carrom Match';
+  else if (invite.game === 'paint' || invite.game === 'painting') gameLabel = 'Co-Paint Studio';
+
+  return (
+    <div
+      className={`p-4 rounded-2xl border bg-gradient-to-br from-[#1b1535] via-[#24133b] to-[#120b22] text-white shadow-[0_8px_30px_rgba(147,51,234,0.25)] select-none max-w-[85%] sm:max-w-[75%] min-w-[260px] ${
+        isExpired
+          ? 'border-white/10 opacity-75'
+          : 'border-purple-500/50 shadow-[0_8px_30px_rgba(236,72,153,0.3)]'
+      } ${isMe ? 'rounded-tr-xs' : 'rounded-tl-xs'}`}
+    >
+      <div className="flex items-center justify-between gap-3 mb-2.5 pb-2 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+            <Gamepad2 size={16} />
+          </div>
+          <div>
+            <span className="text-xs font-black tracking-wide text-purple-200 block">
+              {gameLabel}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {isMe ? 'Sent by you' : `From ${invite.senderName || 'Member'}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Live Timer or Expired Badge */}
+        {invite.status === 'accepted' ? (
+          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] font-bold text-emerald-300">
+            Accepted
+          </span>
+        ) : invite.status === 'declined' ? (
+          <span className="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-[10px] font-bold text-rose-300">
+            Declined
+          </span>
+        ) : isExpired ? (
+          <span className="px-2 py-0.5 rounded-full bg-slate-700/60 border border-slate-600 text-[10px] font-bold text-slate-300 uppercase tracking-wide">
+            Event Expired
+          </span>
+        ) : (
+          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-[10px] font-mono font-bold text-pink-300 animate-pulse">
+            <Clock size={11} />
+            <span>{remainingSeconds}s</span>
+          </div>
+        )}
+      </div>
+
+      {/* Progress Bar for 60s */}
+      {!isExpired && invite.status === 'pending' && (
+        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-3">
+          <div
+            className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 transition-all duration-1000 ease-linear"
+            style={{ width: `${Math.min(100, (remainingSeconds / 60) * 100)}%` }}
+          />
+        </div>
+      )}
+
+      <p className="text-xs text-slate-300 font-medium mb-3">
+        {invite.status === 'accepted'
+          ? 'Match has started!'
+          : invite.status === 'declined'
+          ? 'Invitation was declined.'
+          : isExpired
+          ? 'This game invitation has expired (1 min passed).'
+          : isMe
+          ? 'Waiting for player to accept the challenge...'
+          : 'You are invited to play! Accept now to launch match directly.'}
+      </p>
+
+      {/* Action Buttons */}
+      {!isMe && !isExpired && invite.status === 'pending' && (
+        <button
+          onClick={() => onAccept(msg)}
+          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-pink-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Gamepad2 size={14} />
+          <span>Accept and Join Game</span>
+        </button>
+      )}
+
+      {isExpired && (
+        <div className="w-full py-1.5 px-3 rounded-lg bg-white/[0.04] text-center text-[11px] font-semibold text-slate-400 border border-white/5">
+          Event Expired
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/[0.06] text-[10px] text-slate-400">
+        <span>Room Challenge</span>
+        <span>{formatTime(msg.createdAt)}</span>
+      </div>
+    </div>
+  );
+}
+
 // Reusable Chat Window Component (Active Conversation)
 function ChatWindow({
   activeChat,
@@ -1131,6 +1339,7 @@ function ChatWindow({
   setIsWhisperMode,
   onBack,
   isMobileView,
+  onAcceptGameInvite,
 }: any) {
   const user = useAuthStore((state) => state.user);
 
@@ -1305,8 +1514,15 @@ function ChatWindow({
                   </span>
                 )}
 
-                {/* Message Bubble - Velvet Romantic Aesthetic / Whisper Bubble */}
-                {msg.type === 'whisper' ? (
+                {/* Message Bubble - Velvet Romantic Aesthetic / Whisper / Game Challenge */}
+                {msg.type === 'game_invite' ? (
+                  <GameInviteBubble
+                    msg={msg}
+                    isMe={isMe}
+                    formatTime={formatTime}
+                    onAccept={onAcceptGameInvite}
+                  />
+                ) : msg.type === 'whisper' ? (
                   <WhisperBubble msg={msg} isMe={isMe} formatTime={formatTime} />
                 ) : (
                   <div

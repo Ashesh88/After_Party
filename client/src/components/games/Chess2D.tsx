@@ -1248,7 +1248,7 @@ export default function Chess2D({ onBack }: Chess2DProps) {
       </header>
 
       {/* Main Game Screen */}
-      <div className="relative flex-1 flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="relative flex-1 flex flex-col items-center justify-center p-1 sm:p-2 md:p-3 overflow-y-auto min-h-0">
         {/* Floating In-Game Chat Bubble (2.5 Seconds) */}
         <AnimatePresence>
           {floatingMessage && (
@@ -1268,10 +1268,10 @@ export default function Chess2D({ onBack }: Chess2DProps) {
           )}
         </AnimatePresence>
 
-        {/* Board and Player Area Container */}
-        <div className="flex flex-col items-center justify-center w-full max-w-[530px]">
+        {/* Board and Player Area Container - Scaled to fit laptop screens without cutoff */}
+        <div className="flex flex-col items-center justify-center w-full max-w-[min(510px,calc(100dvh-210px),calc(100vh-210px))]">
           {/* Mode Tabs & AI Difficulty Bar (Always Visible on Mobile & Desktop) */}
-          <div className="w-full flex items-center justify-between gap-1.5 mb-2 px-1">
+          <div className="w-full flex items-center justify-between gap-1.5 mb-1 sm:mb-1.5 px-1">
             {/* Mode Switcher */}
             <div className="flex items-center p-0.5 rounded-xl bg-white/[0.06] border border-white/10 text-xs">
               <button
@@ -1335,7 +1335,7 @@ export default function Chess2D({ onBack }: Chess2DProps) {
             )}
           </div>
           {/* Top Player Card (Opponent or Black) */}
-          <div className="w-full flex items-center justify-between px-3.5 py-2 mb-2 rounded-2xl bg-white/[0.04] border border-white/10 text-xs shadow-md">
+          <div className="w-full flex items-center justify-between px-3 py-1 sm:py-1.5 mb-1 sm:mb-1.5 rounded-2xl bg-white/[0.04] border border-white/10 text-xs shadow-md">
             <div className="flex items-center gap-2.5">
               <div
                 className={`w-3.5 h-3.5 rounded-full border border-white/30 shadow-inner ${
@@ -1381,7 +1381,7 @@ export default function Chess2D({ onBack }: Chess2DProps) {
           </div>
 
           {/* Luxury Wood Board Frame matching Reference Image */}
-          <div className="relative w-full aspect-square rounded-3xl p-3 sm:p-4 bg-gradient-to-br from-[#4a2411] via-[#3a1c0d] to-[#2b1307] border-4 border-[#5d3018] shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(168,97,52,0.25)] flex flex-col justify-between">
+          <div className="relative w-full aspect-square rounded-2xl sm:rounded-3xl p-2 sm:p-3 bg-gradient-to-br from-[#4a2411] via-[#3a1c0d] to-[#2b1307] border-4 border-[#5d3018] shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(168,97,52,0.25)] flex flex-col justify-between">
             {/* Top Coordinates Row: a b c d e f g h */}
             <div className="flex justify-between items-center px-4 sm:px-5 pb-1">
               {displayFiles.map((f) => (
@@ -1521,7 +1521,7 @@ export default function Chess2D({ onBack }: Chess2DProps) {
           </div>
 
           {/* Bottom Player Card (You or White) */}
-          <div className="w-full flex items-center justify-between px-3.5 py-2 mt-2 rounded-2xl bg-white/[0.04] border border-white/10 text-xs shadow-md">
+          <div className="w-full flex items-center justify-between px-3 py-1 sm:py-1.5 mt-1 sm:mt-1.5 rounded-2xl bg-white/[0.04] border border-white/10 text-xs shadow-md">
             <div className="flex items-center gap-2.5">
               <div
                 className={`w-3.5 h-3.5 rounded-full border border-white/30 shadow-inner ${
@@ -1564,7 +1564,7 @@ export default function Chess2D({ onBack }: Chess2DProps) {
           </div>
 
           {/* Quick Action Control Strip */}
-          <div className="w-full mt-2.5 flex items-center justify-between px-1 gap-2 text-xs">
+          <div className="w-full mt-1.5 sm:mt-2 flex items-center justify-between px-1 gap-2 text-xs">
             {/* Turn Status Pill */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/10">
               <span

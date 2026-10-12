@@ -183,7 +183,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
     // Friend accepted in-game invite
     const handleInviteAccepted = (data: { acceptedBy: string; sessionCode: string; game: string }) => {
       if (data.sessionCode === sessionCode && data.game === 'ludo') {
-        toast.success(`A friend accepted your challenge! 🎲`, { icon: '👑' });
+        toast.success('A friend accepted your challenge!');
       }
     };
 
@@ -215,7 +215,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
         });
       }
 
-      toast.success(`${data.playerName || 'Player'} joined the room! 🎲`);
+      toast.success(`${data.playerName || 'Player'} joined the room!`);
     };
 
     // Game started event received by all players
@@ -233,9 +233,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
           '*'
         );
 
-        toast.success(`Game Started with ${data.activePlayerIds.length} Players! 🎲`, {
-          icon: '👑',
-        });
+        toast.success(`Game Started with ${data.activePlayerIds.length} Players!`);
       }
     };
 
@@ -272,15 +270,17 @@ export default function LudoGame({ onBack }: LudoGameProps) {
         },
         '*'
       );
-      toast.success('Rematch started! Board refreshed...', { icon: '🔄' });
+      toast.success('Rematch started! Board refreshed...');
     };
 
     // Remote in-game chat
-    const handleRemoteChat = (data: { text: string; senderName?: string; role?: string }) => {
+    const handleRemoteChat = (data: { text?: string; message?: string; senderName?: string; role?: string }) => {
+      const chatText = data.text || data.message || '';
       iframeRef.current?.contentWindow?.postMessage(
         {
           type: 'REMOTE_CHAT',
-          text: data.text,
+          text: chatText,
+          message: chatText,
           senderName: data.senderName,
           role: data.role,
         },
@@ -360,9 +360,11 @@ export default function LudoGame({ onBack }: LudoGameProps) {
         case 'LUDO_LOCAL_CHAT':
         case 'GAME_CHAT':
           if (sessionCode && socket) {
+            const content = data.text || data.message || '';
             socket.emit('ludo:chat', {
               sessionCode,
-              text: data.text,
+              message: content,
+              text: content,
               senderName: user?.displayName || 'Player',
               role: playerRole,
             });
@@ -462,8 +464,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
     }
 
     setShowFriendsModal(false);
-    toast.success(`Invites sent to ${selectedFriendIds.length} friend(s)! ⏳ Waiting for them to accept...`, {
-      icon: '🎲',
+    toast.success(`Invites sent to ${selectedFriendIds.length} friend(s)! Waiting for them to accept...`, {
       duration: 6000,
     });
   };
@@ -510,8 +511,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
     }
 
     setShowFriendsModal(false);
-    toast.success(`Challenge sent to ${friend.displayName}! ⏳ Waiting for them to accept...`, {
-      icon: '🎲',
+    toast.success(`Challenge sent to ${friend.displayName}! Waiting for them to accept...`, {
       duration: 6000,
     });
   };
@@ -559,7 +559,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
       '*'
     );
 
-    toast.success(`Match started with ${count} players! 🎲`, { icon: '👑' });
+    toast.success(`Match started with ${count} players!`);
   };
 
   const handleCopyCode = () => {
@@ -634,7 +634,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
 
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 truncate whitespace-nowrap">
-              Classic Ludo 🎲
+              Classic Ludo
             </span>
           </div>
         </div>
@@ -971,7 +971,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
                             }}
                             className="px-2.5 py-1 rounded-xl bg-pink-500/20 hover:bg-pink-500 text-[11px] font-bold text-pink-300 hover:text-white transition-all shrink-0 cursor-pointer"
                           >
-                            Duel 🎲
+                            Duel
                           </button>
                         )}
                       </div>
@@ -994,7 +994,7 @@ export default function LudoGame({ onBack }: LudoGameProps) {
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-xs font-black text-white shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Dices className="w-4 h-4" />
-                  <span>Send Invites 🎲</span>
+                  <span>Send Invites</span>
                 </button>
               </div>
             </motion.div>

@@ -687,6 +687,143 @@ body, html {
     color: var(--text-muted);
 }
 
+/* Authentic Vertical Cue Stick Power Puller on Right Edge */
+.cue-puller-panel {
+    position: fixed;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 25;
+    background: rgba(10, 14, 23, 0.78);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 24px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    touch-action: none;
+    user-select: none;
+}
+
+.cue-puller-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.cue-puller-tag {
+    font-size: 0.58rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.cue-puller-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+
+.cue-puller-track {
+    width: 32px;
+    height: 180px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    position: relative;
+    cursor: grab;
+    overflow: hidden;
+    touch-action: none;
+}
+
+.cue-puller-track:active {
+    cursor: grabbing;
+}
+
+/* Glowing power fill meter behind stick */
+.cue-puller-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to top, rgba(16, 185, 129, 0.4), rgba(245, 158, 11, 0.5), rgba(239, 68, 68, 0.65));
+    border-radius: 0 0 14px 14px;
+    pointer-events: none;
+    transition: height 0.05s ease;
+}
+
+.cue-puller-ticks {
+    position: absolute;
+    left: 3px;
+    top: 6px;
+    bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.48rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    line-height: 1;
+}
+
+/* 2D Stylized Luxury Cue Stick that slides down */
+.cue-stick-slider-handle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 170px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    transition: transform 0.05s ease;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+}
+
+.cue-tip-dot {
+    width: 6px;
+    height: 4px;
+    border-radius: 3px 3px 0 0;
+    background: #2563eb;
+}
+
+.cue-brass-band {
+    width: 7px;
+    height: 5px;
+    background: #d4af37;
+}
+
+.cue-wood-shaft {
+    width: 8px;
+    flex: 1;
+    background: linear-gradient(to right, #dfb889, #c49a6c);
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cue-leather-grip {
+    width: 10px;
+    height: 55px;
+    background: repeating-linear-gradient(
+        to bottom,
+        #1c1e24,
+        #1c1e24 4px,
+        #14161c 5px
+    );
+    border-radius: 0 0 3px 3px;
+    border: 1px solid #d4af37;
+    border-top: none;
+}
+
 /* Floating Air-Glass Corner Chat HUD (Collapsible) */
 .floating-corner-chat {
     position: fixed;
@@ -860,5 +997,61 @@ body, html {
         width: 22px;
         height: 110px;
     }
+    .cue-puller-panel {
+        right: 6px;
+        padding: 8px 4px;
+    }
+    .cue-puller-track {
+        width: 26px;
+        height: 140px;
+    }
+}
+
+/* Ball In Hand Action Bar */
+.ball-in-hand-bar {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(234, 179, 8, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 16px rgba(234, 179, 8, 0.25);
+    border-radius: 9999px;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fef08a;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.btn-confirm-bih {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    border: none;
+    border-radius: 9999px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-confirm-bih:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+}
+
+.btn-confirm-bih:disabled {
+    opacity: 0.45;
+    background: #64748b;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
 }
 

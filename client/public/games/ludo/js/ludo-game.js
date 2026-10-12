@@ -393,10 +393,12 @@ class ClassicLudo3D {
             }
 
             if (e.data.type === 'REMOTE_CHAT') {
-                this.appendChatMessage(e.data.text, 'remote', e.data.senderName);
-                this.showChatToast(e.data.text, e.data.senderName);
-                if (this.isOnlyEmoji(e.data.text)) {
-                    this.showFloatingReaction(e.data.text);
+                const text = e.data.text || e.data.message || '';
+                if (text) {
+                    this.showChatToast(text, e.data.senderName || 'Opponent');
+                    setTimeout(() => {
+                        this.appendChatMessage(text, 'remote', e.data.senderName || 'Opponent');
+                    }, 2000);
                 }
             }
 
@@ -417,7 +419,7 @@ class ClassicLudo3D {
             }
         });
 
-        // Floating In-Game Corner Chat Form & Emojis
+        // Floating In-Game Corner Chat Form & Quick Phrases
         const chatForm = document.getElementById('panel-chat-form');
         const chatInput = document.getElementById('panel-chat-input');
         if (chatForm && chatInput) {
@@ -426,12 +428,12 @@ class ClassicLudo3D {
                 const text = chatInput.value.trim();
                 if (!text) return;
                 chatInput.value = '';
-                this.appendChatMessage(text, 'self');
-                if (this.isOnlyEmoji(text)) {
-                    this.showFloatingReaction(text);
-                }
+                this.showChatToast(text, 'You');
+                setTimeout(() => {
+                    this.appendChatMessage(text, 'self');
+                }, 2000);
                 if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({ type: 'GAME_CHAT', text }, '*');
+                    window.parent.postMessage({ type: 'GAME_CHAT', text, message: text }, '*');
                 }
             });
         }
@@ -440,10 +442,12 @@ class ClassicLudo3D {
             btn.addEventListener('click', () => {
                 const emoji = btn.getAttribute('data-emoji');
                 if (!emoji) return;
-                this.appendChatMessage(emoji, 'self');
-                this.showFloatingReaction(emoji);
+                this.showChatToast(emoji, 'You');
+                setTimeout(() => {
+                    this.appendChatMessage(emoji, 'self');
+                }, 2000);
                 if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({ type: 'GAME_CHAT', text: emoji }, '*');
+                    window.parent.postMessage({ type: 'GAME_CHAT', text: emoji, message: emoji }, '*');
                 }
             });
         });
@@ -492,7 +496,7 @@ class ClassicLudo3D {
         if (this.chatToastTimer) clearTimeout(this.chatToastTimer);
         this.chatToastTimer = setTimeout(() => {
             toast.classList.remove('show');
-        }, 3000);
+        }, 2000);
     }
 
     appendChatMessage(text, senderType = 'self', senderName = '') {
