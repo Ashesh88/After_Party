@@ -1,4 +1,5 @@
 'use client';
+import React, { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../../../lib/store/gameStore';
 import TicTacToe from '../../../components/games/TicTacToe';
 import TruthOrDare from '../../../components/games/TruthOrDare';
@@ -13,7 +14,7 @@ import CarromGame from '../../../components/games/CarromGame';
 import UnoGame from '../../../components/games/UnoGame';
 import CoPaintStudio from '../../../components/games/CoPaintStudio';
 import ArcadeStakesBar from '../../../components/games/ArcadeStakesBar';
-import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Disc, Target, Layers, Palette } from 'lucide-react';
+import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Disc, Target, Layers, Palette, ArrowRight } from 'lucide-react';
 
 const games = [
   { 
@@ -130,8 +131,85 @@ const games = [
   },
 ];
 
+// Card component for games with video preview:
+// 1. Plays on mouse hover (Desktop) and on finger touch (Mobile), pauses when leaving
+// 2. Bottom crop (h-[116%] with object-position 'top center' inside overflow-hidden):
+//    Preserves top game title (CHESS, POOL, LUDO, CAR RACING, CARROM, UNO) 100% uncut,
+//    while cropping the bottom edge to hide the Gemini logo/watermark.
+function GameVideoCard({
+  game,
+  isActive,
+  onActivate,
+  onDeactivate,
+  onSelect,
+}: {
+  game: (typeof games)[0];
+  isActive: boolean;
+  onActivate: () => void;
+  onDeactivate: () => void;
+  onSelect: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoSrc = (game as any).video;
+  const thumbSrc = (game as any).thumb;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isActive) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }, [isActive]);
+
+  return (
+    <button
+      key={game.id}
+      onClick={onSelect}
+      onMouseEnter={onActivate}
+      onMouseLeave={onDeactivate}
+      onTouchStart={onActivate}
+      className="w-full aspect-video rounded-[24px] sm:rounded-[28px] overflow-hidden relative cursor-pointer group glass-panel border border-white/10 hover:border-pink-500/50 shadow-xl transition-all duration-300 p-0"
+    >
+      {/* 
+        Video container with overflow-hidden and bottom cropping:
+        Height is set to 116% and top is 0 with object-position 'top center'.
+        This pins the top edge (game title) perfectly in place without any cutting,
+        while pushing the bottom 16% containing the watermark out of view.
+      */}
+      <div className="absolute inset-0 overflow-hidden">
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          poster={thumbSrc}
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          className="absolute inset-x-0 top-0 w-full h-[116%] object-cover object-top transition-transform duration-500 group-hover:scale-105"
+          style={{ objectPosition: 'top center' }}
+        />
+        {/* Soft bottom vignette to ensure watermark is completely blocked and text is sharp */}
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/95 via-black/60 to-transparent pointer-events-none" />
+      </div>
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-30 transition-opacity pointer-events-none" />
+
+      {/* Floating Play now in bottom-left corner */}
+      <div className="absolute bottom-1.5 left-2.5 sm:bottom-2 sm:left-3 flex items-center gap-1 text-white text-[10px] sm:text-[11px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] group-hover:translate-x-1 transition-transform pointer-events-none z-10">
+        <span className="text-white/95">Play now</span>
+        <ArrowRight className="w-3.5 h-3.5 text-pink-400" />
+      </div>
+    </button>
+  );
+}
+
 export default function GamesPage() {
   const { activeGame, setActiveGame } = useGameStore();
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
   if (activeGame === 'chess') return <Chess2D onBack={() => setActiveGame(null)} />;
   if (activeGame === 'pool') return <PoolGame onBack={() => setActiveGame(null)} />;
@@ -171,33 +249,18 @@ export default function GamesPage() {
         {games.map(game => {
           const Icon = game.icon;
           const videoSrc = (game as any).video;
-          const thumbSrc = (game as any).thumb;
 
-          // For video games: Full section video, zero padding, edge-to-edge, floating Play now in bottom-left corner without background
+          // For video games: Full section video, plays on hover/touch only, bottom cropped to hide logo
           if (videoSrc) {
             return (
-              <button
+              <GameVideoCard
                 key={game.id}
-                onClick={() => setActiveGame(game.id)}
-                className="w-full aspect-video rounded-[24px] sm:rounded-[28px] overflow-hidden relative cursor-pointer group glass-panel border border-white/10 hover:border-pink-500/50 shadow-xl transition-all duration-300 p-0"
-              >
-                <video
-                  src={videoSrc}
-                  poster={thumbSrc}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity pointer-events-none" />
-
-                {/* Floating "Play now →" in bottom-left corner: purely simple text and arrow, no background box */}
-                <div className="absolute bottom-1.5 left-2.5 sm:bottom-2 sm:left-3 flex items-center gap-1 text-white text-[10px] sm:text-[11px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] group-hover:translate-x-1 transition-transform pointer-events-none">
-                  <span className="text-white/95">Play now</span>
-                  <span className="text-pink-400 font-extrabold">→</span>
-                </div>
-              </button>
+                game={game}
+                isActive={activeVideoId === game.id}
+                onActivate={() => setActiveVideoId(game.id)}
+                onDeactivate={() => setActiveVideoId(null)}
+                onSelect={() => setActiveGame(game.id)}
+              />
             );
           }
 
@@ -232,7 +295,7 @@ export default function GamesPage() {
 
               <div className="flex items-center text-[10px] font-bold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform mt-auto">
                 <span>Play now</span>
-                <span>→</span>
+                <ArrowRight className="w-3.5 h-3.5 text-pink-400" />
               </div>
             </button>
           );
