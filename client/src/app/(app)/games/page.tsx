@@ -4,7 +4,7 @@ import TicTacToe from '../../../components/games/TicTacToe';
 import TruthOrDare from '../../../components/games/TruthOrDare';
 import Quiz from '../../../components/games/Quiz';
 import WouldYouRather from '../../../components/games/WouldYouRather';
-import Chess3D from '../../../components/games/Chess3D';
+import Chess2D from '../../../components/games/Chess2D';
 import LudoGame from '../../../components/games/LudoGame';
 import PoolGame from '../../../components/games/PoolGame';
 import TurboRacer from '../../../components/games/TurboRacer';
@@ -18,11 +18,11 @@ import { Crown, Dices, XCircle, Sparkles, HelpCircle, Split, CircleDot, Zap, Dis
 const games = [
   { 
     id: 'chess', 
-    name: 'Zen 3D Chess', 
-    desc: 'Luxury 3D pieces, AI & Video Call',
+    name: 'Classic 2D Chess', 
+    desc: 'Tournament board, smart AI & online multiplayer',
     icon: Crown, 
     color: 'from-amber-400 to-rose-500', 
-    tag: '3D LIVE',
+    tag: 'CLASSIC 2D',
     video: '/videos/chess-preview.mp4',
     thumb: '/videos/chess-thumb.jpg'
   },
@@ -133,7 +133,7 @@ const games = [
 export default function GamesPage() {
   const { activeGame, setActiveGame } = useGameStore();
 
-  if (activeGame === 'chess') return <Chess3D onBack={() => setActiveGame(null)} />;
+  if (activeGame === 'chess') return <Chess2D onBack={() => setActiveGame(null)} />;
   if (activeGame === 'pool') return <PoolGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'ludo') return <LudoGame onBack={() => setActiveGame(null)} />;
   if (activeGame === 'bowling') return <BowlingGame onBack={() => setActiveGame(null)} />;
