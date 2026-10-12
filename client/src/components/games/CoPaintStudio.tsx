@@ -5,20 +5,17 @@ import {
   ArrowLeft,
   Paintbrush,
   Pen,
-  Sparkles,
   Eraser,
   Download,
-  Share2,
   Users,
   MessageSquare,
   Undo2,
   Redo2,
   Trash2,
   Plus,
+  Minus,
   ChevronLeft,
   ChevronRight,
-  Maximize2,
-  Minimize2,
   Check,
   Copy,
   X,
@@ -28,20 +25,18 @@ import {
   Star,
   Heart,
   Cloud,
-  Sun,
   Mountain,
-  Waves,
-  Trees,
-  Palette,
   Layers,
   Image as ImageIcon,
-  Flame,
   Search,
-  CheckCircle2,
-  Clock,
-  Compass,
   FileText,
-  Upload,
+  RotateCw,
+  Sparkles,
+  Sliders,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Compass,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -51,37 +46,13 @@ import { useGameStore } from '../../lib/store/gameStore';
 import api from '../../lib/api';
 import { Friend } from '../../lib/types';
 
-// Types
-type ToolType = 'pen' | 'brush' | 'neon' | 'spray' | 'eraser';
+// Types & Definitions
+type ToolCategory = 'pen' | 'brush' | 'color' | 'page' | 'scenery' | 'shape' | 'sticker' | 'frame';
+type BaseTool = 'pen' | 'brush' | 'eraser';
 type ShapeType = 'line' | 'rectangle' | 'circle' | 'star' | 'heart' | 'cloud' | 'mountain';
-type FrameType =
-  | 'floral-daisy'
-  | 'victorian-lace'
-  | 'rose-garland'
-  | 'peach-botanical'
-  | 'baroque-gold'
-  | 'rustic-wood'
-  | 'antique-parchment'
-  | 'red-ribbon'
-  | 'corkboard-wood'
-  | 'minimal'
-  | 'none';
-type SceneryPreset =
-  | 'blank'
-  | 'coffee-date'
-  | 'mountain-cabin'
-  | 'capybara-halloween'
-  | 'rainy-frog'
-  | 'elemental-touch'
-  | 'balloon-house'
-  | 'sunset-lake'
-  | 'beach-sunset'
-  | 'forest-stars'
-  | 'desert-dunes';
 type CanvasRatio = 'fit' | '1:1' | '3:4' | '16:9';
-type PaperTextureType = 'none' | 'warm-ivory' | 'watercolor-grain' | 'burned-parchment' | 'corkboard' | 'botanical-scrapbook';
 
-interface SceneryAdjust {
+export interface SceneryAdjust {
   scale: number;
   offsetX: number;
   offsetY: number;
@@ -89,14 +60,21 @@ interface SceneryAdjust {
   rotation: number;
 }
 
-interface Point {
+export interface FrameAdjust {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export interface Point {
   x: number;
   y: number;
 }
 
-interface Stroke {
+export interface Stroke {
   id: string;
-  tool: ToolType;
+  tool: BaseTool;
+  subType?: string;
   color: string;
   size: number;
   opacity: number;
@@ -104,7 +82,7 @@ interface Stroke {
   author: string;
 }
 
-interface ShapeItem {
+export interface ShapeItem {
   id: string;
   type: ShapeType;
   x: number;
@@ -117,24 +95,26 @@ interface ShapeItem {
   author: string;
 }
 
-interface StickerItem {
+export interface StickerItem {
   id: string;
   stickerKey: string;
   x: number;
   y: number;
-  size: number;
+  width: number;
+  height: number;
+  rotation?: number;
   author: string;
 }
 
-interface CanvasPage {
+export interface CanvasPage {
   id: string;
   title: string;
   pageColor: string;
-  paperTexture?: PaperTextureType;
-  sceneryPreset: SceneryPreset;
+  sceneryPreset: string;
   sceneryAdjust?: SceneryAdjust;
   customSceneryUrl?: string | null;
-  frame: FrameType;
+  frame: string;
+  frameAdjust?: FrameAdjust;
   canvasRatio: CanvasRatio;
   strokes: Stroke[];
   shapes: ShapeItem[];
@@ -155,8 +135,9 @@ interface CoPaintStudioProps {
   onBack: () => void;
 }
 
-// Curated Brush Palettes
+// 1. Curated Palette (Default Color is pure black #000000)
 const BRUSH_PALETTE = [
+  '#000000', // Midnight Black (Default)
   '#ef4444', // Crimson Red
   '#f97316', // Sunset Orange
   '#f59e0b', // Sun Amber
@@ -168,10 +149,9 @@ const BRUSH_PALETTE = [
   '#ec4899', // Rose Pink
   '#78350f', // Earth Wood
   '#ffffff', // Pure White
-  '#0f172a', // Midnight Obsidian
 ];
 
-// Curated Page Paper Colors
+// 2. Curated Page Tint Colors (Paper Texture removed per user directive)
 const PAGE_COLORS = [
   { label: 'White', color: '#ffffff' },
   { label: 'Ivory Cream', color: '#fefae0' },
@@ -180,72 +160,122 @@ const PAGE_COLORS = [
   { label: 'Soft Mint', color: '#ecfdf5' },
   { label: 'Warm Sand', color: '#f5ebe0' },
   { label: 'Lavender', color: '#f3e8ff' },
-  { label: 'Charcoal Dark', color: '#1e293b' },
+  { label: 'Midnight Dark', color: '#111827' },
 ];
 
-const SCENERY_STICKERS = [
-  { key: 'sun', label: 'Sun', icon: Sun },
-  { key: 'cloud', label: 'Cloud', icon: Cloud },
-  { key: 'mountain', label: 'Mountain', icon: Mountain },
-  { key: 'waves', label: 'Ocean Waves', icon: Waves },
-  { key: 'trees', label: 'Pine Trees', icon: Trees },
-  { key: 'heart', label: 'Love Heart', icon: Heart },
-  { key: 'star', label: 'Star', icon: Star },
-  { key: 'flame', label: 'Campfire', icon: Flame },
-  { key: 'sparkle', label: 'Sparkles', icon: Sparkles },
-  { key: 'compass', label: 'Compass', icon: Compass },
+// 3. Pen Types from User Reference Image
+export const PEN_TYPES = [
+  { key: 'smart-pen', label: 'Smart Pen', desc: 'Silky smooth line' },
+  { key: 'tattoo-pen', label: 'Tattoo Pen', desc: 'Needle fine crisp line' },
+  { key: 'graphite', label: 'Graphite Pencil', desc: 'Textured pencil sketch' },
+  { key: 'glitter', label: 'Glitter Pen', desc: 'Sparkling diamond shimmer' },
+  { key: 'whiteboard', label: 'Whiteboard', desc: 'Smooth marker glide' },
+  { key: 'permanent', label: 'Permanent', desc: 'Bold opaque ink' },
+  { key: 'multicolor', label: 'Multicolor', desc: 'Rainbow hue spectrum' },
+  { key: 'fiber-tip', label: 'Fiber-tip', desc: 'Precision uniform line' },
+  { key: 'twin-tip', label: 'Twin-tip', desc: 'Parallel double line' },
+  { key: 'watercolor-pen', label: 'Watercolor Pen', desc: 'Soft bleeding edge' },
+  { key: 'dry-erase', label: 'Dry-Erase', desc: 'Semi-opaque marker' },
+  { key: 'acrylic-paint-pen', label: 'Acrylic Pen', desc: 'Thick creamy acrylic' },
+  { key: 'chalk-marker', label: 'Chalk Marker', desc: 'Textured chalk stroke' },
+  { key: 'soft-tip', label: 'Soft-tip', desc: 'Pressure sensitive curve' },
+  { key: 'fluorescent-pen', label: 'Fluorescent', desc: 'Vibrant neon glow' },
+  { key: 'tilt-pen', label: 'Tilt Pen', desc: 'Dynamic angle stroke' },
+  { key: 'bamboo-pen', label: 'Bamboo Pen', desc: 'Asian calligraphy chisel' },
+  { key: 'digital-pen', label: 'Digital Pen', desc: 'Pixel-perfect digital line' },
+  { key: '3d-pen', label: '3D Pen', desc: 'Embossed shaded tube' },
+  { key: 'pocket-pen', label: 'Pocket Pen', desc: 'Compact handy ballpoint' },
 ];
 
-const SCENERY_IMAGE_MAP: Record<string, string> = {
-  'coffee-date': '/scenery/scenery-coffee-date.png',
-  'mountain-cabin': '/scenery/scenery-mountain-cabin.png',
-  'capybara-halloween': '/scenery/scenery-capybara-halloween.png',
-  'rainy-frog': '/scenery/scenery-rainy-frog.png',
-  'elemental-touch': '/scenery/scenery-elemental-touch.png',
-  'balloon-house': '/scenery/scenery-balloon-house.png',
-};
-
-const FRAME_IMAGE_MAP: Record<string, string> = {
-  'floral-daisy': '/frames/frame-floral-daisy.png',
-  'victorian-lace': '/frames/frame-victorian-lace.png',
-  'rose-garland': '/frames/frame-rose-garland.png',
-  'peach-botanical': '/frames/frame-peach-botanical.png',
-  'baroque-gold': '/frames/frame-baroque-gold.png',
-  'rustic-wood': '/frames/frame-rustic-wood.png',
-  'antique-parchment': '/frames/frame-antique-parchment.png',
-  'red-ribbon': '/frames/frame-red-ribbon.png',
-  'corkboard-wood': '/frames/frame-corkboard-wood.png',
-};
-
-const PHOTO_FRAMES: Array<{ key: FrameType; label: string; orientation: 'portrait' | 'landscape' | 'any' }> = [
-  { key: 'floral-daisy', label: 'Vintage Daisy Meadow (Vertical)', orientation: 'portrait' },
-  { key: 'victorian-lace', label: 'Victorian Lace Filigree (Vertical)', orientation: 'portrait' },
-  { key: 'rose-garland', label: 'Rose Garland & Scroll (Vertical)', orientation: 'portrait' },
-  { key: 'peach-botanical', label: 'Wildflower Deckle Border (Vertical)', orientation: 'portrait' },
-  { key: 'baroque-gold', label: 'Baroque Carved Scrollwork (Horizontal)', orientation: 'landscape' },
-  { key: 'rustic-wood', label: 'Rustic Wood Passepartout (Horizontal)', orientation: 'landscape' },
-  { key: 'antique-parchment', label: 'Delicate Crochet Lace (Horizontal)', orientation: 'landscape' },
-  { key: 'red-ribbon', label: 'Red Scalloped Piping (Horizontal)', orientation: 'landscape' },
-  { key: 'corkboard-wood', label: 'Pine Wood Cork Frame (Horizontal)', orientation: 'landscape' },
-  { key: 'minimal', label: 'Minimal Studio Border (Any)', orientation: 'any' },
-  { key: 'none', label: 'Frameless Clean (Any)', orientation: 'any' },
+// 4. Brush Types from User Reference Image
+export const BRUSH_TYPES = [
+  { key: 'round-tip', label: 'Round Tip', desc: 'Classic artist round' },
+  { key: 'hog-bristle', label: 'Hog Bristle', desc: 'Multi-hair textured bristle' },
+  { key: 'mop-brush', label: 'Mop Brush', desc: 'Large watery soft wash' },
+  { key: 'flat-wash', label: 'Flat Wash', desc: 'Broad flat ribbon stroke' },
+  { key: 'filbert', label: 'Filbert', desc: 'Curved flat chisel' },
+  { key: 'round-long-hair', label: 'Round Long Hair', desc: 'Fluid continuous stroke' },
+  { key: 'fan-brush', label: 'Fan Brush', desc: 'Radial fan spread' },
+  { key: 'cats-tongue', label: "Cat's Tongue", desc: 'Pointed oval wash' },
+  { key: 'dagger-stripper', label: 'Dagger Stripper', desc: 'Sharp angled curve' },
+  { key: 'liner-rigger', label: 'Liner / Rigger', desc: 'Ultra-thin long lines' },
+  { key: 'angular-chisel', label: 'Angular Chisel', desc: 'Crisp slant edge' },
+  { key: 'oval-mop', label: 'Oval Mop', desc: 'Deep absorbent wash' },
+  { key: 'notch', label: 'Notch Brush', desc: 'Double tip split brush' },
+  { key: 'comb-brush', label: 'Comb Brush', desc: 'Parallel rake hairs' },
+  { key: 'hog-bristle-domed', label: 'Bristle Domed', desc: 'Dense domed stippling' },
+  { key: 'pipe-overgrainer', label: 'Pipe Over-grainer', desc: 'Wood grain texture' },
+  { key: 'round-script-light-ox', label: 'Round Script Ox', desc: 'Fine lettering script' },
 ];
 
-const PAPER_TEXTURE_MAP: Record<string, string> = {
-  'warm-ivory': '/paper/paper-warm-ivory.png',
-  'watercolor-grain': '/paper/paper-watercolor-grain.png',
-  'burned-parchment': '/paper/paper-burned-parchment.png',
-  'corkboard': '/paper/paper-corkboard.png',
-  'botanical-scrapbook': '/paper/paper-botanical-scrapbook.jpg',
-};
+// 5. New Sceneries (5 New User Images)
+export const SCENERY_PRESETS = [
+  { key: 'blank', label: 'Blank Canvas', src: '' },
+  { key: 'dolphins-sunset', label: 'Sunset Dolphins Lagoon', src: '/scenery/scenery-dolphins-sunset.png' },
+  { key: 'balloon-house', label: 'Floating Balloon House', src: '/scenery/scenery-balloon-house.png' },
+  { key: 'mushroom-village', label: 'Enchanted Mushroom Village', src: '/scenery/scenery-mushroom-village.png' },
+  { key: 'autumn-basket', label: 'Autumn Harvest Basket', src: '/scenery/scenery-autumn-basket.png' },
+  { key: 'cozy-fireplace-fox', label: 'Cozy Fireplace Fox', src: '/scenery/scenery-cozy-fireplace-fox.png' },
+];
 
-const PAPER_TEXTURES: Array<{ key: PaperTextureType; label: string; orientation?: 'horizontal' | 'any' }> = [
-  { key: 'none', label: 'Plain Solid Color' },
-  { key: 'warm-ivory', label: 'Warm Ivory Paper' },
-  { key: 'watercolor-grain', label: 'Watercolor Cold-Press' },
-  { key: 'burned-parchment', label: 'Burned Scroll Parchment' },
-  { key: 'corkboard', label: 'Cork Pinboard' },
-  { key: 'botanical-scrapbook', label: 'Vintage Scrapbook' },
+// 6. New Photo Frames (5 New User Images)
+export const PHOTO_FRAMES = [
+  { key: 'none', label: 'Frameless Clean', src: '' },
+  { key: 'baroque-gold', label: 'Ornate Royal Baroque Gold', src: '/frames/frame-baroque-gold.png' },
+  { key: 'classic-wood', label: 'Classic Carved Walnut Wood', src: '/frames/frame-classic-wood.png' },
+  { key: 'plaid-yellow', label: 'Sunny Yellow Gingham Plaid', src: '/frames/frame-plaid-yellow.png' },
+  { key: 'pink-dots', label: 'Pastel Pink Candy Dots', src: '/frames/frame-pink-dots.png' },
+  { key: 'checkerboard-red', label: 'Red & Cream Checkerboard', src: '/frames/frame-checkerboard-red.png' },
+];
+
+// 7. All 46 New Stickers
+export const STICKER_LIST = [
+  { key: 'sticker-artist-pup', label: 'Artist Pup', category: 'animals' },
+  { key: 'sticker-brachiosaurus', label: 'Brachiosaurus', category: 'animals' },
+  { key: 'sticker-bubble-bath-girl', label: 'Bubble Bath Girl', category: 'characters' },
+  { key: 'sticker-caveman-club', label: 'Caveman Club', category: 'characters' },
+  { key: 'sticker-cherry-blossom-tree', label: 'Cherry Blossom Tree', category: 'nature' },
+  { key: 'sticker-cherry-pie', label: 'Cherry Pie', category: 'food' },
+  { key: 'sticker-chibi-reaper', label: 'Chibi Reaper', category: 'characters' },
+  { key: 'sticker-cozy-fox', label: 'Cozy Fox', category: 'animals' },
+  { key: 'sticker-cupid-arrow', label: 'Cupid Arrow', category: 'objects' },
+  { key: 'sticker-cute-bunny', label: 'Cute Bunny', category: 'animals' },
+  { key: 'sticker-cute-elephant', label: 'Cute Elephant', category: 'animals' },
+  { key: 'sticker-cute-snail', label: 'Cute Snail', category: 'animals' },
+  { key: 'sticker-dice', label: 'Lucky Dice', category: 'objects' },
+  { key: 'sticker-flying-parrot', label: 'Flying Parrot', category: 'animals' },
+  { key: 'sticker-flying-witch', label: 'Flying Witch', category: 'characters' },
+  { key: 'sticker-fork-heart', label: 'Fork Heart', category: 'objects' },
+  { key: 'sticker-frog-namaste', label: 'Namaste Frog', category: 'animals' },
+  { key: 'sticker-gothic-coffin', label: 'Gothic Coffin', category: 'objects' },
+  { key: 'sticker-green-chick', label: 'Green Chick', category: 'animals' },
+  { key: 'sticker-green-tree', label: 'Green Tree', category: 'nature' },
+  { key: 'sticker-happy-corgi', label: 'Happy Corgi', category: 'animals' },
+  { key: 'sticker-happy-flame', label: 'Happy Flame', category: 'nature' },
+  { key: 'sticker-happy-shark', label: 'Happy Shark', category: 'animals' },
+  { key: 'sticker-happy-sun', label: 'Happy Sun', category: 'nature' },
+  { key: 'sticker-heart-lock-key', label: 'Heart Lock & Key', category: 'objects' },
+  { key: 'sticker-hi-bluebird', label: 'Hi Bluebird', category: 'animals' },
+  { key: 'sticker-iceberg-mountain', label: 'Iceberg Mountain', category: 'nature' },
+  { key: 'sticker-laughing-octopus', label: 'Laughing Octopus', category: 'animals' },
+  { key: 'sticker-magic-diary', label: 'Magic Diary', category: 'objects' },
+  { key: 'sticker-palm-tree', label: 'Palm Tree', category: 'nature' },
+  { key: 'sticker-party-piglet', label: 'Party Piglet', category: 'animals' },
+  { key: 'sticker-pine-tree', label: 'Pine Tree', category: 'nature' },
+  { key: 'sticker-pink-flamingo', label: 'Pink Flamingo', category: 'animals' },
+  { key: 'sticker-potted-succulent', label: 'Potted Succulent', category: 'nature' },
+  { key: 'sticker-rainy-umbrella', label: 'Rainy Umbrella', category: 'objects' },
+  { key: 'sticker-ramen-axolotl', label: 'Ramen Axolotl', category: 'animals' },
+  { key: 'sticker-rose-bouquet', label: 'Rose Bouquet', category: 'nature' },
+  { key: 'sticker-shy-cat', label: 'Shy Cat', category: 'animals' },
+  { key: 'sticker-silly-axolotl', label: 'Silly Axolotl', category: 'animals' },
+  { key: 'sticker-sparkle-cat', label: 'Sparkle Cat', category: 'animals' },
+  { key: 'sticker-sun-mountain-lake', label: 'Sun Mountain Lake', category: 'nature' },
+  { key: 'sticker-swinging-monkey', label: 'Swinging Monkey', category: 'animals' },
+  { key: 'sticker-talking-cats', label: 'Talking Cats', category: 'animals' },
+  { key: 'sticker-win-streak-trophy', label: 'Win Streak Trophy', category: 'objects' },
+  { key: 'sticker-yellow-dino', label: 'Yellow Dino', category: 'animals' },
+  { key: 'sticker-yellow-house', label: 'Yellow House', category: 'nature' },
 ];
 
 export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
@@ -256,7 +286,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   const isDrawingRef = useRef(false);
@@ -272,27 +301,46 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [isWaitingForFriend, setIsWaitingForFriend] = useState(false);
   const [remoteCursor, setRemoteCursor] = useState<{ x: number; y: number; name: string } | null>(null);
 
-  // Active Tool Navigation
-  const [activeTab, setActiveTab] = useState<'brush' | 'color' | 'page' | 'scenery' | 'shape' | 'sticker' | 'frame'>('brush');
-  const [selectedTool, setSelectedTool] = useState<ToolType>('brush');
-  const [brushColor, setBrushColor] = useState<string>('#ef4444');
-  const [brushSize, setBrushSize] = useState<number>(8);
+  // Active Tool Navigation (Default color #000000 black)
+  const [activeTab, setActiveTab] = useState<ToolCategory>('pen');
+  const [activeBaseTool, setActiveBaseTool] = useState<BaseTool>('pen');
+  const [selectedPenType, setSelectedPenType] = useState<string>('smart-pen');
+  const [selectedBrushType, setSelectedBrushType] = useState<string>('round-tip');
+  const [brushColor, setBrushColor] = useState<string>('#000000');
+  const [brushSize, setBrushSize] = useState<number>(6);
   const [brushOpacity, setBrushOpacity] = useState<number>(100);
+
+  // Shape state
   const [selectedShape, setSelectedShape] = useState<ShapeType>('rectangle');
   const [shapeFilled, setShapeFilled] = useState<boolean>(false);
-  const [selectedSticker, setSelectedSticker] = useState<string>('sun');
+  const [shapeDragStart, setShapeDragStart] = useState<Point | null>(null);
+  const [currentShapePreview, setCurrentShapePreview] = useState<ShapeItem | null>(null);
 
-  // Multi-Page Canvas Management (Desktop default: horizontal 16:9, Mobile default: vertical 3:4)
+  // Canva-style Interactive Selection & Manipulation
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
+  const [isDraggingSticker, setIsDraggingSticker] = useState<boolean>(false);
+  const [stickerDragOffset, setStickerDragOffset] = useState<Point>({ x: 0, y: 0 });
+  const [activeResizeHandle, setActiveResizeHandle] = useState<string | null>(null);
+  const [resizeInitialData, setResizeInitialData] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Popup Modals for Stickers, Scenery & Frames
+  const [showStickerModal, setShowStickerModal] = useState<boolean>(false);
+  const [showSceneryModal, setShowSceneryModal] = useState<boolean>(false);
+  const [showFrameModal, setShowFrameModal] = useState<boolean>(false);
+  const [stickerSearch, setStickerSearch] = useState<string>('');
+  const [stickerCategoryFilter, setStickerCategoryFilter] = useState<string>('all');
+
+  // Multi-Page Canvas Management
   const [pages, setPages] = useState<CanvasPage[]>([
     {
       id: 'page-1',
       title: 'Page 1',
-      pageColor: '#ffffff', // Default pure white page
-      paperTexture: 'none',
-      sceneryPreset: 'blank', // Default clean blank sheet
+      pageColor: '#ffffff',
+      sceneryPreset: 'blank',
       sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
-      frame: 'none', // 100% clean white page with NO frame by default
+      frame: 'none',
+      frameAdjust: { scale: 1, offsetX: 0, offsetY: 0 },
       canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
@@ -304,7 +352,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
   const currentPage = pages[activePageIndex] || pages[0];
 
-  // Chat State & 2-Second Screen Toast
+  // Chat State
   const [showChatModal, setShowChatModal] = useState<boolean>(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -320,7 +368,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [floatingToast, setFloatingToast] = useState<{ sender: string; text: string } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Friends Invite Modal State
+  // Invite Modal
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [friendsList, setFriendsList] = useState<Friend[]>([]);
   const [loadingFriends, setLoadingFriends] = useState<boolean>(false);
@@ -329,12 +377,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [customJoinCode, setCustomJoinCode] = useState<string>('');
 
-  // Shape placement drag state
-  const [shapeDragStart, setShapeDragStart] = useState<Point | null>(null);
-  const [currentShapePreview, setCurrentShapePreview] = useState<ShapeItem | null>(null);
-
   // -------------------------------------------------------------
-  // MULTIPLAYER INITIALIZATION & SOCKET ROUTING
+  // SOCKET & MULTIPLAYER
   // -------------------------------------------------------------
   useEffect(() => {
     if (sessionData?.sessionCode) {
@@ -366,7 +410,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
   }, [sessionData, socket, sessionCode, user, setSessionData]);
 
-  // Socket listener registrations
   useEffect(() => {
     if (!socket) return;
 
@@ -376,7 +419,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       if (data.playerName) setOpponentName(data.playerName);
       toast.success(`${data.playerName || 'Friend'} joined the canvas!`);
 
-      // Host transmits current state to newly joined friend
       if (playerRole === 'host') {
         socket.emit('paint:sync_state', {
           sessionCode,
@@ -410,18 +452,30 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         setPages((prev) => {
           const next = [...prev];
           const page = next[activePageIndex];
-          if (page) {
-            page.shapes = [...page.shapes, payload.shape];
-          }
+          if (page) page.shapes = [...page.shapes, payload.shape];
           return next;
         });
       } else if (actionType === 'add_sticker' && payload?.sticker) {
         setPages((prev) => {
           const next = [...prev];
           const page = next[activePageIndex];
+          if (page) page.stickers = [...page.stickers, payload.sticker];
+          return next;
+        });
+      } else if (actionType === 'update_sticker' && payload?.sticker) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
           if (page) {
-            page.stickers = [...page.stickers, payload.sticker];
+            page.stickers = page.stickers.map((s) => (s.id === payload.sticker.id ? payload.sticker : s));
           }
+          return next;
+        });
+      } else if (actionType === 'delete_sticker' && payload?.id) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) page.stickers = page.stickers.filter((s) => s.id !== payload.id);
           return next;
         });
       } else if (actionType === 'clear_canvas') {
@@ -441,13 +495,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           const next = [...prev];
           const page = next[activePageIndex];
           if (page) page.pageColor = payload.pageColor;
-          return next;
-        });
-      } else if (actionType === 'set_paper_texture' && payload?.paperTexture) {
-        setPages((prev) => {
-          const next = [...prev];
-          const page = next[activePageIndex];
-          if (page) page.paperTexture = payload.paperTexture;
           return next;
         });
       } else if (actionType === 'set_scenery' && payload?.sceneryPreset) {
@@ -478,6 +525,20 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
           const next = [...prev];
           const page = next[activePageIndex];
           if (page) page.frame = payload.frame;
+          return next;
+        });
+      } else if (actionType === 'adjust_frame' && payload?.frameAdjust) {
+        setPages((prev) => {
+          const next = [...prev];
+          const page = next[activePageIndex];
+          if (page) {
+            page.frameAdjust = {
+              scale: page.frameAdjust?.scale ?? 1,
+              offsetX: page.frameAdjust?.offsetX ?? 0,
+              offsetY: page.frameAdjust?.offsetY ?? 0,
+              ...payload.frameAdjust,
+            };
+          }
           return next;
         });
       } else if (actionType === 'set_ratio' && payload?.canvasRatio) {
@@ -538,21 +599,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       toast('Friend disconnected from studio');
     };
 
-    const handleInviteAccepted = (data: { acceptedBy: string; sessionCode: string; game: string }) => {
-      if (data.sessionCode === sessionCode && (data.game === 'paint' || data.game === 'painting')) {
-        setIsWaitingForFriend(false);
-        setIsOpponentConnected(true);
-        toast.success(`${opponentName || 'Friend'} joined your art canvas!`);
-      }
-    };
-
-    const handleInviteDeclined = (data: { game: string }) => {
-      if (data.game === 'paint' || data.game === 'painting') {
-        setIsWaitingForFriend(false);
-        toast.error('Friend declined the art session invitation.');
-      }
-    };
-
     socket.on('paint:opponent_joined', handleOpponentJoined);
     socket.on('paint:draw', handleRemoteDraw);
     socket.on('paint:action', handleRemoteAction);
@@ -560,8 +606,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     socket.on('paint:sync_state', handleSyncState);
     socket.on('paint:chat', handleRemoteChat);
     socket.on('paint:opponent_left', handleOpponentLeft);
-    socket.on('game:invite:accepted', handleInviteAccepted);
-    socket.on('game:invite:declined', handleInviteDeclined);
 
     return () => {
       socket.off('paint:opponent_joined', handleOpponentJoined);
@@ -571,56 +615,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       socket.off('paint:sync_state', handleSyncState);
       socket.off('paint:chat', handleRemoteChat);
       socket.off('paint:opponent_left', handleOpponentLeft);
-      socket.off('game:invite:accepted', handleInviteAccepted);
-      socket.off('game:invite:declined', handleInviteDeclined);
     };
-  }, [socket, sessionCode, playerRole, pages, activePageIndex, showChatModal, opponentName, user]);
+  }, [socket, sessionCode, playerRole, pages, activePageIndex, showChatModal]);
 
-  // Presence Query
-  const fetchFriends = useCallback(async () => {
-    setLoadingFriends(true);
-    try {
-      const res = await api.get('/friends');
-      const friends: Friend[] = res.data.friends || [];
-      setFriendsList(friends);
-
-      if (socket && friends.length > 0) {
-        const friendIds = friends.map((f) => f._id);
-        socket.emit('presence:query', { targetUserIds: friendIds });
-      }
-    } catch (err) {
-      console.error('Failed to load friends:', err);
-    } finally {
-      setLoadingFriends(false);
-    }
-  }, [socket]);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handlePresenceStatus = (statusMap: Record<string, boolean>) => {
-      setOnlineUsersMap((prev) => ({ ...prev, ...statusMap }));
-    };
-    const handleUserOnline = ({ userId }: { userId: string }) => {
-      setOnlineUsersMap((prev) => ({ ...prev, [userId]: true }));
-    };
-    const handleUserOffline = ({ userId }: { userId: string }) => {
-      setOnlineUsersMap((prev) => ({ ...prev, [userId]: false }));
-    };
-
-    socket.on('presence:status', handlePresenceStatus);
-    socket.on('presence:online', handleUserOnline);
-    socket.on('presence:offline', handleUserOffline);
-
-    return () => {
-      socket.off('presence:status', handlePresenceStatus);
-      socket.off('presence:online', handleUserOnline);
-      socket.off('presence:offline', handleUserOffline);
-    };
-  }, [socket]);
-
-  // -------------------------------------------------------------
-  // 2-SECOND FLOATING TOAST LOGIC
-  // -------------------------------------------------------------
   const showFloatingToast = (sender: string, text: string) => {
     if (toastTimeoutRef.current) {
       clearTimeout(toastTimeoutRef.current);
@@ -629,11 +626,11 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     toastTimeoutRef.current = setTimeout(() => {
       setFloatingToast(null);
       toastTimeoutRef.current = null;
-    }, 2000); // Exactly 2 seconds
+    }, 2000);
   };
 
   // -------------------------------------------------------------
-  // TWO-CANVAS RENDERING ENGINE (NON-DESTRUCTIVE CLEAN ERASER)
+  // TWO-CANVAS RENDERING ENGINE
   // -------------------------------------------------------------
   const redrawBackgroundLayer = useCallback(() => {
     const bgCanvas = bgCanvasRef.current;
@@ -646,30 +643,45 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Fill Page Base Color or Paper Texture Image
-    if (currentPage.paperTexture && currentPage.paperTexture !== 'none' && PAPER_TEXTURE_MAP[currentPage.paperTexture]) {
-      const pSrc = PAPER_TEXTURE_MAP[currentPage.paperTexture];
-      const pImg = imageCacheRef.current.get(pSrc);
-      if (pImg && pImg.complete && pImg.naturalWidth > 0) {
-        ctx.drawImage(pImg, 0, 0, width, height);
-      } else {
-        const newImg = new Image();
-        newImg.src = pSrc;
-        newImg.onload = () => {
-          imageCacheRef.current.set(pSrc, newImg);
-          redrawBackgroundLayer();
-        };
-        ctx.fillStyle = currentPage.pageColor || '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-      }
-    } else {
-      ctx.fillStyle = currentPage.pageColor || '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-    }
+    // 1. Fill Clean Base Page Tint Color
+    ctx.fillStyle = currentPage.pageColor || '#ffffff';
+    ctx.fillRect(0, 0, width, height);
 
-    // 2. Draw Prebuilt Scenery Coloring Line Art Outline
-    drawSceneryLineArt(ctx, width, height, currentPage.sceneryPreset);
-  }, [currentPage.pageColor, currentPage.paperTexture, currentPage.sceneryPreset, currentPage.sceneryAdjust]);
+    // 2. Draw Scenery Line Art Outline from New Set
+    if (currentPage.sceneryPreset && currentPage.sceneryPreset !== 'blank') {
+      const presetDef = SCENERY_PRESETS.find((s) => s.key === currentPage.sceneryPreset);
+      if (presetDef && presetDef.src) {
+        const src = presetDef.src;
+        const img = imageCacheRef.current.get(src);
+        const adjust = currentPage.sceneryAdjust || { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 };
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0.05, Math.min(1.0, adjust.opacity ?? 1.0));
+
+        if (img && img.complete && img.naturalWidth > 0) {
+          const padding = 20;
+          const baseScale = Math.min((width - padding * 2) / img.naturalWidth, (height - padding * 2) / img.naturalHeight);
+          const finalScale = baseScale * (adjust.scale ?? 1.0);
+          const dw = img.naturalWidth * finalScale;
+          const dh = img.naturalHeight * finalScale;
+
+          ctx.translate(width / 2 + (adjust.offsetX ?? 0), height / 2 + (adjust.offsetY ?? 0));
+          if (adjust.rotation) {
+            ctx.rotate((adjust.rotation * Math.PI) / 180);
+          }
+          ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+        } else {
+          const newImg = new Image();
+          newImg.src = src;
+          newImg.onload = () => {
+            imageCacheRef.current.set(src, newImg);
+            redrawBackgroundLayer();
+          };
+        }
+        ctx.restore();
+      }
+    }
+  }, [currentPage.pageColor, currentPage.sceneryPreset, currentPage.sceneryAdjust]);
 
   const redrawDrawingLayer = useCallback(() => {
     const drawCanvas = drawCanvasRef.current;
@@ -687,17 +699,17 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       drawShapeOnCanvas(ctx, shape);
     });
 
-    // 1.1 Draw Live Shape Preview during drag
+    // 1.1 Draw Live Shape Preview
     if (currentShapePreview) {
       drawShapeOnCanvas(ctx, currentShapePreview, true);
     }
 
-    // 2. Draw Brush Strokes (Eraser uses destination-out cleanly on this transparent layer!)
+    // 2. Draw Brush & Pen Strokes
     currentPage.strokes.forEach((stroke) => {
       drawStrokeOnCanvas(ctx, stroke);
     });
 
-    // 3. Draw Stickers & Stamps
+    // 3. Draw Image Stickers
     currentPage.stickers.forEach((sticker) => {
       drawStickerOnCanvas(ctx, sticker);
     });
@@ -711,7 +723,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     redrawDrawingLayer();
   }, [redrawDrawingLayer]);
 
-  // Synchronized resize with retina scaling
+  // Handle Resize
   useEffect(() => {
     const updateCanvasDimensions = () => {
       const container = containerRef.current;
@@ -749,277 +761,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   }, [redrawBackgroundLayer, redrawDrawingLayer]);
 
   // -------------------------------------------------------------
-  // SCENERY LINE ART OUTLINES FOR COLORING
-  // -------------------------------------------------------------
-  const drawSceneryLineArt = (ctx: CanvasRenderingContext2D, w: number, h: number, preset: SceneryPreset) => {
-    if (preset === 'blank') return;
-
-    ctx.save();
-    const adjust = currentPage.sceneryAdjust || { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 };
-    ctx.globalAlpha = Math.max(0.1, Math.min(1.0, adjust.opacity ?? 1.0));
-
-    if (preset in SCENERY_IMAGE_MAP) {
-      const src = SCENERY_IMAGE_MAP[preset];
-      const img = imageCacheRef.current.get(src);
-      if (img && img.complete && img.naturalWidth > 0) {
-        const padding = 24;
-        const baseScale = Math.min((w - padding * 2) / img.naturalWidth, (h - padding * 2) / img.naturalHeight);
-        const finalScale = baseScale * (adjust.scale ?? 1.0);
-        const dw = img.naturalWidth * finalScale;
-        const dh = img.naturalHeight * finalScale;
-
-        ctx.translate(w / 2 + (adjust.offsetX ?? 0), h / 2 + (adjust.offsetY ?? 0));
-        if (adjust.rotation) {
-          ctx.rotate((adjust.rotation * Math.PI) / 180);
-        }
-        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-      } else {
-        const newImg = new Image();
-        newImg.src = src;
-        newImg.onload = () => {
-          imageCacheRef.current.set(src, newImg);
-          redrawBackgroundLayer();
-        };
-      }
-      ctx.restore();
-      return;
-    }
-
-    // Apply scenery adjustment transforms to procedural sketches as well
-    ctx.translate(w / 2 + (adjust.offsetX ?? 0), h / 2 + (adjust.offsetY ?? 0));
-    if (adjust.rotation) {
-      ctx.rotate((adjust.rotation * Math.PI) / 180);
-    }
-    const procScale = adjust.scale ?? 1.0;
-    ctx.scale(procScale, procScale);
-    ctx.translate(-w / 2, -h / 2);
-
-    ctx.strokeStyle = '#334155'; // Crisp dark slate line art
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    if (preset === 'sunset-lake') {
-      // 1. Setting Sun Horizon Circle
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.48, Math.min(w, h) * 0.18, Math.PI, Math.PI * 2);
-      ctx.stroke();
-
-      // Sun rays
-      for (let i = 0; i < 7; i++) {
-        const ang = Math.PI + (i * Math.PI) / 6;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.5 + Math.cos(ang) * (Math.min(w, h) * 0.22), h * 0.48 + Math.sin(ang) * (Math.min(w, h) * 0.22));
-        ctx.lineTo(w * 0.5 + Math.cos(ang) * (Math.min(w, h) * 0.32), h * 0.48 + Math.sin(ang) * (Math.min(w, h) * 0.32));
-        ctx.stroke();
-      }
-
-      // 2. Majestic Mountains
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.58);
-      ctx.lineTo(w * 0.22, h * 0.32);
-      ctx.lineTo(w * 0.35, h * 0.45);
-      ctx.lineTo(w * 0.58, h * 0.28);
-      ctx.lineTo(w * 0.78, h * 0.48);
-      ctx.lineTo(w, h * 0.38);
-      ctx.stroke();
-
-      // Mountain Snowcaps
-      ctx.beginPath();
-      ctx.moveTo(w * 0.22, h * 0.32);
-      ctx.lineTo(w * 0.18, h * 0.38);
-      ctx.lineTo(w * 0.26, h * 0.38);
-      ctx.moveTo(w * 0.58, h * 0.28);
-      ctx.lineTo(w * 0.53, h * 0.35);
-      ctx.lineTo(w * 0.63, h * 0.35);
-      ctx.stroke();
-
-      // 3. Lake Horizon & Water Ripples
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.62);
-      ctx.lineTo(w, h * 0.62);
-      ctx.stroke();
-
-      // Waves
-      ctx.beginPath();
-      ctx.moveTo(w * 0.2, h * 0.72);
-      ctx.bezierCurveTo(w * 0.35, h * 0.7, w * 0.65, h * 0.74, w * 0.8, h * 0.72);
-      ctx.moveTo(w * 0.1, h * 0.84);
-      ctx.bezierCurveTo(w * 0.3, h * 0.82, w * 0.7, h * 0.86, w * 0.9, h * 0.84);
-      ctx.stroke();
-
-      // 4. Shoreline Pine Trees
-      drawTreeOutline(ctx, w * 0.08, h * 0.68, 60);
-      drawTreeOutline(ctx, w * 0.15, h * 0.65, 45);
-      drawTreeOutline(ctx, w * 0.88, h * 0.66, 55);
-    } else if (preset === 'beach-sunset') {
-      // 1. Sun on Water Line
-      ctx.beginPath();
-      ctx.arc(w * 0.6, h * 0.52, Math.min(w, h) * 0.16, Math.PI, Math.PI * 2);
-      ctx.stroke();
-
-      // Sea Horizon
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.52);
-      ctx.lineTo(w, h * 0.52);
-      ctx.stroke();
-
-      // 2. Surf shoreline
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.72);
-      ctx.bezierCurveTo(w * 0.3, h * 0.68, w * 0.7, h * 0.85, w, h * 0.78);
-      ctx.stroke();
-
-      // 3. Slanted Palm Tree
-      ctx.beginPath();
-      ctx.moveTo(w * 0.15, h * 0.95);
-      ctx.quadraticCurveTo(w * 0.18, h * 0.5, w * 0.32, h * 0.38);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(w * 0.18, h * 0.95);
-      ctx.quadraticCurveTo(w * 0.21, h * 0.5, w * 0.32, h * 0.38);
-      ctx.stroke();
-
-      // Palm fronds
-      const px = w * 0.32;
-      const py = h * 0.38;
-      const frondAngles = [-0.8, -0.3, 0.2, 0.7, 1.2, -1.3];
-      frondAngles.forEach((a) => {
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.quadraticCurveTo(px + Math.cos(a) * 45, py + Math.sin(a) * 45 - 15, px + Math.cos(a) * 75, py + Math.sin(a) * 75);
-        ctx.stroke();
-      });
-
-      // 4. Flying Birds
-      drawBirdOutline(ctx, w * 0.45, h * 0.28, 22);
-      drawBirdOutline(ctx, w * 0.52, h * 0.22, 18);
-      drawBirdOutline(ctx, w * 0.58, h * 0.26, 15);
-    } else if (preset === 'forest-stars') {
-      // 1. Crescent Moon
-      ctx.beginPath();
-      ctx.arc(w * 0.82, h * 0.22, 32, 0.5 * Math.PI, 1.5 * Math.PI);
-      ctx.quadraticCurveTo(w * 0.82 + 10, h * 0.22, w * 0.82, h * 0.22 + 32);
-      ctx.stroke();
-
-      // 2. Stars
-      const stars = [
-        { x: 0.15, y: 0.18 },
-        { x: 0.32, y: 0.12 },
-        { x: 0.48, y: 0.24 },
-        { x: 0.65, y: 0.14 },
-        { x: 0.25, y: 0.32 },
-        { x: 0.72, y: 0.28 },
-      ];
-      stars.forEach((st) => {
-        drawStarOutline(ctx, w * st.x, h * st.y, 8);
-      });
-
-      // 3. Pine Forest Horizon
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.75);
-      for (let x = 0; x <= w; x += 35) {
-        const th = 40 + (Math.sin(x) * 15);
-        ctx.lineTo(x + 17, h * 0.75 - th);
-        ctx.lineTo(x + 35, h * 0.75);
-      }
-      ctx.stroke();
-
-      // 4. Campfire with Logs
-      const cx = w * 0.5;
-      const cy = h * 0.88;
-      ctx.beginPath();
-      ctx.moveTo(cx - 30, cy + 12);
-      ctx.lineTo(cx + 30, cy - 8);
-      ctx.moveTo(cx - 30, cy - 8);
-      ctx.lineTo(cx + 30, cy + 12);
-      ctx.stroke();
-
-      // Flame
-      ctx.beginPath();
-      ctx.moveTo(cx - 15, cy);
-      ctx.quadraticCurveTo(cx - 20, cy - 35, cx, cy - 50);
-      ctx.quadraticCurveTo(cx + 20, cy - 35, cx + 15, cy);
-      ctx.closePath();
-      ctx.stroke();
-    } else if (preset === 'desert-dunes') {
-      // Sun
-      ctx.beginPath();
-      ctx.arc(w * 0.3, h * 0.35, 45, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Dunes
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.58);
-      ctx.bezierCurveTo(w * 0.25, h * 0.52, w * 0.6, h * 0.68, w, h * 0.55);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.72);
-      ctx.bezierCurveTo(w * 0.4, h * 0.82, w * 0.75, h * 0.68, w, h * 0.76);
-      ctx.stroke();
-
-      // Saguaro Cactus
-      const kx = w * 0.78;
-      const ky = h * 0.65;
-      ctx.beginPath();
-      ctx.moveTo(kx, ky + 60);
-      ctx.lineTo(kx, ky);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(kx - 18, ky + 30);
-      ctx.lineTo(kx - 18, ky + 15);
-      ctx.lineTo(kx, ky + 25);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(kx + 18, ky + 38);
-      ctx.lineTo(kx + 18, ky + 20);
-      ctx.lineTo(kx, ky + 32);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  };
-
-  const drawTreeOutline = (ctx: CanvasRenderingContext2D, x: number, y: number, height: number) => {
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x - height * 0.25, y - height * 0.3);
-    ctx.lineTo(x - height * 0.15, y - height * 0.3);
-    ctx.lineTo(x - height * 0.22, y - height * 0.65);
-    ctx.lineTo(x - height * 0.12, y - height * 0.65);
-    ctx.lineTo(x, y - height);
-    ctx.lineTo(x + height * 0.12, y - height * 0.65);
-    ctx.lineTo(x + height * 0.22, y - height * 0.65);
-    ctx.lineTo(x + height * 0.15, y - height * 0.3);
-    ctx.lineTo(x + height * 0.25, y - height * 0.3);
-    ctx.closePath();
-    ctx.stroke();
-  };
-
-  const drawBirdOutline = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    ctx.beginPath();
-    ctx.arc(x - size * 0.5, y, size * 0.5, Math.PI, 0);
-    ctx.arc(x + size * 0.5, y, size * 0.5, Math.PI, 0);
-    ctx.stroke();
-  };
-
-  const drawStarOutline = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => {
-    ctx.beginPath();
-    ctx.moveTo(x, y - r);
-    ctx.lineTo(x + r * 0.3, y - r * 0.3);
-    ctx.lineTo(x + r, y);
-    ctx.lineTo(x + r * 0.3, y + r * 0.3);
-    ctx.lineTo(x, y + r);
-    ctx.lineTo(x - r * 0.3, y + r * 0.3);
-    ctx.lineTo(x - r, y);
-    ctx.lineTo(x - r * 0.3, y - r * 0.3);
-    ctx.closePath();
-    ctx.stroke();
-  };
-
-  // -------------------------------------------------------------
-  // BRUSH STROKE RENDERING ENGINE
+  // STROKE RENDERING ENGINE (PENS & BRUSHES)
   // -------------------------------------------------------------
   const drawStrokeOnCanvas = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (!stroke.points || stroke.points.length < 2) return;
@@ -1029,54 +771,174 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.lineJoin = 'round';
 
     if (stroke.tool === 'eraser') {
-      // Destination-out on transparent drawing layer cleanly erases without cutting into paper!
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = stroke.size * 2.2;
+      ctx.lineWidth = stroke.size * 2.5;
       ctx.strokeStyle = 'rgba(0,0,0,1)';
-    } else if (stroke.tool === 'neon') {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.lineWidth = stroke.size;
-      ctx.strokeStyle = stroke.color;
-      ctx.shadowColor = stroke.color;
-      ctx.shadowBlur = stroke.size * 2;
-      ctx.globalAlpha = stroke.opacity / 100;
-    } else if (stroke.tool === 'spray') {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = stroke.color;
-      ctx.globalAlpha = (stroke.opacity / 100) * 0.6;
-      stroke.points.forEach((pt) => {
-        const radius = stroke.size * 1.5;
-        for (let i = 0; i < 8; i++) {
-          const offsetX = (Math.random() - 0.5) * radius * 2;
-          const offsetY = (Math.random() - 0.5) * radius * 2;
-          ctx.beginPath();
-          ctx.arc(pt.x + offsetX, pt.y + offsetY, 1.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+      ctx.stroke();
       ctx.restore();
       return;
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    const sub = stroke.subType || (stroke.tool === 'pen' ? 'smart-pen' : 'round-tip');
+
+    // Pen Variants Rendering
+    if (stroke.tool === 'pen') {
+      if (sub === 'graphite') {
+        ctx.lineWidth = Math.max(1, stroke.size * 0.75);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.8;
+      } else if (sub === 'glitter') {
+        ctx.lineWidth = stroke.size;
+        ctx.strokeStyle = stroke.color;
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = stroke.size * 1.8;
+        ctx.globalAlpha = stroke.opacity / 100;
+      } else if (sub === 'fluorescent-pen') {
+        ctx.lineWidth = stroke.size * 1.3;
+        ctx.strokeStyle = stroke.color;
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = stroke.size * 3;
+        ctx.globalAlpha = 0.95;
+      } else if (sub === 'watercolor-pen') {
+        ctx.lineWidth = stroke.size * 1.6;
+        ctx.strokeStyle = stroke.color;
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = 6;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.45;
+      } else if (sub === 'chalk-marker') {
+        ctx.lineWidth = stroke.size * 1.5;
+        ctx.strokeStyle = stroke.color;
+        ctx.setLineDash([4, 2]);
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.85;
+      } else if (sub === 'twin-tip') {
+        ctx.lineWidth = Math.max(1.5, stroke.size * 0.5);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+        // Draw dual offset lines
+        const offset = stroke.size * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x - offset, stroke.points[0].y - offset);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x - offset, stroke.points[i].y - offset);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x + offset, stroke.points[0].y + offset);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x + offset, stroke.points[i].y + offset);
+        }
+        ctx.stroke();
+        ctx.restore();
+        return;
+      } else if (sub === 'tattoo-pen') {
+        ctx.lineWidth = Math.max(1, stroke.size * 0.5);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = 1.0;
+      } else if (sub === '3d-pen') {
+        // 3D Tube Effect (Shaded shadow + bright core)
+        ctx.lineWidth = stroke.size * 1.4;
+        ctx.strokeStyle = '#1e293b';
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x + 2, stroke.points[0].y + 2);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x + 2, stroke.points[i].y + 2);
+        }
+        ctx.stroke();
+
+        ctx.lineWidth = stroke.size;
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+      } else if (sub === 'multicolor') {
+        // Rainbow Hue shifting
+        for (let i = 1; i < stroke.points.length; i++) {
+          const hue = (i * 22) % 360;
+          ctx.strokeStyle = `hsl(${hue}, 90%, 55%)`;
+          ctx.lineWidth = stroke.size;
+          ctx.globalAlpha = stroke.opacity / 100;
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[i - 1].x, stroke.points[i - 1].y);
+          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+          ctx.stroke();
+        }
+        ctx.restore();
+        return;
+      } else {
+        // Smart, Whiteboard, Permanent, Fiber, Bamboo, Digital, Pocket
+        ctx.lineWidth = stroke.size;
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+      }
     } else {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.lineWidth = stroke.size;
-      ctx.strokeStyle = stroke.color;
-      ctx.globalAlpha = stroke.opacity / 100;
-      if (stroke.tool === 'brush') {
+      // Brush Variants Rendering
+      if (sub === 'mop-brush' || sub === 'oval-mop') {
+        ctx.lineWidth = stroke.size * 2.6;
+        ctx.strokeStyle = stroke.color;
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = stroke.size;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.35;
+      } else if (sub === 'flat-wash') {
+        ctx.lineWidth = stroke.size * 2.2;
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.55;
+      } else if (sub === 'hog-bristle' || sub === 'hog-bristle-domed') {
+        // Multi-strand bristle effect
+        ctx.lineWidth = Math.max(1, stroke.size * 0.4);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.65;
+        [-2, 0, 2].forEach((offset) => {
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x + offset, stroke.points[0].y + offset);
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x + offset, stroke.points[i].y + offset);
+          }
+          ctx.stroke();
+        });
+        ctx.restore();
+        return;
+      } else if (sub === 'comb-brush') {
+        ctx.lineWidth = Math.max(1, stroke.size * 0.3);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+        [-4, -1, 2, 5].forEach((offset) => {
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x + offset, stroke.points[0].y + offset);
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x + offset, stroke.points[i].y + offset);
+          }
+          ctx.stroke();
+        });
+        ctx.restore();
+        return;
+      } else if (sub === 'liner-rigger' || sub === 'round-script-light-ox') {
+        ctx.lineWidth = Math.max(1.5, stroke.size * 0.55);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+      } else {
+        // Round Tip, Filbert, Fan, Cat's Tongue, etc.
+        ctx.lineWidth = stroke.size * 1.2;
+        ctx.strokeStyle = stroke.color;
         ctx.shadowColor = stroke.color;
         ctx.shadowBlur = 2;
+        ctx.globalAlpha = stroke.opacity / 100;
       }
     }
 
-    // Smooth quadratic curves
+    // Smooth quadratic curve stroke
     ctx.beginPath();
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-
     for (let i = 1; i < stroke.points.length - 1; i++) {
       const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
       const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
       ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
     }
-
     const last = stroke.points[stroke.points.length - 1];
     ctx.lineTo(last.x, last.y);
     ctx.stroke();
@@ -1123,7 +985,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       const outerRadius = Math.min(Math.abs(w), Math.abs(h)) / 2;
       const innerRadius = outerRadius * 0.45;
       let rot = (Math.PI / 2) * 3;
-      let step = Math.PI / spikes;
+      const step = Math.PI / spikes;
 
       ctx.moveTo(cx, cy - outerRadius);
       for (let i = 0; i < spikes; i++) {
@@ -1159,149 +1021,32 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     ctx.restore();
   };
 
-  // -------------------------------------------------------------
-  // VIBRANT VECTOR STICKERS RENDERING
-  // -------------------------------------------------------------
+  // Image Sticker Renderer
   const drawStickerOnCanvas = (ctx: CanvasRenderingContext2D, sticker: StickerItem) => {
+    const src = `/stickers/${sticker.stickerKey}.png`;
+    const img = imageCacheRef.current.get(src);
+    const w = sticker.width || 90;
+    const h = sticker.height || 90;
+
     ctx.save();
     ctx.translate(sticker.x, sticker.y);
-    const s = sticker.size || 75;
+    if (sticker.rotation) {
+      ctx.rotate((sticker.rotation * Math.PI) / 180);
+    }
 
-    if (sticker.stickerKey === 'sun') {
-      // Golden Sun with Bright Corona Rays
-      ctx.fillStyle = '#f59e0b';
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, s * 0.36, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 3.5;
-      for (let i = 0; i < 8; i++) {
-        const ang = (i * Math.PI) / 4;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(ang) * (s * 0.46), Math.sin(ang) * (s * 0.46));
-        ctx.lineTo(Math.cos(ang) * (s * 0.65), Math.sin(ang) * (s * 0.65));
-        ctx.stroke();
-      }
-    } else if (sticker.stickerKey === 'cloud') {
-      // Fluffy Sky Cloud
-      ctx.fillStyle = '#e0f2fe';
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(-s * 0.2, 0, s * 0.2, Math.PI * 0.5, Math.PI * 1.5);
-      ctx.arc(0, -s * 0.16, s * 0.28, Math.PI * 0.8, Math.PI * 2.2);
-      ctx.arc(s * 0.2, 0, s * 0.2, Math.PI * 1.5, Math.PI * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else if (sticker.stickerKey === 'mountain') {
-      // Snowcapped Mountain
-      ctx.fillStyle = '#475569';
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.5, s * 0.4);
-      ctx.lineTo(0, -s * 0.4);
-      ctx.lineTo(s * 0.5, s * 0.4);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Snowcap
-      ctx.fillStyle = '#f8fafc';
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 0.4);
-      ctx.lineTo(-s * 0.18, -s * 0.12);
-      ctx.lineTo(s * 0.18, -s * 0.12);
-      ctx.closePath();
-      ctx.fill();
-    } else if (sticker.stickerKey === 'waves') {
-      // Ocean Surf
-      ctx.strokeStyle = '#06b6d4';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.5, 0);
-      ctx.bezierCurveTo(-s * 0.25, -s * 0.35, 0, s * 0.35, s * 0.25, 0);
-      ctx.bezierCurveTo(s * 0.35, -s * 0.25, s * 0.45, 0, s * 0.5, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#0284c7';
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.45, s * 0.2);
-      ctx.bezierCurveTo(-s * 0.2, -s * 0.15, 0.05, s * 0.45, s * 0.3, s * 0.2);
-      ctx.stroke();
-    } else if (sticker.stickerKey === 'trees') {
-      // Evergreen Pine
-      ctx.fillStyle = '#10b981';
-      ctx.strokeStyle = '#047857';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 0.5);
-      ctx.lineTo(-s * 0.3, -s * 0.1);
-      ctx.lineTo(-s * 0.15, -s * 0.1);
-      ctx.lineTo(-s * 0.4, s * 0.3);
-      ctx.lineTo(s * 0.4, s * 0.3);
-      ctx.lineTo(s * 0.15, -s * 0.1);
-      ctx.lineTo(s * 0.3, -s * 0.1);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Trunk
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(-s * 0.06, s * 0.3, s * 0.12, s * 0.18);
-    } else if (sticker.stickerKey === 'heart') {
-      // Crimson Love Heart
-      ctx.fillStyle = '#ef4444';
-      ctx.strokeStyle = '#b91c1c';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, s * 0.35);
-      ctx.bezierCurveTo(-s * 0.5, -s * 0.1, -s * 0.4, -s * 0.45, 0, -s * 0.2);
-      ctx.bezierCurveTo(s * 0.4, -s * 0.45, s * 0.5, -s * 0.1, 0, s * 0.35);
-      ctx.fill();
-      ctx.stroke();
-    } else if (sticker.stickerKey === 'star' || sticker.stickerKey === 'sparkle') {
-      // Golden Sparkling Star
-      ctx.fillStyle = '#fbbf24';
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 0.5);
-      ctx.lineTo(s * 0.12, -s * 0.12);
-      ctx.lineTo(s * 0.5, 0);
-      ctx.lineTo(s * 0.12, s * 0.12);
-      ctx.lineTo(0, s * 0.5);
-      ctx.lineTo(-s * 0.12, s * 0.12);
-      ctx.lineTo(-s * 0.5, 0);
-      ctx.lineTo(-s * 0.12, -s * 0.12);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else if (sticker.stickerKey === 'flame') {
-      // Campfire Flame
-      ctx.fillStyle = '#f97316';
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.25, s * 0.35);
-      ctx.quadraticCurveTo(-s * 0.4, -s * 0.1, 0, -s * 0.45);
-      ctx.quadraticCurveTo(s * 0.4, -s * 0.1, s * 0.25, s * 0.35);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath();
-      ctx.moveTo(-s * 0.12, s * 0.35);
-      ctx.quadraticCurveTo(-s * 0.2, 0, 0, -s * 0.2);
-      ctx.quadraticCurveTo(s * 0.2, 0, s * 0.12, s * 0.35);
-      ctx.closePath();
-      ctx.fill();
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
     } else {
-      ctx.fillStyle = '#3b82f6';
+      const newImg = new Image();
+      newImg.src = src;
+      newImg.onload = () => {
+        imageCacheRef.current.set(src, newImg);
+        redrawDrawingLayer();
+      };
+      // Simple fallback while loading
+      ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
-      ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2);
+      ctx.arc(0, 0, w / 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1309,9 +1054,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   };
 
   // -------------------------------------------------------------
-  // POINTER & TOUCH EVENT HANDLING
+  // CANVAS COORDINATES & POINTER EVENTS
   // -------------------------------------------------------------
-  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
+  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement> | React.PointerEvent<HTMLDivElement>): Point => {
     const canvas = drawCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -1321,13 +1066,20 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     };
   };
 
-  const handlePlaceSticker = (key: string, x: number, y: number) => {
+  // Canva-style Add Sticker
+  const handleAddSticker = (key: string) => {
+    const canvas = drawCanvasRef.current;
+    const defaultX = canvas ? canvas.width / 4 : 200;
+    const defaultY = canvas ? canvas.height / 4 : 200;
+
     const newSticker: StickerItem = {
-      id: Math.random().toString(),
+      id: 'stk-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       stickerKey: key,
-      x,
-      y,
-      size: 75,
+      x: defaultX,
+      y: defaultY,
+      width: 100,
+      height: 100,
+      rotation: 0,
       author: user?.displayName || 'Me',
     };
 
@@ -1345,6 +1097,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return next;
     });
 
+    setSelectedStickerId(newSticker.id);
+    setShowStickerModal(false);
+
     if (socket && isOpponentConnected) {
       socket.emit('paint:action', {
         sessionCode,
@@ -1353,15 +1108,32 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       });
     }
 
-    toast.success('Sticker placed on canvas! Tap to place more.');
+    toast.success('Sticker placed! Drag or resize on canvas.');
   };
 
+  // Pointer Down
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     drawCanvasRef.current?.setPointerCapture(e.pointerId);
-
     const pt = getCanvasCoords(e);
 
+    // 1. Check if clicked on existing sticker to select it
+    for (let i = currentPage.stickers.length - 1; i >= 0; i--) {
+      const st = currentPage.stickers[i];
+      const w = st.width || 100;
+      const h = st.height || 100;
+      if (Math.abs(pt.x - st.x) <= w / 2 && Math.abs(pt.y - st.y) <= h / 2) {
+        setSelectedStickerId(st.id);
+        setIsDraggingSticker(true);
+        setStickerDragOffset({ x: pt.x - st.x, y: pt.y - st.y });
+        return;
+      }
+    }
+
+    // If clicked empty canvas, deselect active sticker
+    setSelectedStickerId(null);
+
+    // 2. Shape Mode
     if (activeTab === 'shape') {
       setShapeDragStart(pt);
       setCurrentShapePreview({
@@ -1379,20 +1151,17 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return;
     }
 
-    if (activeTab === 'sticker') {
-      handlePlaceSticker(selectedSticker, pt.x, pt.y);
-      return;
-    }
-
+    // 3. Drawing Mode (Pen / Brush / Eraser)
     isDrawingRef.current = true;
     currentPointsRef.current = [pt];
   };
 
+  // Pointer Move
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const pt = getCanvasCoords(e);
 
-    // Broadcast cursor position to friend
+    // Remote cursor broadcast
     if (socket && isOpponentConnected) {
       socket.emit('paint:cursor', {
         sessionCode,
@@ -1401,6 +1170,25 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       });
     }
 
+    // Sticker Dragging
+    if (isDraggingSticker && selectedStickerId) {
+      const updatedX = Math.round(pt.x - stickerDragOffset.x);
+      const updatedY = Math.round(pt.y - stickerDragOffset.y);
+
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page) {
+          page.stickers = page.stickers.map((s) =>
+            s.id === selectedStickerId ? { ...s, x: updatedX, y: updatedY } : s
+          );
+        }
+        return next;
+      });
+      return;
+    }
+
+    // Shape Drag Preview
     if (activeTab === 'shape' && shapeDragStart) {
       setCurrentShapePreview({
         id: 'preview',
@@ -1417,11 +1205,10 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return;
     }
 
+    // Stroke Drawing
     if (!isDrawingRef.current) return;
-
     currentPointsRef.current.push(pt);
 
-    // Live preview of stroke currently being drawn
     const canvas = drawCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -1429,7 +1216,8 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
     const tempStroke: Stroke = {
       id: 'current',
-      tool: selectedTool,
+      tool: activeBaseTool,
+      subType: activeBaseTool === 'pen' ? selectedPenType : selectedBrushType,
       color: brushColor,
       size: brushSize,
       opacity: brushOpacity,
@@ -1441,10 +1229,26 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     drawStrokeOnCanvas(ctx, tempStroke);
   };
 
+  // Pointer Up
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     drawCanvasRef.current?.releasePointerCapture(e.pointerId);
 
+    // End Sticker Drag
+    if (isDraggingSticker) {
+      setIsDraggingSticker(false);
+      const st = currentPage.stickers.find((s) => s.id === selectedStickerId);
+      if (st && socket && isOpponentConnected) {
+        socket.emit('paint:action', {
+          sessionCode,
+          actionType: 'update_sticker',
+          payload: { sticker: st },
+        });
+      }
+      return;
+    }
+
+    // Finalize Shape
     if (activeTab === 'shape' && currentShapePreview) {
       if (currentShapePreview.width > 5 || currentShapePreview.height > 5) {
         const finalShape: ShapeItem = {
@@ -1479,13 +1283,15 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       return;
     }
 
+    // Finalize Stroke
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
 
     if (currentPointsRef.current.length >= 2) {
       const newStroke: Stroke = {
         id: Math.random().toString(),
-        tool: selectedTool,
+        tool: activeBaseTool,
+        subType: activeBaseTool === 'pen' ? selectedPenType : selectedBrushType,
         color: brushColor,
         size: brushSize,
         opacity: brushOpacity,
@@ -1507,7 +1313,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         return next;
       });
 
-      // Transmit stroke live to friend
       if (socket && isOpponentConnected) {
         socket.emit('paint:draw', {
           sessionCode,
@@ -1517,6 +1322,272 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
 
     currentPointsRef.current = [];
+  };
+
+  // -------------------------------------------------------------
+  // CANVA-STYLE STICKER TRANSFORMATION ACTIONS
+  // -------------------------------------------------------------
+  const activeSelectedSticker = currentPage.stickers.find((s) => s.id === selectedStickerId);
+
+  const handleZoomSticker = (deltaRatio: number) => {
+    if (!selectedStickerId) return;
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.stickers = page.stickers.map((s) => {
+          if (s.id === selectedStickerId) {
+            const nextW = Math.max(30, Math.min(450, Math.round((s.width || 100) * (1 + deltaRatio))));
+            const nextH = Math.max(30, Math.min(450, Math.round((s.height || 100) * (1 + deltaRatio))));
+            const updated = { ...s, width: nextW, height: nextH };
+            if (socket && isOpponentConnected) {
+              socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: updated } });
+            }
+            return updated;
+          }
+          return s;
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleRotateSticker = () => {
+    if (!selectedStickerId) return;
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.stickers = page.stickers.map((s) => {
+          if (s.id === selectedStickerId) {
+            const nextRot = (((s.rotation || 0) + 45) % 360);
+            const updated = { ...s, rotation: nextRot };
+            if (socket && isOpponentConnected) {
+              socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: updated } });
+            }
+            return updated;
+          }
+          return s;
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleDuplicateSticker = () => {
+    if (!activeSelectedSticker) return;
+    const duplicated: StickerItem = {
+      ...activeSelectedSticker,
+      id: 'stk-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      x: activeSelectedSticker.x + 30,
+      y: activeSelectedSticker.y + 30,
+    };
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.stickers = [...page.stickers, duplicated];
+      }
+      return next;
+    });
+    setSelectedStickerId(duplicated.id);
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', { sessionCode, actionType: 'add_sticker', payload: { sticker: duplicated } });
+    }
+  };
+
+  const handleDeleteSelectedSticker = () => {
+    if (!selectedStickerId) return;
+    const idToDelete = selectedStickerId;
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.stickers = page.stickers.filter((s) => s.id !== idToDelete);
+      }
+      return next;
+    });
+    setSelectedStickerId(null);
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', { sessionCode, actionType: 'delete_sticker', payload: { id: idToDelete } });
+    }
+    toast.success('Sticker removed');
+  };
+
+  // Corner Resize Handler Start
+  const handleResizeHandleDown = (e: React.PointerEvent<HTMLDivElement>, handle: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!activeSelectedSticker) return;
+    setActiveResizeHandle(handle);
+    setResizeInitialData({
+      x: e.clientX,
+      y: e.clientY,
+      w: activeSelectedSticker.width || 100,
+      h: activeSelectedSticker.height || 100,
+    });
+  };
+
+  // Global Pointer Events for Corner Resize Dragging
+  useEffect(() => {
+    if (!activeResizeHandle || !resizeInitialData || !selectedStickerId) return;
+
+    const handlePointerMoveWindow = (e: PointerEvent) => {
+      const dx = e.clientX - resizeInitialData.x;
+      const dy = e.clientY - resizeInitialData.y;
+      const factor = activeResizeHandle.includes('e') ? dx : -dx;
+
+      const newW = Math.max(30, Math.min(450, resizeInitialData.w + factor));
+      const newH = Math.max(30, Math.min(450, resizeInitialData.h + factor));
+
+      setPages((prev) => {
+        const next = [...prev];
+        const page = next[activePageIndex];
+        if (page) {
+          page.stickers = page.stickers.map((s) => (s.id === selectedStickerId ? { ...s, width: newW, height: newH } : s));
+        }
+        return next;
+      });
+    };
+
+    const handlePointerUpWindow = () => {
+      setActiveResizeHandle(null);
+      setResizeInitialData(null);
+      const st = currentPage.stickers.find((s) => s.id === selectedStickerId);
+      if (st && socket && isOpponentConnected) {
+        socket.emit('paint:action', { sessionCode, actionType: 'update_sticker', payload: { sticker: st } });
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMoveWindow);
+    window.addEventListener('pointerup', handlePointerUpWindow);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMoveWindow);
+      window.removeEventListener('pointerup', handlePointerUpWindow);
+    };
+  }, [activeResizeHandle, resizeInitialData, selectedStickerId, activePageIndex, currentPage.stickers, socket, isOpponentConnected, sessionCode]);
+
+  // -------------------------------------------------------------
+  // SCENERY & FRAME ADJUSTMENTS
+  // -------------------------------------------------------------
+  const handleAdjustScenery = (partial: Partial<SceneryAdjust>) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.sceneryAdjust = {
+          scale: page.sceneryAdjust?.scale ?? 1,
+          offsetX: page.sceneryAdjust?.offsetX ?? 0,
+          offsetY: page.sceneryAdjust?.offsetY ?? 0,
+          opacity: page.sceneryAdjust?.opacity ?? 1,
+          rotation: page.sceneryAdjust?.rotation ?? 0,
+          ...partial,
+        };
+      }
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'adjust_scenery',
+        payload: { sceneryAdjust: partial },
+      });
+    }
+  };
+
+  const handleAdjustFrame = (partial: Partial<FrameAdjust>) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) {
+        page.frameAdjust = {
+          scale: page.frameAdjust?.scale ?? 1,
+          offsetX: page.frameAdjust?.offsetX ?? 0,
+          offsetY: page.frameAdjust?.offsetY ?? 0,
+          ...partial,
+        };
+      }
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'adjust_frame',
+        payload: { frameAdjust: partial },
+      });
+    }
+  };
+
+  const handleSelectSceneryPreset = (preset: string) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.sceneryPreset = preset;
+      return next;
+    });
+    setShowSceneryModal(false);
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_scenery',
+        payload: { sceneryPreset: preset },
+      });
+    }
+  };
+
+  const handleSelectFrame = (frameKey: string) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.frame = frameKey;
+      return next;
+    });
+    setShowFrameModal(false);
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_frame',
+        payload: { frame: frameKey },
+      });
+    }
+  };
+
+  const handleSelectPageColor = (color: string) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.pageColor = color;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_page_color',
+        payload: { pageColor: color },
+      });
+    }
+  };
+
+  const handleSelectCanvasRatio = (ratio: CanvasRatio) => {
+    setPages((prev) => {
+      const next = [...prev];
+      const page = next[activePageIndex];
+      if (page) page.canvasRatio = ratio;
+      return next;
+    });
+
+    if (socket && isOpponentConnected) {
+      socket.emit('paint:action', {
+        sessionCode,
+        actionType: 'set_ratio',
+        payload: { canvasRatio: ratio },
+      });
+    }
   };
 
   // -------------------------------------------------------------
@@ -1559,7 +1630,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   };
 
   const handleClearCanvas = () => {
-    if (confirm('Clear the drawings on this page?')) {
+    if (confirm('Clear drawings and stickers on this page?')) {
       setPages((prev) => {
         const next = [...prev];
         const page = next[activePageIndex];
@@ -1575,6 +1646,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         }
         return next;
       });
+      setSelectedStickerId(null);
 
       if (socket && isOpponentConnected) {
         socket.emit('paint:action', {
@@ -1587,20 +1659,18 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
   };
 
-  // -------------------------------------------------------------
-  // PAGE MANAGEMENT & CUSTOMIZATION
-  // -------------------------------------------------------------
+  // Multi-Page
   const handleAddPage = () => {
     const newPageNum = pages.length + 1;
     const newPage: CanvasPage = {
       id: `page-${Date.now()}`,
       title: `Page ${newPageNum}`,
       pageColor: '#ffffff',
-      paperTexture: 'none',
       sceneryPreset: 'blank',
       sceneryAdjust: { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'none',
+      frameAdjust: { scale: 1, offsetX: 0, offsetY: 0 },
       canvasRatio: typeof window !== 'undefined' && window.innerWidth < 768 ? '3:4' : '16:9',
       strokes: [],
       shapes: [],
@@ -1611,6 +1681,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
     setPages((prev) => [...prev, newPage]);
     setActivePageIndex(pages.length);
+    setSelectedStickerId(null);
 
     if (socket && isOpponentConnected) {
       socket.emit('paint:action', {
@@ -1631,6 +1702,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const handleSwitchPage = (index: number) => {
     if (index >= 0 && index < pages.length) {
       setActivePageIndex(index);
+      setSelectedStickerId(null);
       if (socket && isOpponentConnected) {
         socket.emit('paint:action', {
           sessionCode,
@@ -1641,142 +1713,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     }
   };
 
-  const handleSelectPageColor = (color: string) => {
-    setPages((prev) => {
-      const next = [...prev];
-      const page = next[activePageIndex];
-      if (page) page.pageColor = color;
-      return next;
-    });
-
-    if (socket && isOpponentConnected) {
-      socket.emit('paint:action', {
-        sessionCode,
-        actionType: 'set_page_color',
-        payload: { pageColor: color },
-      });
-    }
-  };
-
-  const handleSelectPaperTexture = (paper: PaperTextureType) => {
-    setPages((prev) => {
-      const next = [...prev];
-      const page = next[activePageIndex];
-      if (page) page.paperTexture = paper;
-      return next;
-    });
-
-    if (socket && isOpponentConnected) {
-      socket.emit('paint:action', {
-        sessionCode,
-        actionType: 'set_paper_texture',
-        payload: { paperTexture: paper },
-      });
-    }
-  };
-
-  const handleAdjustScenery = (partial: Partial<SceneryAdjust>) => {
-    setPages((prev) => {
-      const next = [...prev];
-      const page = next[activePageIndex];
-      if (page) {
-        page.sceneryAdjust = {
-          scale: page.sceneryAdjust?.scale ?? 1,
-          offsetX: page.sceneryAdjust?.offsetX ?? 0,
-          offsetY: page.sceneryAdjust?.offsetY ?? 0,
-          opacity: page.sceneryAdjust?.opacity ?? 1,
-          rotation: page.sceneryAdjust?.rotation ?? 0,
-          ...partial,
-        };
-      }
-      return next;
-    });
-
-    if (socket && isOpponentConnected) {
-      socket.emit('paint:action', {
-        sessionCode,
-        actionType: 'adjust_scenery',
-        payload: { sceneryAdjust: partial },
-      });
-    }
-  };
-
-  const handleSelectSceneryPreset = (preset: SceneryPreset) => {
-    setPages((prev) => {
-      const next = [...prev];
-      const page = next[activePageIndex];
-      if (page) page.sceneryPreset = preset;
-      return next;
-    });
-
-    if (socket && isOpponentConnected) {
-      socket.emit('paint:action', {
-        sessionCode,
-        actionType: 'set_scenery',
-        payload: { sceneryPreset: preset },
-      });
-    }
-  };
-
-  const handleSelectFrame = (frame: FrameType) => {
-    const fDef = PHOTO_FRAMES.find((f) => f.key === frame);
-    const targetRatio: CanvasRatio | null =
-      fDef?.orientation === 'landscape' ? '16:9' : fDef?.orientation === 'portrait' ? '3:4' : null;
-
-    setPages((prev) => {
-      const next = [...prev];
-      const page = next[activePageIndex];
-      if (page) {
-        page.frame = frame;
-        if (targetRatio) {
-          page.canvasRatio = targetRatio;
-        }
-      }
-      return next;
-    });
-
-    if (socket && isOpponentConnected) {
-      socket.emit('paint:action', {
-        sessionCode,
-        actionType: 'set_frame',
-        payload: { frame },
-      });
-      if (targetRatio) {
-        socket.emit('paint:action', {
-          sessionCode,
-          actionType: 'set_ratio',
-          payload: { canvasRatio: targetRatio },
-        });
-      }
-    }
-  };
-
-  const handleSelectCanvasRatio = (ratio: CanvasRatio) => {
-    setPages((prev) => {
-      const next = [...prev];
-      const page = next[activePageIndex];
-      if (page) page.canvasRatio = ratio;
-      return next;
-    });
-
-    if (socket && isOpponentConnected) {
-      socket.emit('paint:action', {
-        sessionCode,
-        actionType: 'set_ratio',
-        payload: { canvasRatio: ratio },
-      });
-    }
-  };
-
-  // -------------------------------------------------------------
-  // HIGH-RESOLUTION ARTWORK DOWNLOAD
-  // -------------------------------------------------------------
+  // High-Res Artwork Export
   const handleDownloadArtwork = async () => {
     const bgCanvas = bgCanvasRef.current;
     const drawCanvas = drawCanvasRef.current;
     if (!bgCanvas || !drawCanvas) return;
 
-    // Create high-res export canvas
     const exportCanvas = document.createElement('canvas');
     const width = bgCanvas.width;
     const height = bgCanvas.height;
@@ -1786,29 +1728,33 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. Draw Background
+    // 1. Draw Background (Page tint & scenery)
     ctx.drawImage(bgCanvas, 0, 0);
 
-    // 2. Draw Drawings on top
+    // 2. Draw Drawings, Shapes & Stickers
     ctx.drawImage(drawCanvas, 0, 0);
 
-    // 3. Draw Authentic Photo Frame Overlay if selected
-    const frameUrl = FRAME_IMAGE_MAP[currentPage.frame];
-    if (frameUrl) {
-      await new Promise<void>((resolve) => {
-        const frameImg = new Image();
-        frameImg.crossOrigin = 'anonymous';
-        frameImg.onload = () => {
-          ctx.drawImage(frameImg, 0, 0, width, height);
-          resolve();
-        };
-        frameImg.onerror = () => resolve();
-        frameImg.src = frameUrl;
-      });
-    } else if (currentPage.frame === 'minimal') {
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 8;
-      ctx.strokeRect(4, 4, width - 8, height - 8);
+    // 3. Draw Authentic Photo Frame if selected
+    if (currentPage.frame && currentPage.frame !== 'none') {
+      const frameDef = PHOTO_FRAMES.find((f) => f.key === currentPage.frame);
+      if (frameDef && frameDef.src) {
+        await new Promise<void>((resolve) => {
+          const frameImg = new Image();
+          frameImg.crossOrigin = 'anonymous';
+          frameImg.onload = () => {
+            ctx.save();
+            const fAdj = currentPage.frameAdjust || { scale: 1, offsetX: 0, offsetY: 0 };
+            const dw = width * (fAdj.scale ?? 1);
+            const dh = height * (fAdj.scale ?? 1);
+            ctx.translate(width / 2 + (fAdj.offsetX ?? 0), height / 2 + (fAdj.offsetY ?? 0));
+            ctx.drawImage(frameImg, -dw / 2, -dh / 2, dw, dh);
+            ctx.restore();
+            resolve();
+          };
+          frameImg.onerror = () => resolve();
+          frameImg.src = frameDef.src;
+        });
+      }
     }
 
     const dataUrl = exportCanvas.toDataURL('image/png');
@@ -1820,9 +1766,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     toast.success('Artwork downloaded successfully!');
   };
 
-  // -------------------------------------------------------------
-  // CHAT SYSTEM
-  // -------------------------------------------------------------
+  // Chat & Invites
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -1852,9 +1796,24 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     showFloatingToast(myName, text);
   };
 
-  // -------------------------------------------------------------
-  // FRIEND INVITATION HANDLERS
-  // -------------------------------------------------------------
+  const fetchFriends = useCallback(async () => {
+    setLoadingFriends(true);
+    try {
+      const res = await api.get('/friends');
+      const friends: Friend[] = res.data.friends || [];
+      setFriendsList(friends);
+
+      if (socket && friends.length > 0) {
+        const friendIds = friends.map((f) => f._id);
+        socket.emit('presence:query', { targetUserIds: friendIds });
+      }
+    } catch (err) {
+      console.error('Failed to load friends:', err);
+    } finally {
+      setLoadingFriends(false);
+    }
+  }, [socket]);
+
   const handleInviteFriend = (friend: Friend) => {
     if (!socket) {
       toast.error('Socket disconnected');
@@ -1901,10 +1860,19 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     toast.success(`Joined room ${cleanCode}!`);
   };
 
+  // Filtered Stickers for Popup Grid
+  const filteredStickers = STICKER_LIST.filter((st) => {
+    const matchesSearch = st.label.toLowerCase().includes(stickerSearch.toLowerCase());
+    const matchesCat = stickerCategoryFilter === 'all' || st.category === stickerCategoryFilter;
+    return matchesSearch && matchesCat;
+  });
+
+  const activeFrameDef = PHOTO_FRAMES.find((f) => f.key === currentPage.frame);
+
   return (
     <div className="relative flex flex-col h-[100dvh] w-full bg-slate-950 text-slate-100 overflow-hidden select-none font-sans">
       {/* 1. Sleek Header Bar */}
-      <header className="flex-none flex items-center justify-between px-3 sm:px-6 py-2.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 z-30">
+      <header className="flex-none flex items-center justify-between px-3 sm:px-6 py-2 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 z-30">
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onBack}
@@ -1926,7 +1894,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </div>
 
         {/* Center Page Selector */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
+        <div className="hidden md:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-full border border-slate-700/50">
           <button
             onClick={() => handleSwitchPage(activePageIndex - 1)}
             disabled={activePageIndex === 0}
@@ -1955,6 +1923,27 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
 
         {/* Right Header Action Icons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Quick Eraser Toggle */}
+          <button
+            onClick={() => {
+              if (activeBaseTool === 'eraser') {
+                setActiveBaseTool('pen');
+                setActiveTab('pen');
+              } else {
+                setActiveBaseTool('eraser');
+              }
+            }}
+            className={`p-2 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center gap-1 border ${
+              activeBaseTool === 'eraser'
+                ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/30'
+                : 'bg-slate-800/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+            }`}
+            title="Clean Non-Destructive Eraser"
+          >
+            <Eraser className="w-4 h-4" />
+            <span className="hidden sm:inline">Eraser</span>
+          </button>
+
           {/* Undo / Redo */}
           <button
             onClick={handleUndo}
@@ -2023,7 +2012,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       </header>
 
       {/* Mobile Page Strip (< 768px) */}
-      <div className="flex md:hidden flex-none items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800/60 text-xs">
+      <div className="flex md:hidden flex-none items-center justify-between px-3 py-1 bg-slate-900 border-b border-slate-800/60 text-xs">
         <div className="flex items-center gap-1">
           <button
             onClick={() => handleSwitchPage(activePageIndex - 1)}
@@ -2052,9 +2041,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </button>
       </div>
 
-      {/* 2. Main Studio Canvas Work Area with Authentic Photo Frame */}
-      <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center p-2 sm:p-5">
-        {/* Photo Frame Container */}
+      {/* 2. Main Studio Canvas Work Area with Authentic Photo Frame & Canva Controls */}
+      <div className="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center p-2 sm:p-4">
+        {/* Aspect Ratio Bounding Container */}
         <div
           className={`relative flex items-center justify-center transition-all duration-300 ${
             currentPage.canvasRatio === '1:1'
@@ -2064,27 +2053,21 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               : currentPage.canvasRatio === '16:9'
               ? 'aspect-[16/9] w-full max-w-5xl'
               : 'w-full h-full max-w-5xl'
-          } ${
-            currentPage.frame === 'minimal'
-              ? 'rounded-2xl border-2 border-slate-700/60 shadow-2xl overflow-hidden'
-              : currentPage.frame === 'none'
-              ? 'rounded-xl border border-slate-800 shadow-xl overflow-hidden'
-              : 'rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden'
-          }`}
+          } rounded-xl border border-slate-800 shadow-2xl overflow-hidden`}
         >
-          {/* Inner Canvas Mount with Drop Shadow */}
+          {/* Inner Canvas Mount */}
           <div
             ref={containerRef}
-            className="relative w-full h-full rounded-lg overflow-hidden shadow-inner"
+            className="relative w-full h-full overflow-hidden"
             style={{ touchAction: 'none' }}
           >
-            {/* Layer 1: Background Canvas (Paper Color & Scenery Outline) */}
+            {/* Layer 1: Background Canvas (Page tint & scenery outline) */}
             <canvas
               ref={bgCanvasRef}
               className="absolute inset-0 w-full h-full pointer-events-none block"
             />
 
-            {/* Layer 2: Transparent Drawing Canvas (Non-Destructive Smooth Strokes) */}
+            {/* Layer 2: Transparent Drawing Canvas (Strokes, Shapes & Stickers) */}
             <canvas
               ref={drawCanvasRef}
               onPointerDown={handlePointerDown}
@@ -2095,71 +2078,198 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               style={{ touchAction: 'none' }}
             />
 
-            {/* Layer 3: Authentic Photo Frame Image Overlay */}
-            {FRAME_IMAGE_MAP[currentPage.frame] && (
-              <img
-                src={FRAME_IMAGE_MAP[currentPage.frame]}
-                alt="Photo Frame"
-                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-                style={{ zIndex: 15 }}
-              />
+            {/* Layer 3: Authentic Photo Frame Image Overlay (Adjustable) */}
+            {activeFrameDef && activeFrameDef.src && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  transform: `translate(${currentPage.frameAdjust?.offsetX || 0}px, ${
+                    currentPage.frameAdjust?.offsetY || 0
+                  }px) scale(${currentPage.frameAdjust?.scale || 1})`,
+                  transformOrigin: 'center center',
+                  zIndex: 18,
+                }}
+              >
+                <img
+                  src={activeFrameDef.src}
+                  alt="Photo Frame"
+                  className="w-full h-full object-cover select-none pointer-events-none"
+                />
+              </div>
             )}
 
-            {/* Floating On-Canvas Scenery Quick Resize & Rotate Badge */}
-            {currentPage.sceneryPreset !== 'blank' && (
-              <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/50 backdrop-blur-md px-3 py-1.5 rounded-full shadow-2xl pointer-events-auto">
+            {/* Canva-Style Active Sticker Selection Box with Transform Controls */}
+            {activeSelectedSticker && (
+              <div
+                className="absolute pointer-events-auto border-2 border-amber-400 border-dashed rounded-lg"
+                style={{
+                  left: `${activeSelectedSticker.x}px`,
+                  top: `${activeSelectedSticker.y}px`,
+                  width: `${activeSelectedSticker.width || 100}px`,
+                  height: `${activeSelectedSticker.height || 100}px`,
+                  transform: `translate(-50%, -50%) rotate(${activeSelectedSticker.rotation || 0}deg)`,
+                  zIndex: 25,
+                  cursor: isDraggingSticker ? 'grabbing' : 'grab',
+                }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setIsDraggingSticker(true);
+                  const pt = getCanvasCoords(e);
+                  setStickerDragOffset({ x: pt.x - activeSelectedSticker.x, y: pt.y - activeSelectedSticker.y });
+                }}
+              >
+                {/* Floating Action Bar */}
+                <div
+                  className="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/95 border border-amber-500/70 rounded-full px-2 py-1 shadow-2xl backdrop-blur-md pointer-events-auto"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleZoomSticker(-0.15)}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold flex items-center justify-center text-xs"
+                    title="Zoom Out (Smaller)"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleZoomSticker(0.15)}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold flex items-center justify-center text-xs"
+                    title="Zoom In (Bigger)"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRotateSticker}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs"
+                    title="Rotate 45 deg"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDuplicateSticker}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs"
+                    title="Duplicate"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelectedSticker}
+                    className="w-6 h-6 rounded-full bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 flex items-center justify-center text-xs"
+                    title="Delete Sticker"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStickerId(null)}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xs"
+                    title="Deselect"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* 4 Corner Resize Handles */}
+                <div
+                  className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nwse-resize shadow-md"
+                  onPointerDown={(e) => handleResizeHandleDown(e, 'nw')}
+                />
+                <div
+                  className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nesw-resize shadow-md"
+                  onPointerDown={(e) => handleResizeHandleDown(e, 'ne')}
+                />
+                <div
+                  className="absolute -bottom-2 -left-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nesw-resize shadow-md"
+                  onPointerDown={(e) => handleResizeHandleDown(e, 'sw')}
+                />
+                <div
+                  className="absolute -bottom-2 -right-2 w-4 h-4 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nwse-resize shadow-md"
+                  onPointerDown={(e) => handleResizeHandleDown(e, 'se')}
+                />
+              </div>
+            )}
+
+            {/* Floating On-Canvas Scenery Quick Adjustment Badge */}
+            {currentPage.sceneryPreset && currentPage.sceneryPreset !== 'blank' && (
+              <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto">
                 <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider pl-0.5">Scenery:</span>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAdjustScenery({ scale: Math.max(0.4, (currentPage.sceneryAdjust?.scale ?? 1) - 0.1) });
-                  }}
-                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center transition-all cursor-pointer border border-slate-700"
-                  title="Make Scenery Smaller"
+                  onClick={() => handleAdjustScenery({ scale: Math.max(0.4, (currentPage.sceneryAdjust?.scale ?? 1) - 0.1) })}
+                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
+                  title="Zoom Out Scenery"
                 >
                   -
                 </button>
-                <span className="text-[11px] font-mono font-black text-amber-300 px-1 min-w-[36px] text-center">
+                <span className="text-[11px] font-mono font-black text-amber-300 px-1 min-w-[34px] text-center">
                   {Math.round((currentPage.sceneryAdjust?.scale ?? 1) * 100)}%
                 </span>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAdjustScenery({ scale: Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 1) + 0.1) });
-                  }}
-                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center transition-all cursor-pointer border border-slate-700"
-                  title="Make Scenery Bigger"
+                  onClick={() => handleAdjustScenery({ scale: Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 1) + 0.1) })}
+                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
+                  title="Zoom In Scenery"
                 >
                   +
                 </button>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAdjustScenery({ rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360) });
-                  }}
-                  className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition-all cursor-pointer border border-slate-700 ml-1"
-                  title="Rotate Scenery Upright"
+                  onClick={() => handleAdjustScenery({ rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360) })}
+                  className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 border border-slate-700 ml-1"
+                  title="Rotate Scenery"
                 >
                   Rotate
                 </button>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAdjustScenery({ scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 });
-                  }}
-                  className="px-2 py-0.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[10px] font-bold text-rose-300 transition-all cursor-pointer border border-rose-500/30 ml-0.5"
-                  title="Reset Scenery Size"
+                  onClick={() => handleAdjustScenery({ scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 })}
+                  className="px-2 py-0.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[10px] font-bold text-rose-300 border border-rose-500/30 ml-0.5"
+                  title="Reset Scenery"
                 >
                   Reset
                 </button>
               </div>
             )}
 
-            {/* Remote Friend's Cursor Indicator */}
+            {/* Floating On-Canvas Frame Quick Adjustment Badge */}
+            {currentPage.frame && currentPage.frame !== 'none' && (
+              <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-slate-900/90 border border-purple-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto">
+                <span className="text-[10px] font-black text-purple-300 uppercase tracking-wider pl-0.5">Frame:</span>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustFrame({ scale: Math.max(0.6, (currentPage.frameAdjust?.scale ?? 1) - 0.05) })}
+                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
+                  title="Zoom Out Frame"
+                >
+                  -
+                </button>
+                <span className="text-[11px] font-mono font-black text-purple-300 px-1 min-w-[34px] text-center">
+                  {Math.round((currentPage.frameAdjust?.scale ?? 1) * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustFrame({ scale: Math.min(1.5, (currentPage.frameAdjust?.scale ?? 1) + 0.05) })}
+                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
+                  title="Zoom In Frame"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustFrame({ scale: 1, offsetX: 0, offsetY: 0 })}
+                  className="px-2 py-0.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[10px] font-bold text-rose-300 border border-rose-500/30 ml-1"
+                  title="Reset Frame"
+                >
+                  Fit
+                </button>
+              </div>
+            )}
+
+            {/* Remote Friend Cursor */}
             {remoteCursor && (
               <div
                 className="absolute pointer-events-none transition-all duration-75 ease-out z-20"
@@ -2176,7 +2286,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* 2-Second Floating Chat Toast Over Canvas (Exact User Request) */}
+            {/* 2-Second Floating Chat Toast */}
             <AnimatePresence>
               {floatingToast && (
                 <motion.div
@@ -2184,7 +2294,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-sm sm:max-w-md w-auto px-4 py-2.5 rounded-full bg-slate-900/90 border border-amber-500/40 backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none"
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-sm sm:max-w-md w-auto px-4 py-2 rounded-full bg-slate-900/95 border border-amber-500/40 backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none"
                 >
                   <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping flex-none" />
                   <span className="text-xs font-black text-amber-300 flex-none">{floatingToast.sender}:</span>
@@ -2196,72 +2306,50 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         </div>
       </div>
 
-      {/* 3. Floating Bottom Tools Dock (Clean, Non-Clipping, Fully Categorized) */}
+      {/* 3. Floating Bottom Tools Dock (Ordered: Pen -> Brushes -> Colors -> Page -> Scenery -> Shapes -> Stickers -> Frames) */}
       <footer className="flex-none bg-slate-900/95 backdrop-blur-md border-t border-slate-800/80 px-2 sm:px-6 py-2 z-30">
         <div className="max-w-5xl mx-auto flex flex-col gap-2">
-          {/* Sub-Panel: Dynamic Options Based on Active Tab */}
+          {/* Sub-Panel: Dynamic Controls Based on Active Tab */}
           <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1">
-            {activeTab === 'brush' && (
-              <div className="flex items-center gap-3 w-full justify-between sm:justify-start">
-                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl">
-                  <button
-                    onClick={() => setSelectedTool('pen')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedTool === 'pen' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Pen
-                  </button>
-                  <button
-                    onClick={() => setSelectedTool('brush')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedTool === 'brush' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Brush
-                  </button>
-                  <button
-                    onClick={() => setSelectedTool('neon')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedTool === 'neon' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Neon
-                  </button>
-                  <button
-                    onClick={() => setSelectedTool('spray')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedTool === 'spray' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Spray
-                  </button>
-                  <button
-                    onClick={() => setSelectedTool('eraser')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedTool === 'eraser' ? 'bg-rose-500 text-white' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Eraser
-                  </button>
+            {/* 1. PEN TAB: All 20 Reference Pen Types */}
+            {activeTab === 'pen' && (
+              <div className="flex items-center gap-3 w-full overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none">
+                  {PEN_TYPES.map((pt) => (
+                    <button
+                      key={pt.key}
+                      onClick={() => {
+                        setSelectedPenType(pt.key);
+                        setActiveBaseTool('pen');
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex-none ${
+                        activeBaseTool === 'pen' && selectedPenType === pt.key
+                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                      }`}
+                      title={pt.desc}
+                    >
+                      {pt.label}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Size Slider */}
-                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-xl">
+                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
                   <span className="text-[11px] font-bold text-slate-400">Size</span>
                   <input
                     type="range"
-                    min="2"
-                    max="50"
+                    min="1"
+                    max="40"
                     value={brushSize}
                     onChange={(e) => setBrushSize(Number(e.target.value))}
-                    className="w-20 sm:w-28 accent-amber-500 cursor-pointer"
+                    className="w-20 accent-amber-500 cursor-pointer"
                   />
                   <span className="text-[11px] font-mono text-amber-300 w-5">{brushSize}</span>
                 </div>
 
                 {/* Opacity Slider */}
-                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-xl">
+                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
                   <span className="text-[11px] font-bold text-slate-400">Opacity</span>
                   <input
                     type="range"
@@ -2269,31 +2357,91 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                     max="100"
                     value={brushOpacity}
                     onChange={(e) => setBrushOpacity(Number(e.target.value))}
-                    className="w-20 accent-amber-500 cursor-pointer"
+                    className="w-16 accent-amber-500 cursor-pointer"
                   />
-                  <span className="text-[11px] font-mono text-amber-300 w-8">{brushOpacity}%</span>
+                  <span className="text-[11px] font-mono text-amber-300 w-7">{brushOpacity}%</span>
                 </div>
               </div>
             )}
 
+            {/* 2. BRUSHES TAB: All 17 Reference Brush Types */}
+            {activeTab === 'brush' && (
+              <div className="flex items-center gap-3 w-full overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none">
+                  {BRUSH_TYPES.map((bt) => (
+                    <button
+                      key={bt.key}
+                      onClick={() => {
+                        setSelectedBrushType(bt.key);
+                        setActiveBaseTool('brush');
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex-none ${
+                        activeBaseTool === 'brush' && selectedBrushType === bt.key
+                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                      }`}
+                      title={bt.desc}
+                    >
+                      {bt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Size Slider */}
+                <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
+                  <span className="text-[11px] font-bold text-slate-400">Size</span>
+                  <input
+                    type="range"
+                    min="3"
+                    max="60"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="w-20 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-mono text-amber-300 w-5">{brushSize}</span>
+                </div>
+
+                {/* Opacity Slider */}
+                <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1 rounded-xl flex-none">
+                  <span className="text-[11px] font-bold text-slate-400">Opacity</span>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={brushOpacity}
+                    onChange={(e) => setBrushOpacity(Number(e.target.value))}
+                    className="w-16 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-mono text-amber-300 w-7">{brushOpacity}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* 3. COLORS TAB: Default Black (#000000) & Palettes */}
             {activeTab === 'color' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {BRUSH_PALETTE.map((c) => (
                   <button
                     key={c}
-                    onClick={() => setBrushColor(c)}
+                    onClick={() => {
+                      setBrushColor(c);
+                      if (activeBaseTool === 'eraser') setActiveBaseTool('pen');
+                    }}
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-none transition-transform active:scale-90 border-2 ${
-                      brushColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'
+                      brushColor === c ? 'border-amber-400 scale-110 shadow-lg' : 'border-slate-700'
                     }`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
-                {/* Custom Hex Color Input */}
-                <div className="flex items-center gap-1.5 ml-2 bg-slate-800/80 px-2 py-1 rounded-xl flex-none">
+                {/* Custom Hex Color Picker */}
+                <div className="flex items-center gap-1.5 ml-2 bg-slate-800/80 px-2 py-1 rounded-xl flex-none border border-slate-700">
                   <input
                     type="color"
                     value={brushColor}
-                    onChange={(e) => setBrushColor(e.target.value)}
+                    onChange={(e) => {
+                      setBrushColor(e.target.value);
+                      if (activeBaseTool === 'eraser') setActiveBaseTool('pen');
+                    }}
                     className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
                   />
                   <span className="text-xs font-mono uppercase">{brushColor}</span>
@@ -2301,208 +2449,84 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* PAGE TAB: Paper Textures, Page Color & Orientation/Size */}
+            {/* 4. PAGES TAB: Base Tints & Canvas Layout (Texture removed) */}
             {activeTab === 'page' && (
-              <div className="flex flex-col gap-2 w-full py-1">
-                {/* 1. Authentic Paper Textures */}
-                <div className="flex items-center gap-2 overflow-x-auto py-0.5 no-scrollbar">
-                  <span className="text-[11px] font-bold text-amber-400 flex-none uppercase tracking-wider">Paper Texture:</span>
-                  {PAPER_TEXTURES.map((pt) => (
+              <div className="flex items-center gap-3 overflow-x-auto py-1 w-full justify-between sm:justify-start">
+                <div className="flex items-center gap-1.5 flex-none">
+                  <span className="text-[11px] font-bold text-slate-400 flex-none">Base Tint:</span>
+                  {PAGE_COLORS.map((pc) => (
                     <button
-                      key={pt.key}
-                      onClick={() => handleSelectPaperTexture(pt.key)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-bold flex-none transition-all ${
-                        (currentPage.paperTexture || 'none') === pt.key
-                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                          : 'bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60'
+                      key={pc.color}
+                      onClick={() => handleSelectPageColor(pc.color)}
+                      title={pc.label}
+                      className={`w-6 h-6 rounded-full flex-none border-2 transition-transform ${
+                        currentPage.pageColor === pc.color ? 'border-amber-400 scale-110 shadow-md' : 'border-slate-700'
                       }`}
-                    >
-                      {pt.label}
-                    </button>
+                      style={{ backgroundColor: pc.color }}
+                    />
                   ))}
+                  <input
+                    type="color"
+                    value={currentPage.pageColor}
+                    onChange={(e) => handleSelectPageColor(e.target.value)}
+                    className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 flex-none ml-1"
+                    title="Custom paper tint"
+                  />
                 </div>
 
-                {/* 2. Paper Color Tint & Canvas Ratio / Orientation */}
-                <div className="flex items-center gap-3 overflow-x-auto py-0.5 justify-between sm:justify-start">
-                  <div className="flex items-center gap-1.5 flex-none">
-                    <span className="text-[11px] font-bold text-slate-400 flex-none">Base Tint:</span>
-                    {PAGE_COLORS.map((pc) => (
-                      <button
-                        key={pc.color}
-                        onClick={() => handleSelectPageColor(pc.color)}
-                        title={pc.label}
-                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-none border-2 transition-transform ${
-                          currentPage.pageColor === pc.color ? 'border-amber-400 scale-110 shadow-md' : 'border-slate-600'
-                        }`}
-                        style={{ backgroundColor: pc.color }}
-                      />
-                    ))}
-                    <input
-                      type="color"
-                      value={currentPage.pageColor}
-                      onChange={(e) => handleSelectPageColor(e.target.value)}
-                      className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 flex-none ml-1"
-                      title="Custom paper tint"
-                    />
-                  </div>
-
-                  {/* Orientation & Canvas Ratio */}
-                  <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl flex-none ml-2 border border-slate-700/50">
-                    <span className="text-[11px] font-bold text-slate-400 px-1">Layout:</span>
-                    {[
-                      { key: '16:9', label: 'Landscape (16:9 Desktop)' },
-                      { key: '3:4', label: 'Portrait (3:4 Mobile)' },
-                      { key: '1:1', label: 'Square (1:1)' },
-                      { key: 'fit', label: 'Auto Fit' },
-                    ].map((sz) => (
-                      <button
-                        key={sz.key}
-                        onClick={() => handleSelectCanvasRatio(sz.key as CanvasRatio)}
-                        className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
-                          currentPage.canvasRatio === sz.key
-                            ? 'bg-amber-500 text-slate-950'
-                            : 'text-slate-300 hover:text-white'
-                        }`}
-                      >
-                        {sz.label}
-                      </button>
-                    ))}
-                  </div>
+                {/* Canvas Layout / Ratio */}
+                <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl flex-none border border-slate-700/60 ml-2">
+                  <span className="text-[11px] font-bold text-slate-400 px-1">Ratio:</span>
+                  {[
+                    { key: '16:9', label: '16:9 Desktop' },
+                    { key: '3:4', label: '3:4 Mobile' },
+                    { key: '1:1', label: '1:1 Square' },
+                    { key: 'fit', label: 'Auto Fit' },
+                  ].map((sz) => (
+                    <button
+                      key={sz.key}
+                      onClick={() => handleSelectCanvasRatio(sz.key as CanvasRatio)}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
+                        currentPage.canvasRatio === sz.key
+                          ? 'bg-amber-500 text-slate-950 font-black'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {sz.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* SCENERY TAB: Prebuilt Scenery Outlines with Transform & Position Controls */}
+            {/* 5. SCENERY TAB: Popup Trigger & Adjustment */}
             {activeTab === 'scenery' && (
-              <div className="flex flex-col gap-2 w-full py-1">
-                {/* 1. Scenery Presets Selector */}
-                <div className="flex items-center gap-2 overflow-x-auto py-0.5 no-scrollbar">
-                  {[
-                    { key: 'blank', label: 'Blank Canvas' },
-                    { key: 'coffee-date', label: 'Romantic Cafe Date (Vertical)' },
-                    { key: 'mountain-cabin', label: 'Mountain Cabin River (Horizontal)' },
-                    { key: 'capybara-halloween', label: 'Halloween Capybaras (Horizontal)' },
-                    { key: 'rainy-frog', label: 'Cute Rainy Frog (Square)' },
-                    { key: 'elemental-touch', label: 'Fire & Water Elemental (Square)' },
-                    { key: 'balloon-house', label: 'Balloon Flying House (Square)' },
-                    { key: 'sunset-lake', label: 'Sunset Lake Sketch (Horizontal)' },
-                    { key: 'beach-sunset', label: 'Tropical Beach Sketch (Horizontal)' },
-                    { key: 'forest-stars', label: 'Forest Campfire Sketch (Horizontal)' },
-                    { key: 'desert-dunes', label: 'Desert Dunes Sketch (Horizontal)' },
-                  ].map((s) => (
-                    <button
-                      key={s.key}
-                      onClick={() => handleSelectSceneryPreset(s.key as SceneryPreset)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
-                        currentPage.sceneryPreset === s.key
-                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                          : 'bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-3 overflow-x-auto py-1 w-full">
+                <button
+                  onClick={() => setShowSceneryModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-black shadow-md flex-none active:scale-95"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span>Browse Sceneries ({SCENERY_PRESETS.length - 1})</span>
+                </button>
 
-                {/* 2. Adjust Scenery on Page (User Adjustment Controls) */}
                 {currentPage.sceneryPreset !== 'blank' && (
-                  <div className="flex items-center gap-3 overflow-x-auto py-1 px-2 rounded-xl bg-slate-800/60 border border-slate-700/60 no-scrollbar">
-                    <span className="text-[11px] font-bold text-amber-300 flex-none uppercase tracking-wider">Adjust Scenery:</span>
-
-                    {/* Scale / Zoom */}
-                    <div className="flex items-center gap-1.5 flex-none">
-                      <span className="text-[10px] text-slate-400 font-bold">Size:</span>
-                      <button
-                        onClick={() => handleAdjustScenery({ scale: Math.max(0.5, (currentPage.sceneryAdjust?.scale ?? 1) - 0.1) })}
-                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
-                      >
-                        -
-                      </button>
-                      <span className="text-[11px] font-mono text-amber-300 w-9 text-center">
-                        {Math.round((currentPage.sceneryAdjust?.scale ?? 1) * 100)}%
-                      </span>
-                      <button
-                        onClick={() => handleAdjustScenery({ scale: Math.min(2.0, (currentPage.sceneryAdjust?.scale ?? 1) + 0.1) })}
-                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Position X Offset */}
-                    <div className="flex items-center gap-1.5 flex-none">
-                      <span className="text-[10px] text-slate-400 font-bold">Pan X:</span>
-                      <button
-                        onClick={() => handleAdjustScenery({ offsetX: (currentPage.sceneryAdjust?.offsetX ?? 0) - 20 })}
-                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
-                      >
-                        Left
-                      </button>
-                      <button
-                        onClick={() => handleAdjustScenery({ offsetX: (currentPage.sceneryAdjust?.offsetX ?? 0) + 20 })}
-                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
-                      >
-                        Right
-                      </button>
-                    </div>
-
-                    {/* Position Y Offset */}
-                    <div className="flex items-center gap-1.5 flex-none">
-                      <span className="text-[10px] text-slate-400 font-bold">Pan Y:</span>
-                      <button
-                        onClick={() => handleAdjustScenery({ offsetY: (currentPage.sceneryAdjust?.offsetY ?? 0) - 20 })}
-                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
-                      >
-                        Up
-                      </button>
-                      <button
-                        onClick={() => handleAdjustScenery({ offsetY: (currentPage.sceneryAdjust?.offsetY ?? 0) + 20 })}
-                        className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold"
-                      >
-                        Down
-                      </button>
-                    </div>
-
-                    {/* Rotate Upright */}
+                  <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-xl flex-none border border-slate-700">
+                    <span className="text-xs font-bold text-amber-300">
+                      {SCENERY_PRESETS.find((s) => s.key === currentPage.sceneryPreset)?.label || 'Scenery Active'}
+                    </span>
                     <button
-                      onClick={() =>
-                        handleAdjustScenery({
-                          rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360),
-                        })
-                      }
-                      className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-[11px] font-bold text-slate-200 flex-none"
+                      onClick={() => handleSelectSceneryPreset('blank')}
+                      className="text-[11px] text-rose-400 hover:text-rose-300 font-bold ml-1"
                     >
-                      Rotate: {currentPage.sceneryAdjust?.rotation ?? 0}deg
-                    </button>
-
-                    {/* Outline Opacity */}
-                    <div className="flex items-center gap-1.5 flex-none">
-                      <span className="text-[10px] text-slate-400 font-bold">Outline:</span>
-                      <input
-                        type="range"
-                        min="20"
-                        max="100"
-                        value={Math.round((currentPage.sceneryAdjust?.opacity ?? 1) * 100)}
-                        onChange={(e) => handleAdjustScenery({ opacity: Number(e.target.value) / 100 })}
-                        className="w-16 accent-amber-500 cursor-pointer"
-                      />
-                      <span className="text-[10px] font-mono text-amber-300 w-8">
-                        {Math.round((currentPage.sceneryAdjust?.opacity ?? 1) * 100)}%
-                      </span>
-                    </div>
-
-                    {/* Reset Button */}
-                    <button
-                      onClick={() => handleAdjustScenery({ scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 })}
-                      className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-[11px] font-bold flex-none"
-                    >
-                      Reset
+                      Remove
                     </button>
                   </div>
                 )}
               </div>
             )}
 
+            {/* 6. SHAPES TAB: Geometric Shapes & Fill Toggle */}
             {activeTab === 'shape' && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
                 {[
@@ -2520,7 +2544,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                       onClick={() => setSelectedShape(s.key as ShapeType)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
                         selectedShape === s.key
-                          ? 'bg-amber-500 text-slate-950'
+                          ? 'bg-amber-500 text-slate-950 font-black'
                           : 'bg-slate-800/80 text-slate-300 hover:text-white'
                       }`}
                     >
@@ -2542,134 +2566,385 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* STICKERS TAB: Instant Placement on Tap & Canvas Drop */}
+            {/* 7. STICKERS TAB: Popup Trigger for 46 Stickers */}
             {activeTab === 'sticker' && (
-              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
-                {SCENERY_STICKERS.map((st) => {
-                  const IconComp = st.icon;
-                  return (
-                    <button
-                      key={st.key}
-                      onClick={() => {
-                        setSelectedSticker(st.key);
-                        // Instant center placement for convenience!
-                        const c = drawCanvasRef.current;
-                        const w = c ? c.width / 4 : 200;
-                        const h = c ? c.height / 4 : 200;
-                        handlePlaceSticker(st.key, w, h);
-                      }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
-                        selectedSticker === st.key
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-800/80 text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      <IconComp className="w-4 h-4" />
-                      <span>{st.label}</span>
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-3 overflow-x-auto py-1 w-full">
+                <button
+                  onClick={() => setShowStickerModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-black shadow-lg flex-none active:scale-95 transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Choose Sticker (46 Available in Popup)</span>
+                </button>
+                <span className="text-xs text-slate-400 hidden sm:inline">
+                  Click to open popup box. Place, move and zoom stickers like Canva!
+                </span>
               </div>
             )}
 
-            {/* FRAMES TAB: Authentic Photo Frames */}
+            {/* 8. FRAMES TAB: Popup Trigger for Authentic Frames */}
             {activeTab === 'frame' && (
-              <div className="flex items-center gap-2 overflow-x-auto py-1 w-full">
-                {PHOTO_FRAMES.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => handleSelectFrame(f.key)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex-none transition-all ${
-                      currentPage.frame === f.key
-                        ? 'bg-amber-500 text-slate-950'
-                        : 'bg-slate-800/80 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-3 overflow-x-auto py-1 w-full">
+                <button
+                  onClick={() => setShowFrameModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-black shadow-lg flex-none active:scale-95 transition-all"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Choose Photo Frame ({PHOTO_FRAMES.length - 1} Available)</span>
+                </button>
+
+                {currentPage.frame !== 'none' && (
+                  <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-xl flex-none border border-slate-700">
+                    <span className="text-xs font-bold text-purple-300">
+                      {PHOTO_FRAMES.find((f) => f.key === currentPage.frame)?.label || 'Frame Active'}
+                    </span>
+                    <button
+                      onClick={() => handleSelectFrame('none')}
+                      className="text-[11px] text-rose-400 hover:text-rose-300 font-bold ml-1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Primary Tool Categories Switcher */}
-          <div className="flex items-center justify-around sm:justify-center gap-2 sm:gap-6 pt-1 border-t border-slate-800/60">
+          <div className="flex items-center justify-around sm:justify-center gap-1 sm:gap-6 pt-1 border-t border-slate-800/60 overflow-x-auto no-scrollbar">
+            {/* 1. Pen */}
             <button
-              onClick={() => setActiveTab('brush')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'brush' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              onClick={() => {
+                setActiveTab('pen');
+                setActiveBaseTool('pen');
+              }}
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'pen' && activeBaseTool === 'pen' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Paintbrush className="w-5 h-5" />
+              <Pen className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Pens</span>
+            </button>
+
+            {/* 2. Brushes */}
+            <button
+              onClick={() => {
+                setActiveTab('brush');
+                setActiveBaseTool('brush');
+              }}
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'brush' && activeBaseTool === 'brush' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Paintbrush className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Brushes</span>
             </button>
 
+            {/* 3. Colors */}
             <button
               onClick={() => setActiveTab('color')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'color' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'color' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <div className="w-5 h-5 rounded-full border border-slate-500" style={{ backgroundColor: brushColor }} />
+              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-slate-500" style={{ backgroundColor: brushColor }} />
               <span>Colors</span>
             </button>
 
-            {/* Page & Size Tab */}
+            {/* 4. Pages */}
             <button
               onClick={() => setActiveTab('page')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'page' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'page' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <FileText className="w-5 h-5" />
-              <span>Page & Size</span>
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Pages</span>
             </button>
 
-            {/* Scenery Line Art Outlines */}
+            {/* 5. Scenery */}
             <button
               onClick={() => setActiveTab('scenery')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'scenery' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'scenery' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <ImageIcon className="w-5 h-5" />
+              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Scenery</span>
             </button>
 
+            {/* 6. Shapes */}
             <button
               onClick={() => setActiveTab('shape')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'shape' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'shape' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Square className="w-5 h-5" />
+              <Square className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Shapes</span>
             </button>
 
+            {/* 7. Stickers */}
             <button
-              onClick={() => setActiveTab('sticker')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'sticker' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              onClick={() => {
+                setActiveTab('sticker');
+                setShowStickerModal(true);
+              }}
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'sticker' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Sun className="w-5 h-5" />
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Stickers</span>
             </button>
 
+            {/* 8. Photo Frames */}
             <button
-              onClick={() => setActiveTab('frame')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-                activeTab === 'frame' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              onClick={() => {
+                setActiveTab('frame');
+                setShowFrameModal(true);
+              }}
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all px-2 py-1 rounded-xl ${
+                activeTab === 'frame' ? 'text-amber-400 bg-slate-800/60' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Layers className="w-5 h-5" />
-              <span>Photo Frames</span>
+              <Layers className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Frames</span>
             </button>
           </div>
         </div>
       </footer>
 
-      {/* 4. Chat Modal Drawer (Full History & Messaging) */}
+      {/* 4. POPUP BOX MODAL: ALL 46 STICKERS */}
+      <AnimatePresence>
+        {showStickerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setShowStickerModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-100">
+                      Sticker Studio Collection ({STICKER_LIST.length})
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Tap any sticker to place on canvas. Resize and zoom like Canva!
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowStickerModal(false)}
+                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Search & Category Filter */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 py-3 flex-none">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={stickerSearch}
+                    onChange={(e) => setStickerSearch(e.target.value)}
+                    placeholder="Search stickers (cat, dog, dino, tree...)"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {['all', 'animals', 'nature', 'characters', 'objects', 'food'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setStickerCategoryFilter(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                        stickerCategoryFilter === cat
+                          ? 'bg-amber-500 text-slate-950 font-black'
+                          : 'bg-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grid of 46 Compact Stickers */}
+              <div className="flex-1 overflow-y-auto pr-1 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 py-2">
+                {filteredStickers.map((st) => (
+                  <button
+                    key={st.key}
+                    onClick={() => handleAddSticker(st.key)}
+                    className="flex flex-col items-center justify-between p-2 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-amber-500/60 transition-all hover:scale-105 active:scale-95 group shadow-md"
+                  >
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={`/stickers/${st.key}.png`}
+                        alt={st.label}
+                        className="w-full h-full object-contain pointer-events-none group-hover:scale-110 transition-transform"
+                        loading="lazy"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-300 font-bold text-center truncate w-full mt-1.5">
+                      {st.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 5. POPUP BOX MODAL: SCENERY SELECTION */}
+      <AnimatePresence>
+        {showSceneryModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setShowSceneryModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-100">Scenery Outlines for Coloring</h3>
+                  <p className="text-xs text-slate-400">Choose a scenery background to color together</p>
+                </div>
+                <button
+                  onClick={() => setShowSceneryModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                {SCENERY_PRESETS.map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => handleSelectSceneryPreset(s.key)}
+                    className={`flex flex-col rounded-2xl overflow-hidden border transition-all text-left group ${
+                      currentPage.sceneryPreset === s.key
+                        ? 'border-amber-400 bg-amber-500/10 shadow-lg'
+                        : 'border-slate-800 bg-slate-800/40 hover:border-slate-700 hover:bg-slate-800/70'
+                    }`}
+                  >
+                    <div className="w-full h-32 bg-slate-950 flex items-center justify-center overflow-hidden p-2">
+                      {s.src ? (
+                        <img
+                          src={s.src}
+                          alt={s.label}
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <span className="text-xs text-slate-500 font-bold">Blank Pure Canvas</span>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <span className="text-xs font-bold text-slate-200 block truncate">{s.label}</span>
+                      <span className="text-[11px] text-amber-400/80 font-medium">
+                        {currentPage.sceneryPreset === s.key ? 'Active Preset' : 'Select'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. POPUP BOX MODAL: AUTHENTIC PHOTO FRAMES */}
+      <AnimatePresence>
+        {showFrameModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setShowFrameModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-none">
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-100">Authentic Photo Frames</h3>
+                  <p className="text-xs text-slate-400">Select an authentic border frame for your artwork</p>
+                </div>
+                <button
+                  onClick={() => setShowFrameModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                {PHOTO_FRAMES.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => handleSelectFrame(f.key)}
+                    className={`flex flex-col rounded-2xl overflow-hidden border transition-all text-left group ${
+                      currentPage.frame === f.key
+                        ? 'border-purple-400 bg-purple-500/10 shadow-lg'
+                        : 'border-slate-800 bg-slate-800/40 hover:border-slate-700 hover:bg-slate-800/70'
+                    }`}
+                  >
+                    <div className="w-full h-28 bg-slate-950 flex items-center justify-center overflow-hidden p-2">
+                      {f.src ? (
+                        <img
+                          src={f.src}
+                          alt={f.label}
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <span className="text-xs text-slate-500 font-bold">Frameless Clean</span>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <span className="text-xs font-bold text-slate-200 block truncate">{f.label}</span>
+                      <span className="text-[11px] text-purple-400/80 font-medium">
+                        {currentPage.frame === f.key ? 'Active Frame' : 'Apply Frame'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. Chat Modal Drawer */}
       <AnimatePresence>
         {showChatModal && (
           <motion.div
@@ -2697,7 +2972,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </button>
               </div>
 
-              {/* Chat Message Scroll */}
               <div className="flex-1 overflow-y-auto space-y-3 py-4">
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
@@ -2715,7 +2989,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 ))}
               </div>
 
-              {/* Chat Input */}
               <form onSubmit={handleSendChat} className="flex gap-2 pt-2 border-t border-slate-800">
                 <input
                   type="text"
@@ -2736,7 +3009,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         )}
       </AnimatePresence>
 
-      {/* 5. Invite Friends Modal */}
+      {/* 8. Invite Friends Modal */}
       <AnimatePresence>
         {showInviteModal && (
           <motion.div
@@ -2764,7 +3037,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </button>
               </div>
 
-              {/* Room Code & Copy Link */}
               <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 flex flex-col gap-2">
                 <span className="text-[11px] font-bold text-slate-400">Session Room Code</span>
                 <div className="flex items-center justify-between bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
@@ -2779,7 +3051,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </div>
               </div>
 
-              {/* Join Existing Room Code */}
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -2796,7 +3067,6 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                 </button>
               </div>
 
-              {/* Friends List for Direct 1-Click Invites */}
               <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-300">Online Friends</span>
