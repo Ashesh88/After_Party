@@ -26,6 +26,7 @@ interface CallState {
   peer: Peer.Instance | null;
   facingMode: 'user' | 'environment';
   isSwitchingCamera: boolean;
+  isScreenSharing: boolean;
 
   // Actions
   setPartnerInfo: (info: PartnerInfo | null) => void;
@@ -44,6 +45,8 @@ interface CallState {
   toggleVideo: () => void;
   toggleMinimize: () => void;
   switchCamera: () => Promise<void>;
+  startScreenShare: () => Promise<void>;
+  stopScreenShare: () => Promise<void>;
   setIncomingCall: (caller: { callerId: string; callerName: string; callerAvatar?: string; callType: CallType } | null) => void;
   incrementDuration: () => void;
 }
@@ -73,6 +76,7 @@ export const useCallStore = create<CallState>((set, get) => ({
   peer: null,
   facingMode: 'user',
   isSwitchingCamera: false,
+  isScreenSharing: false,
 
   setPartnerInfo: (partnerInfo) => set({ partnerInfo }),
 
@@ -205,6 +209,140 @@ export const useCallStore = create<CallState>((set, get) => ({
       console.error('Failed to switch camera:', err);
       set({ isSwitchingCamera: false });
       throw err;
+    }
+  },
+
+  startScreenShare: async () => {
+    const { localStream, peer, isScreenSharing } = get();
+    if (!localStream || isScreenSharing) return;
+
+    try {
+      // Capture system/tab audio along with display video (Discord-style)
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: 'browser',
+          frameRate: { ideal: 30, max: 60 },
+        },
+        audio: true, // Captures tab/system audio if user checks "Share tab audio"
+      });
+
+      const screenVideoTrack = screenStream.getVideoTracks()[0];
+      if (!screenVideoTrack) return;
+
+      const currentVideoTrack = localStream.getVideoTracks()[0];
+
+      // 1. Swap video track in WebRTC peer
+      if (peer && currentVideoTrack) {
+        if (typeof (peer as any).replaceTrack === 'function') {
+          try {
+            (peer as any).replaceTrack(currentVideoTrack, screenVideoTrack, localStream);
+          } catch (e) {
+            console.warn('peer.replaceTrack warning on screenshare:', e);
+          }
+        }
+        if ((peer as any)._pc) {
+          try {
+            const senders = (peer as any)._pc.getSenders();
+            const videoSender = senders.find((s: any) => s.track && s.track.kind === 'video');
+            if (videoSender) {
+              await videoSender.replaceTrack(screenVideoTrack);
+            }
+          } catch (e) {
+            console.warn('videoSender.replaceTrack warning on screenshare:', e);
+          }
+        }
+      }
+
+      // Also swap / mix screen audio if available
+      const screenAudioTrack = screenStream.getAudioTracks()[0];
+      const audioTracks = [...localStream.getAudioTracks()];
+      if (screenAudioTrack) {
+        audioTracks.push(screenAudioTrack);
+      }
+
+      // 2. Update local stream
+      if (currentVideoTrack) {
+        localStream.removeTrack(currentVideoTrack);
+      }
+      localStream.addTrack(screenVideoTrack);
+
+      const updatedStream = new MediaStream([
+        ...audioTracks,
+        screenVideoTrack,
+      ]);
+
+      set({
+        localStream: updatedStream,
+        isScreenSharing: true,
+      });
+
+      // Handle user stopping screen share via Chrome native floating bar ("Stop sharing")
+      screenVideoTrack.onended = () => {
+        get().stopScreenShare();
+      };
+    } catch (err) {
+      console.error('Failed to start screen share:', err);
+      throw err;
+    }
+  },
+
+  stopScreenShare: async () => {
+    const { localStream, peer, isScreenSharing, isVideoOff, facingMode } = get();
+    if (!localStream || !isScreenSharing) return;
+
+    try {
+      const currentScreenTrack = localStream.getVideoTracks()[0];
+
+      // Re-acquire camera stream
+      const cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facingMode === 'environment' ? { exact: 'environment' } : 'user' },
+        audio: false,
+      });
+
+      const cameraVideoTrack = cameraStream.getVideoTracks()[0];
+      cameraVideoTrack.enabled = !isVideoOff;
+
+      // 1. Swap track back in WebRTC peer
+      if (peer && currentScreenTrack) {
+        if (typeof (peer as any).replaceTrack === 'function') {
+          try {
+            (peer as any).replaceTrack(currentScreenTrack, cameraVideoTrack, localStream);
+          } catch (e) {
+            console.warn('peer.replaceTrack warning on stopping screenshare:', e);
+          }
+        }
+        if ((peer as any)._pc) {
+          try {
+            const senders = (peer as any)._pc.getSenders();
+            const videoSender = senders.find((s: any) => s.track && s.track.kind === 'video');
+            if (videoSender) {
+              await videoSender.replaceTrack(cameraVideoTrack);
+            }
+          } catch (e) {
+            console.warn('videoSender.replaceTrack warning on stopping screenshare:', e);
+          }
+        }
+      }
+
+      // Stop screenshare tracks
+      if (currentScreenTrack) {
+        currentScreenTrack.stop();
+      }
+
+      // Remove any extra screen audio tracks
+      const micAudioTrack = localStream.getAudioTracks()[0];
+
+      const updatedStream = new MediaStream(
+        micAudioTrack ? [micAudioTrack, cameraVideoTrack] : [cameraVideoTrack]
+      );
+
+      set({
+        localStream: updatedStream,
+        isScreenSharing: false,
+      });
+    } catch (err) {
+      console.error('Failed to stop screen share and restore camera:', err);
+      set({ isScreenSharing: false });
     }
   },
 
@@ -464,6 +602,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       isMinimized: false,
       facingMode: 'user',
       isSwitchingCamera: false,
+      isScreenSharing: false,
     });
   },
 }));

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
   Phone, PhoneOff, Mic, MicOff, Video, VideoOff, 
-  Minimize2, Maximize2, User, SwitchCamera
+  Minimize2, Maximize2, User, SwitchCamera, MonitorUp, ScreenShare
 } from 'lucide-react';
 
 export default function CallOverlay() {
@@ -19,6 +19,7 @@ export default function CallOverlay() {
     isMuted,
     isVideoOff,
     isMinimized,
+    isScreenSharing,
     callDuration,
     partnerInfo,
     incomingCaller,
@@ -33,6 +34,8 @@ export default function CallOverlay() {
     toggleVideo,
     toggleMinimize,
     switchCamera,
+    startScreenShare,
+    stopScreenShare,
     setIncomingCall,
     incrementDuration,
   } = useCallStore();
@@ -555,7 +558,7 @@ export default function CallOverlay() {
                   )}
 
                   {/* 3. Switch / Flip Camera Button (Front <-> Back) */}
-                  {callType === 'video' && (
+                  {callType === 'video' && !isScreenSharing && (
                     <button
                       onClick={handleSwitchCamera}
                       disabled={isSwitchingCamera || isVideoOff}
@@ -570,7 +573,36 @@ export default function CallOverlay() {
                     </button>
                   )}
 
-                  {/* 3. Red End Call Button */}
+                  {/* 4. Screen Share Toggle (Discord Style Tab / Audio + Video Sharing) */}
+                  {callType === 'video' && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (isScreenSharing) {
+                            await stopScreenShare();
+                            toast.success('Screen share stopped. Camera restored.');
+                          } else {
+                            await startScreenShare();
+                            toast.success('Sharing screen with tab/system audio! 📺', { duration: 4000 });
+                          }
+                        } catch (err: any) {
+                          if (err?.name !== 'NotAllowedError') {
+                            toast.error('Could not share screen. Check permissions.');
+                          }
+                        }
+                      }}
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+                        isScreenSharing
+                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-2 border-pink-400 shadow-[0_0_20px_rgba(244,63,142,0.6)] animate-pulse'
+                          : 'bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/15'
+                      }`}
+                      title={isScreenSharing ? 'Stop Screen Sharing' : 'Share Screen & Audio (Netflix, Tab, etc.)'}
+                    >
+                      <MonitorUp size={22} />
+                    </button>
+                  )}
+
+                  {/* 5. Red End Call Button */}
                   <button
                     onClick={() => endCall(socket)}
                     className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-xl shadow-rose-500/50 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
