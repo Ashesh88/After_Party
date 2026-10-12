@@ -191,25 +191,38 @@ export const PEN_TYPES = [
   { key: 'pocket-pen', label: 'Pocket pen', desc: 'Compact handy ballpoint', previewColor: '#1d4ed8' },
 ];
 
-// 4. Brush Types from User Reference Image with Visual Preview
+// 4. Brush Types from User Reference Image with Visual Preview & Strokes
 export const BRUSH_TYPES = [
-  { key: 'round-tip', label: 'Round Tip', desc: 'Classic artist round tip' },
-  { key: 'hog-bristle', label: 'Hog Bristle', desc: 'Multi-hair textured bristle' },
-  { key: 'mop-brush', label: 'Mop Brush', desc: 'Large watery soft wash' },
-  { key: 'flat-wash', label: 'Flat Wash', desc: 'Broad flat ribbon stroke' },
-  { key: 'filbert', label: 'Filbert', desc: 'Curved flat chisel wash' },
-  { key: 'round-long-hair', label: 'Round Long hair', desc: 'Fluid continuous stroke' },
-  { key: 'fan-brush', label: 'Fan Brush', desc: 'Radial fan spread' },
-  { key: 'cats-tongue', label: "Cat's Tongue", desc: 'Pointed oval wash' },
-  { key: 'dagger-stripper', label: 'Dagger Stripper', desc: 'Sharp angled curve' },
-  { key: 'liner-rigger', label: 'Liner / Rigger', desc: 'Ultra-thin long lines' },
-  { key: 'angular-chisel', label: 'Angular / Chisel', desc: 'Crisp slant edge' },
-  { key: 'oval-mop', label: 'Oval Mop', desc: 'Deep absorbent wash' },
-  { key: 'notch', label: 'Notch', desc: 'Double tip split brush' },
-  { key: 'comb-brush', label: 'Comb Brush', desc: 'Parallel rake hairs' },
-  { key: 'hog-bristle-domed', label: 'Hog Bristle round domed', desc: 'Dense domed stippling' },
-  { key: 'pipe-overgrainer', label: 'Pipe over-grainer', desc: 'Wood grain texture' },
-  { key: 'round-script-light-ox', label: 'Round script light ox', desc: 'Fine lettering script' },
+  { key: 'taklon-round', label: 'Taklon Round', desc: 'Broad lines, round areas & stroke work' },
+  { key: 'taklon-fan', label: 'Taklon Fan', desc: 'Blend colors, create texture, grass & foliage' },
+  { key: 'angular', label: 'Angular', desc: 'Paint angled shapes, sharp edges & float colors' },
+  { key: 'comb', label: 'Comb', desc: 'Paint multiple lines in one stroke & fluffy texture' },
+  { key: 'natural-mop', label: 'Natural Mop', desc: 'Blend delicate colors & soften edges' },
+  { key: 'shader', label: 'Shader', desc: 'Blend or float colors, lettering & basecoat' },
+  { key: 'natural-round', label: 'Natural Round', desc: 'Paint broad lines, round areas & strokes' },
+  { key: 'ox-glaze', label: 'Ox Glaze', desc: 'Paint angled shapes, apply glazes & basecoat' },
+  { key: 'natural-flat', label: 'Natural Flat', desc: 'Blend or float colors & basecoating' },
+  { key: 'glaze-wash', label: 'Glaze / Wash', desc: 'Float & blend colors, broad square strokes' },
+  { key: 'filbert', label: 'Filbert', desc: 'Paint and blend round petals, leaves & strokes' },
+  { key: 'stencil', label: 'Stencil', desc: 'Stencil painting or stippling on any surface' },
+  { key: 'bristle-flat', label: 'Bristle Flat', desc: 'Heavy blending, dry brushing & basecoat' },
+  { key: 'bristle-round', label: 'Bristle Round', desc: 'Heavy blending, dry brushing & curves' },
+  { key: 'bristle-fan', label: 'Bristle Fan', desc: 'Blend colors, create texture & foliage' },
+  { key: 'liner', label: 'Liner', desc: 'Extra thin lines, small strokes & finest details' },
+  { key: 'detail', label: 'Detail', desc: 'Paint angled shapes, sharp edges & float colors' },
+  { key: 'script', label: 'Script', desc: 'Extra long strokes, lines & scrolling' },
+  { key: 'triangular', label: 'Triangular', desc: 'Triple load with color to create unique blends' },
+  { key: 'dagger', label: 'Dagger', desc: 'Banding fine lines, stems, leaves & designs' },
+  { key: 'wisp-angular', label: 'Wisp Angular', desc: 'Paint multiple lines, feathers, foliage & hair' },
+  { key: 'wisp-fan', label: 'Wisp Fan', desc: 'Paint multiple lines with one stroke & curves' },
+  { key: 'wisp-flat', label: 'Wisp Flat', desc: 'Paint multiple lines, cross hatching & squiggles' },
+  { key: 'wisp-filbert', label: 'Wisp Filbert', desc: 'Multiple lines in one stroke, grass & hair' },
+  { key: 'funky-pouncer', label: 'Funky Pouncer', desc: 'Add texture with gels, acrylics & stamped glaze' },
+  { key: 'natural-fan', label: 'Natural Fan', desc: 'Large area washes, ceramic underglazes' },
+  { key: 'hake', label: 'Hake', desc: 'Large area coverage, washes & basecoats' },
+  { key: 'bamboo', label: 'Bamboo', desc: 'Ceramic glazes, lettering, strokes & washes' },
+  { key: 'tight-spot', label: 'Tight Spot', desc: 'Paint in hard-to-reach spots & sharp angles' },
+  { key: 'mr-big-sweep', label: 'Mr. Big Sweep', desc: 'Fine lines, large area washes & underglazes' },
 ];
 
 // 5. New Sceneries (5 New User Images)
@@ -309,7 +322,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [activeTab, setActiveTab] = useState<ToolCategory>('pen');
   const [activeBaseTool, setActiveBaseTool] = useState<BaseTool>('pen');
   const [selectedPenType, setSelectedPenType] = useState<string>('smart-pen');
-  const [selectedBrushType, setSelectedBrushType] = useState<string>('round-tip');
+  const [selectedBrushType, setSelectedBrushType] = useState<string>('taklon-round');
   const [brushColor, setBrushColor] = useState<string>('#000000');
   const [brushSize, setBrushSize] = useState<number>(6);
   const [brushOpacity, setBrushOpacity] = useState<number>(100);
@@ -339,7 +352,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const [isDraggingScenery, setIsDraggingScenery] = useState<boolean>(false);
   const [sceneryDragOffset, setSceneryDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [activeSceneryHandle, setActiveSceneryHandle] = useState<string | null>(null);
-  const [sceneryResizeInitialData, setSceneryResizeInitialData] = useState<{ clientX: number; clientY: number; scale: number } | null>(null);
+  const [sceneryResizeInitialData, setSceneryResizeInitialData] = useState<{ clientX: number; clientY: number; scale: number; scaleX?: number; scaleY?: number } | null>(null);
 
   // Popup Box Modals (for Pens, Brushes, Stickers, Scenery, Frames)
   const [showPenModal, setShowPenModal] = useState<boolean>(false);
@@ -357,7 +370,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       title: 'Page 1',
       pageColor: '#ffffff',
       sceneryPreset: 'blank',
-      sceneryAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
+      sceneryAdjust: { scale: 0.5, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'none',
       frameAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 },
@@ -698,7 +711,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       if (presetDef && presetDef.src) {
         const src = presetDef.src;
         const img = imageCacheRef.current.get(src);
-        const adjust = currentPage.sceneryAdjust || { scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 };
+        const adjust = currentPage.sceneryAdjust || { scale: 0.5, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 };
 
         ctx.save();
         ctx.globalAlpha = Math.max(0.05, Math.min(1.0, adjust.opacity ?? 1.0));
@@ -706,11 +719,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         if (img && img.complete && img.naturalWidth > 0) {
           const padding = 20;
           const baseScale = Math.min((width - padding * 2) / img.naturalWidth, (height - padding * 2) / img.naturalHeight);
-          const finalScale = baseScale * (adjust.scale ?? 1.0);
-          const dw = img.naturalWidth * finalScale;
-          const dh = img.naturalHeight * finalScale;
+          const finalScale = baseScale * (adjust.scale ?? 0.5);
+          const dw = img.naturalWidth * finalScale * (adjust.scaleX ?? 1.0);
+          const dh = img.naturalHeight * finalScale * (adjust.scaleY ?? 1.0);
 
-          ctx.translate(width / 2 + (adjust.offsetX ?? 0), height / 2 + (adjust.offsetY ?? 0));
+          const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+          ctx.translate(width / 2 + (adjust.offsetX ?? 0) * dpr, height / 2 + (adjust.offsetY ?? 0) * dpr);
           if (adjust.rotation) {
             ctx.rotate((adjust.rotation * Math.PI) / 180);
           }
@@ -917,31 +931,17 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         ctx.globalAlpha = stroke.opacity / 100;
       }
     } else {
-      if (sub === 'mop-brush' || sub === 'oval-mop') {
-        ctx.lineWidth = stroke.size * 2.6;
+      if (sub === 'natural-mop' || sub === 'glaze-wash' || sub === 'hake') {
+        ctx.lineWidth = stroke.size * 2.5;
         ctx.strokeStyle = stroke.color;
         ctx.shadowColor = stroke.color;
-        ctx.shadowBlur = stroke.size;
-        ctx.globalAlpha = (stroke.opacity / 100) * 0.35;
-      } else if (sub === 'flat-wash') {
-        ctx.lineWidth = stroke.size * 2.2;
+        ctx.shadowBlur = stroke.size * 0.8;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.4;
+      } else if (sub === 'shader' || sub === 'natural-flat' || sub === 'ox-glaze') {
+        ctx.lineWidth = stroke.size * 2.0;
         ctx.strokeStyle = stroke.color;
-        ctx.globalAlpha = (stroke.opacity / 100) * 0.55;
-      } else if (sub === 'hog-bristle' || sub === 'hog-bristle-domed') {
-        ctx.lineWidth = Math.max(1, stroke.size * 0.4);
-        ctx.strokeStyle = stroke.color;
-        ctx.globalAlpha = (stroke.opacity / 100) * 0.65;
-        [-2, 0, 2].forEach((offset) => {
-          ctx.beginPath();
-          ctx.moveTo(stroke.points[0].x + offset, stroke.points[0].y + offset);
-          for (let i = 1; i < stroke.points.length; i++) {
-            ctx.lineTo(stroke.points[i].x + offset, stroke.points[i].y + offset);
-          }
-          ctx.stroke();
-        });
-        ctx.restore();
-        return;
-      } else if (sub === 'comb-brush') {
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.6;
+      } else if (sub === 'comb') {
         ctx.lineWidth = Math.max(1, stroke.size * 0.3);
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = stroke.opacity / 100;
@@ -955,9 +955,52 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
         });
         ctx.restore();
         return;
-      } else if (sub === 'liner-rigger' || sub === 'round-script-light-ox') {
-        ctx.lineWidth = Math.max(1.5, stroke.size * 0.55);
+      } else if (sub === 'taklon-fan' || sub === 'bristle-fan' || sub === 'natural-fan' || sub === 'wisp-fan') {
+        ctx.lineWidth = Math.max(1, stroke.size * 0.35);
         ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.75;
+        [-5, -2, 1, 4].forEach((offset) => {
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x + offset, stroke.points[0].y + offset);
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x + offset, stroke.points[i].y + offset);
+          }
+          ctx.stroke();
+        });
+        ctx.restore();
+        return;
+      } else if (sub === 'bristle-flat' || sub === 'bristle-round' || sub === 'wisp-flat' || sub === 'wisp-angular' || sub === 'wisp-filbert') {
+        ctx.lineWidth = Math.max(1, stroke.size * 0.4);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.7;
+        [-2, 0, 2].forEach((offset) => {
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x + offset, stroke.points[0].y + offset);
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x + offset, stroke.points[i].y + offset);
+          }
+          ctx.stroke();
+        });
+        ctx.restore();
+        return;
+      } else if (sub === 'liner' || sub === 'detail' || sub === 'script') {
+        ctx.lineWidth = Math.max(1, stroke.size * 0.45);
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+      } else if (sub === 'funky-pouncer') {
+        ctx.lineWidth = stroke.size * 2.2;
+        ctx.strokeStyle = stroke.color;
+        ctx.setLineDash([Math.max(2, stroke.size * 0.6), Math.max(2, stroke.size * 0.6)]);
+        ctx.globalAlpha = (stroke.opacity / 100) * 0.85;
+      } else if (sub === 'bamboo' || sub === 'tight-spot' || sub === 'dagger' || sub === 'angular') {
+        ctx.lineWidth = stroke.size * 1.5;
+        ctx.strokeStyle = stroke.color;
+        ctx.globalAlpha = stroke.opacity / 100;
+      } else if (sub === 'triangular' || sub === 'mr-big-sweep') {
+        ctx.lineWidth = stroke.size * 2.2;
+        ctx.strokeStyle = stroke.color;
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = 3;
         ctx.globalAlpha = stroke.opacity / 100;
       } else {
         ctx.lineWidth = stroke.size * 1.2;
@@ -1584,7 +1627,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
   const handleSceneryWheel = (e: React.WheelEvent) => {
     e.stopPropagation();
     const delta = e.deltaY < 0 ? 0.05 : -0.05;
-    handleAdjustScenery({ scale: Math.max(0.4, Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 1) + delta)) });
+    handleAdjustScenery({ scale: Math.max(0.15, Math.min(2.5, Number(((currentPage.sceneryAdjust?.scale ?? 0.5) + delta).toFixed(2)))) });
   };
 
   const handleSceneryResizeHandleDown = (e: React.PointerEvent<HTMLDivElement>, handle: string) => {
@@ -1595,7 +1638,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     setSceneryResizeInitialData({
       clientX: e.clientX,
       clientY: e.clientY,
-      scale: currentPage.sceneryAdjust?.scale ?? 1,
+      scale: currentPage.sceneryAdjust?.scale ?? 0.5,
+      scaleX: currentPage.sceneryAdjust?.scaleX ?? 1,
+      scaleY: currentPage.sceneryAdjust?.scaleY ?? 1,
     });
   };
 
@@ -1605,9 +1650,24 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     e.preventDefault();
     const dx = e.clientX - sceneryResizeInitialData.clientX;
     const dy = e.clientY - sceneryResizeInitialData.clientY;
-    const mult = (dx + dy) / 2;
-    const nextScale = Math.max(0.4, Math.min(2.5, sceneryResizeInitialData.scale + mult * 0.005));
-    handleAdjustScenery({ scale: nextScale });
+
+    if (activeSceneryHandle === 'e') {
+      const nextSX = Math.max(0.2, Math.min(3, (sceneryResizeInitialData.scaleX ?? 1) + dx * 0.005));
+      handleAdjustScenery({ scaleX: nextSX });
+    } else if (activeSceneryHandle === 'w') {
+      const nextSX = Math.max(0.2, Math.min(3, (sceneryResizeInitialData.scaleX ?? 1) - dx * 0.005));
+      handleAdjustScenery({ scaleX: nextSX });
+    } else if (activeSceneryHandle === 's') {
+      const nextSY = Math.max(0.2, Math.min(3, (sceneryResizeInitialData.scaleY ?? 1) + dy * 0.005));
+      handleAdjustScenery({ scaleY: nextSY });
+    } else if (activeSceneryHandle === 'n') {
+      const nextSY = Math.max(0.2, Math.min(3, (sceneryResizeInitialData.scaleY ?? 1) - dy * 0.005));
+      handleAdjustScenery({ scaleY: nextSY });
+    } else {
+      const mult = activeSceneryHandle === 'se' ? (dx + dy) : activeSceneryHandle === 'nw' ? (-dx - dy) : activeSceneryHandle === 'ne' ? (dx - dy) : (-dx + dy);
+      const nextScale = Math.max(0.15, Math.min(2.5, Number((sceneryResizeInitialData.scale + (mult / 2) * 0.005).toFixed(2))));
+      handleAdjustScenery({ scale: nextScale });
+    }
   };
 
   const handleSceneryResizeHandleUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -1623,7 +1683,9 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       const page = next[activePageIndex];
       if (page) {
         page.sceneryAdjust = {
-          scale: page.sceneryAdjust?.scale ?? 1,
+          scale: page.sceneryAdjust?.scale ?? 0.5,
+          scaleX: page.sceneryAdjust?.scaleX ?? 1,
+          scaleY: page.sceneryAdjust?.scaleY ?? 1,
           offsetX: page.sceneryAdjust?.offsetX ?? 0,
           offsetY: page.sceneryAdjust?.offsetY ?? 0,
           opacity: page.sceneryAdjust?.opacity ?? 1,
@@ -1673,7 +1735,18 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
     setPages((prev) => {
       const next = [...prev];
       const page = next[activePageIndex];
-      if (page) page.sceneryPreset = preset;
+      if (page) {
+        page.sceneryPreset = preset;
+        page.sceneryAdjust = {
+          scale: 0.5,
+          scaleX: 1,
+          scaleY: 1,
+          offsetX: 0,
+          offsetY: 0,
+          opacity: 1,
+          rotation: 0,
+        };
+      }
       return next;
     });
     setShowSceneryModal(false);
@@ -1818,7 +1891,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
       title: `Page ${newPageNum}`,
       pageColor: '#ffffff',
       sceneryPreset: 'blank',
-      sceneryAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
+      sceneryAdjust: { scale: 0.5, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 },
       customSceneryUrl: null,
       frame: 'none',
       frameAdjust: { scale: 1, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 },
@@ -2482,48 +2555,145 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
               </div>
             )}
 
-            {/* On-Canvas Scenery Quick Adjustment Floating Controls */}
-            {currentPage.sceneryPreset && currentPage.sceneryPreset !== 'blank' && (
+            {/* Canva-Style Interactive Scenery Bounding Box with Direct Handles & Fix Button */}
+            {currentPage.sceneryPreset && currentPage.sceneryPreset !== 'blank' && (activeTab === 'scenery' || isScenerySelected) && (
               <div
-                className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-slate-900/95 border border-amber-500/50 backdrop-blur-md px-3 py-1 rounded-full shadow-2xl pointer-events-auto"
+                className="absolute pointer-events-auto border-2 border-amber-400 border-dashed rounded-xl select-none"
+                style={{
+                  left: `calc(50% + ${currentPage.sceneryAdjust?.offsetX || 0}px)`,
+                  top: `calc(50% + ${currentPage.sceneryAdjust?.offsetY || 0}px)`,
+                  width: `${(currentPage.sceneryAdjust?.scaleX ?? 1) * (currentPage.sceneryAdjust?.scale ?? 0.5) * 85}%`,
+                  height: `${(currentPage.sceneryAdjust?.scaleY ?? 1) * (currentPage.sceneryAdjust?.scale ?? 0.5) * 85}%`,
+                  transform: `translate(-50%, -50%) rotate(${currentPage.sceneryAdjust?.rotation || 0}deg)`,
+                  zIndex: 22,
+                }}
                 onWheel={handleSceneryWheel}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setIsDraggingScenery(true);
+                  const pt = getCanvasCoords(e);
+                  setSceneryDragOffset({
+                    x: pt.x - (currentPage.sceneryAdjust?.offsetX || 0),
+                    y: pt.y - (currentPage.sceneryAdjust?.offsetY || 0),
+                  });
+                }}
+                onPointerMove={(e) => {
+                  if (!isDraggingScenery) return;
+                  e.stopPropagation();
+                  const pt = getCanvasCoords(e);
+                  handleAdjustScenery({
+                    offsetX: Math.round(pt.x - sceneryDragOffset.x),
+                    offsetY: Math.round(pt.y - sceneryDragOffset.y),
+                  });
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  setIsDraggingScenery(false);
+                }}
               >
-                <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider pl-0.5">Scenery:</span>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustScenery({ scale: Math.max(0.4, (currentPage.sceneryAdjust?.scale ?? 1) - 0.1) })}
-                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
-                  title="Zoom Out Scenery"
+                {/* Floating Controls Bar: Zoom, Rotate, Fix in place, Delete */}
+                <div
+                  className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-slate-900/95 border border-amber-500/60 backdrop-blur-md px-2.5 py-1 rounded-full shadow-2xl pointer-events-auto select-none"
+                  onPointerDown={(e) => e.stopPropagation()}
                 >
-                  -
-                </button>
-                <span className="text-[11px] font-mono font-black text-amber-300 px-1 min-w-[34px] text-center">
-                  {Math.round((currentPage.sceneryAdjust?.scale ?? 1) * 100)}%
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustScenery({ scale: Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 1) + 0.1) })}
-                  className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
-                  title="Zoom In Scenery"
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustScenery({ rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360) })}
-                  className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 border border-slate-700 ml-1"
-                  title="Rotate Scenery"
-                >
-                  Rotate
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustScenery({ scale: 1, offsetX: 0, offsetY: 0, opacity: 1, rotation: 0 })}
-                  className="px-2 py-0.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[10px] font-bold text-rose-300 border border-rose-500/30 ml-0.5"
-                  title="Reset Scenery"
-                >
-                  Reset
-                </button>
+                  <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider pl-0.5">Scenery</span>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustScenery({ scale: Math.max(0.15, (currentPage.sceneryAdjust?.scale ?? 0.5) - 0.05) })}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
+                    title="Zoom Out Scenery"
+                  >
+                    -
+                  </button>
+                  <span className="text-[11px] font-mono font-black text-amber-300 px-1 min-w-[34px] text-center">
+                    {Math.round((currentPage.sceneryAdjust?.scale ?? 0.5) * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustScenery({ scale: Math.min(2.5, (currentPage.sceneryAdjust?.scale ?? 0.5) + 0.05) })}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center border border-slate-700"
+                    title="Zoom In Scenery"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustScenery({ rotation: (((currentPage.sceneryAdjust?.rotation ?? 0) + 90) % 360) })}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700"
+                    title="Rotate Scenery"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsScenerySelected(false)}
+                    className="px-2.5 py-0.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md"
+                    title="Fix Scenery in place to start coloring"
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Fix</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSceneryPreset('blank')}
+                    className="w-6 h-6 rounded-full bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 flex items-center justify-center border border-rose-500/30"
+                    title="Remove Scenery"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* 4 Corner Resize Handles */}
+                <div
+                  className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nwse-resize shadow-md"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'nw')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+                <div
+                  className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nesw-resize shadow-md"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'ne')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+                <div
+                  className="absolute -bottom-2.5 -left-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nesw-resize shadow-md"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'sw')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+                <div
+                  className="absolute -bottom-2.5 -right-2.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-slate-900 cursor-nwse-resize shadow-md"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'se')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+
+                {/* 4 Edge Handles */}
+                <div
+                  className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-3 rounded bg-amber-400 border border-slate-900 cursor-ns-resize"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'n')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+                <div
+                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-3 rounded bg-amber-400 border border-slate-900 cursor-ns-resize"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 's')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+                <div
+                  className="absolute top-1/2 -left-2 -translate-y-1/2 w-3 h-6 rounded bg-amber-400 border border-slate-900 cursor-ew-resize"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'w')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
+                <div
+                  className="absolute top-1/2 -right-2 -translate-y-1/2 w-3 h-6 rounded bg-amber-400 border border-slate-900 cursor-ew-resize"
+                  onPointerDown={(e) => handleSceneryResizeHandleDown(e, 'e')}
+                  onPointerMove={handleSceneryResizeHandleMove}
+                  onPointerUp={handleSceneryResizeHandleUp}
+                />
               </div>
             )}
 
@@ -2666,7 +2836,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                   onClick={() => setShowBrushModal(true)}
                   className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/50 shadow-md flex-none active:scale-95 transition-all"
                 >
-                  <div className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center bg-white p-0.5">
+                  <div className="w-7 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-white p-0.5">
                     <img
                       src={`/brushes/brush-${activeBrushDef.key}.png`}
                       alt={activeBrushDef.label}
@@ -2807,6 +2977,12 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                     <span className="text-xs font-bold text-amber-300">
                       {SCENERY_PRESETS.find((s) => s.key === currentPage.sceneryPreset)?.label || 'Scenery Active'}
                     </span>
+                    <button
+                      onClick={() => setIsScenerySelected(true)}
+                      className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 ml-1"
+                    >
+                      Move / Resize
+                    </button>
                     <button
                       onClick={() => handleSelectSceneryPreset('blank')}
                       className="text-[11px] text-rose-400 hover:text-rose-300 font-bold ml-1"
@@ -3142,7 +3318,7 @@ export default function CoPaintStudio({ onBack }: CoPaintStudioProps) {
                         : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600 hover:bg-slate-800/80'
                     }`}
                   >
-                    <div className="w-20 h-28 flex items-center justify-center p-1 bg-white rounded-xl shadow-inner overflow-hidden mb-2">
+                    <div className="w-24 h-32 flex items-center justify-center p-1 bg-white rounded-2xl shadow-inner overflow-hidden mb-2">
                       <img
                         src={`/brushes/brush-${bt.key}.png`}
                         alt={bt.label}
